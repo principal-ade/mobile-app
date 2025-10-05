@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Button } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/types';
-import { Button, useTheme } from '@a24z/industry-theme';
+import { useTheme } from '@a24z/industry-theme';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -10,8 +10,8 @@ interface Props {
   navigation: LoginScreenNavigationProp;
 }
 
-export default function LoginScreen({ navigation }: Props) {
-  const theme = useTheme();
+export default function LoginScreen({ navigation: _navigation }: Props) {
+  const { theme } = useTheme();
 
   const handleLogin = () => {
     // TODO: Implement GitHub OAuth
@@ -24,7 +24,7 @@ export default function LoginScreen({ navigation }: Props) {
       <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
         Sign in with GitHub to get started
       </Text>
-      <Button onPress={handleLogin}>Sign in with GitHub</Button>
+      <Button title="Sign in with GitHub" onPress={handleLogin} />
     </View>
   );
 }

@@ -10,7 +10,7 @@ import { useTheme } from '@a24z/industry-theme';
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-  const theme = useTheme();
+  const { theme } = useTheme();
 
   return (
     <NavigationContainer>

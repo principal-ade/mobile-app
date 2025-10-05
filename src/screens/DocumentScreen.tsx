@@ -13,8 +13,8 @@ interface Props {
   route: DocumentScreenRouteProp;
 }
 
-export default function DocumentScreen({ navigation, route }: Props) {
-  const theme = useTheme();
+export default function DocumentScreen({ navigation: _navigation, route }: Props) {
+  const { theme } = useTheme();
   const { owner, repo, path, fileName } = route.params;
 
   return (

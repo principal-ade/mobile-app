@@ -13,8 +13,8 @@ interface Props {
   navigation: RepositoryListScreenNavigationProp;
 }
 
-export default function RepositoryListScreen({ navigation }: Props) {
-  const theme = useTheme();
+export default function RepositoryListScreen({ navigation: _navigation }: Props) {
+  const { theme } = useTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
