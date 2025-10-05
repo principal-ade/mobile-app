@@ -32,5 +32,5 @@ class LocalStoragePolyfill {
 
 // Install the polyfill globally
 if (typeof localStorage === 'undefined') {
-  (global as any).localStorage = new LocalStoragePolyfill();
+  (global as typeof globalThis).localStorage = new LocalStoragePolyfill();
 }

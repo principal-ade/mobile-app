@@ -41,6 +41,8 @@ export default function LoginScreen({ navigation: _navigation }: Props) {
       clientId: githubConfig.clientId,
       scopes: githubConfig.scopes,
       redirectUri,
+      usePKCE: true,
+      codeChallengeMethod: 'S256',
     },
     discovery,
   );
@@ -53,9 +55,9 @@ export default function LoginScreen({ navigation: _navigation }: Props) {
           const tokenResponse = await exchangeCodeAsync(
             {
               clientId: githubConfig.clientId,
-              clientSecret: githubConfig.clientSecret,
               redirectUri,
               code,
+              // PKCE: code_verifier is automatically included by expo-auth-session when usePKCE is true
             },
             discovery,
           );
@@ -105,7 +107,7 @@ export default function LoginScreen({ navigation: _navigation }: Props) {
     if (!isGitHubConfigValid()) {
       Alert.alert(
         'Configuration Required',
-        'GitHub OAuth credentials are missing. Update app.json with your client ID and secret.',
+        'GitHub OAuth client ID is missing. Update app.json with your client ID.',
       );
       return;
     }

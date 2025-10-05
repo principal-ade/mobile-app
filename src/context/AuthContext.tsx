@@ -49,7 +49,7 @@ function mapGitHubAuthResponse(response: GitHubAuthResponse): string {
   throw new Error('GitHub token missing from response');
 }
 
-export function AuthProvider({ children }: PropsWithChildren): JSX.Element {
+export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     token: null,

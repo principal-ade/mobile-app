@@ -27,8 +27,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "githubClientId": "",
-      "githubClientSecret": "",
+      "githubClientId": "Ov23libhQoLcZYmvIovc",
       "githubScopes": ["repo"]
     }
   }
