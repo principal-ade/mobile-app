@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Button } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '@a24z/industry-theme';
+import { useAuth } from '../hooks/useAuth';
 
 type RepositoryListScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -15,12 +16,13 @@ interface Props {
 
 export default function RepositoryListScreen({ navigation: _navigation }: Props) {
   const { theme } = useTheme();
+  const { user, signOut } = useAuth();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.text, { color: theme.colors.text }]}>
-        Repository List Screen
-      </Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
+      <Text style={[styles.text, { color: theme.colors.text }]}>Welcome, {user?.name ?? user?.login}!</Text>
+      <Text style={[styles.caption, { color: theme.colors.textSecondary }]}>GitHub OAuth connected.</Text>
+      <Button title="Sign out" onPress={signOut} />
     </View>
   );
 }
@@ -34,5 +36,8 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 18,
+  },
+  caption: {
+    marginVertical: 12,
   },
 });
