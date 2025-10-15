@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "GithubMarkdownReader",
-    "slug": "GithubMarkdownReader",
+    "name": "principalademobile",
+    "slug": "principal-ade-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.a24z.principal-ade-mobile",
+      "infoPlist": {
+        "CFBundleDisplayName": "Principal ADE",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -26,9 +31,16 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "scheme": "githubmarkdownreader",
     "extra": {
       "githubClientId": "Ov23libhQoLcZYmvIovc",
-      "githubScopes": ["repo"]
+      "githubScopes": [
+        "repo",
+        "repo"
+      ],
+      "eas": {
+        "projectId": "f1206516-031c-4186-87a2-a4cbdbdb1e9a"
+      }
     }
   }
 }
