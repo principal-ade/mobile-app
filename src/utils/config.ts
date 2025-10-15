@@ -7,7 +7,6 @@ interface GitHubConfig {
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Partial<{
   githubClientId: string;
-  githubClientSecret: string;
   githubScopes: string[];
 }>;
 

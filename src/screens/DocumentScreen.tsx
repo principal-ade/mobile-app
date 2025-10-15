@@ -6,6 +6,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '@a24z/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { fetchMarkdownFileContent } from '../services/GithubService';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 type DocumentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Document'>;
 type DocumentScreenRouteProp = RouteProp<RootStackParamList, 'Document'>;
@@ -73,7 +74,7 @@ export default function DocumentScreen({ navigation: _navigation, route }: Props
         <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={[styles.content, { color: theme.colors.text }]}>{content}</Text>
+          <MarkdownRenderer content={content} />
         </ScrollView>
       )}
     </View>
@@ -109,9 +110,5 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
-  },
-  content: {
-    fontSize: 14,
-    lineHeight: 22,
   },
 });

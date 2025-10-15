@@ -57,7 +57,7 @@ export default function LoginScreen({ navigation: _navigation }: Props) {
               clientId: githubConfig.clientId,
               redirectUri,
               code,
-              // PKCE: code_verifier is automatically included by expo-auth-session when usePKCE is true
+              // PKCE: code_verifier is automatically included by expo-auth-session
             },
             discovery,
           );
