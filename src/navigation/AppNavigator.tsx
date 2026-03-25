@@ -6,7 +6,7 @@ import { RootStackParamList } from './types';
 import LoginScreen from '../screens/LoginScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
-import { useTheme } from '@a24z/industry-theme';
+import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 
 const Stack = createStackNavigator<RootStackParamList>();

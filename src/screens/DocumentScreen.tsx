@@ -3,10 +3,9 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-import { useTheme } from '@a24z/industry-theme';
+import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { fetchMarkdownFileContent } from '../services/GithubService';
-import MarkdownRenderer from '../components/MarkdownRenderer';
 
 type DocumentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Document'>;
 type DocumentScreenRouteProp = RouteProp<RootStackParamList, 'Document'>;
@@ -74,7 +73,7 @@ export default function DocumentScreen({ navigation: _navigation, route }: Props
         <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <MarkdownRenderer content={content} />
+          <Text style={{ color: theme.colors.text }}>{content}</Text>
         </ScrollView>
       )}
     </View>

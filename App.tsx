@@ -1,6 +1,6 @@
 import './src/utils/localStorage'; // Polyfill localStorage for React Native
 import { StatusBar } from 'expo-status-bar';
-import { ThemeProvider } from '@a24z/industry-theme';
+import { ThemeProvider } from '@principal-ade/industry-theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 
