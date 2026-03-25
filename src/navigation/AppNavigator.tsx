@@ -3,6 +3,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from './types';
+import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
@@ -26,7 +27,7 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={isAuthenticated ? 'RepositoryList' : 'Login'}
+        initialRouteName="Home"
         screenOptions={{
           headerStyle: {
             backgroundColor: theme.colors.surface,
@@ -37,6 +38,13 @@ export default function AppNavigator() {
           },
         }}
       >
+        {/* Home screen available to everyone */}
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ headerShown: false }}
+        />
+
         {!isAuthenticated ? (
           <Stack.Screen
             name="Login"

@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "build:ios": "npx eas-cli build --platform ios --profile production",
     "submit:ios": "npx eas-cli submit --platform ios --profile production --latest",
-    "deploy:testflight": "./scripts/deploy-testflight.sh"
+    "deploy:testflight": "./scripts/deploy-testflight.sh",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@expo/cli": "^54.0.10",
@@ -37,7 +39,20 @@
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
     "eslint": "^10.1.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "storybook": "^10.3.3",
+    "@storybook/react-native-web-vite": "^10.3.3",
+    "@chromatic-com/storybook": "^5.1.0",
+    "@storybook/addon-vitest": "^10.3.3",
+    "@storybook/addon-a11y": "^10.3.3",
+    "@storybook/addon-docs": "^10.3.3",
+    "vite": "^8.0.2",
+    "react-native-web": "^0.21.2",
+    "eslint-plugin-storybook": "^10.3.3",
+    "vitest": "^4.1.1",
+    "playwright": "^1.58.2",
+    "@vitest/browser-playwright": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.1"
   },
   "private": true
 }
