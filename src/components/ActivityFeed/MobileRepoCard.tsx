@@ -52,7 +52,7 @@ function getTimeRangeText(commits: ActivityCommit[]): string {
 const HOUR_LABEL_HEIGHT = 37; // paddingTop 16 + text ~17 + paddingBottom 4
 const HEADER_HEIGHT = 80; // padding 16 + avatar 48 + padding 16
 const FILE_CITY_BORDER = 2; // top + bottom border
-const DOTS_HEIGHT = 38; // paddingVertical 16*2 + dot 6
+const DOTS_HEIGHT = 38; // paddingTop 16 + dot 6 + paddingBottom 16 (safe area added separately)
 
 export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRepoCardProps) {
   const { theme } = useTheme();
@@ -72,6 +72,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
   const topContentHeight = hourLabel
     ? insets.top + HOUR_LABEL_HEIGHT + HEADER_HEIGHT
     : insets.top + HEADER_HEIGHT;
+  // Bottom safe area is applied as padding on dotsContainer
   const commitSectionHeight = containerHeight - topContentHeight - fileCityHeight - DOTS_HEIGHT - insets.bottom;
 
   const activeCommit = summary.commits[activeCommitIndex];
@@ -86,7 +87,6 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems.length > 0 && viewableItems[0]?.index != null) {
         setActiveCommitIndex(viewableItems[0].index);
-        setFileCityLoaded(false);
       }
     },
     []
@@ -230,9 +230,8 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
           </View>
         ) : (
           <Image
-            key={activeCommit?.sha || 'no-commit'}
             source={{ uri: fileCityImageUrl }}
-            style={[styles.fileCityImage, { opacity: fileCityLoaded ? 1 : 0 }]}
+            style={styles.fileCityImage}
             resizeMode="contain"
             onLoad={() => setFileCityLoaded(true)}
             onError={() => setFileCityError(true)}
@@ -241,7 +240,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
       </View>
 
       {/* Commits Carousel */}
-      <View style={styles.commitsSection}>
+      <View style={[styles.commitsSection, { backgroundColor: theme.colors.surface }]}>
         <FlatList
           data={summary.commits}
           renderItem={renderCommitCard}
@@ -259,7 +258,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
 
         {/* Carousel dots */}
         {summary.commits.length > 1 && (
-          <View style={styles.dotsContainer}>
+          <View style={[styles.dotsContainer, { paddingBottom: insets.bottom + 16 }]}>
             {summary.commits.map((commit, index) => (
               <View
                 key={commit.sha}
@@ -411,7 +410,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 16, // Safe area added via inline style
   },
   dot: {
     height: 6,
