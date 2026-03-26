@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
+import { Logo } from '../Logo';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 
 interface MobileRepoCardProps {
@@ -228,40 +229,6 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
         </View>
       </View>
 
-      {/* File City Image */}
-      <View
-        style={[
-          styles.fileCityContainer,
-          { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
-        ]}
-      >
-        {!fileCityLoaded && !fileCityError && (
-          <View style={styles.fileCityPlaceholder}>
-            <Text style={[styles.placeholderIcon, { color: theme.colors.textSecondary }]}>
-              📁
-            </Text>
-            <Text style={[styles.placeholderText, { color: theme.colors.textSecondary }]}>
-              Loading...
-            </Text>
-          </View>
-        )}
-        {fileCityError ? (
-          <View style={styles.fileCityPlaceholder}>
-            <Text style={[styles.placeholderIcon, { color: theme.colors.textSecondary }]}>
-              📁
-            </Text>
-          </View>
-        ) : (
-          <Image
-            source={{ uri: fileCityImageUrl }}
-            style={styles.fileCityImage}
-            resizeMode="contain"
-            onLoad={() => setFileCityLoaded(true)}
-            onError={() => setFileCityError(true)}
-          />
-        )}
-      </View>
-
       {/* Commit Timeline */}
       {summary.commits.length > 1 && (
         <View style={[styles.timelineContainer, { backgroundColor: theme.colors.surface }]}>
@@ -313,6 +280,43 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
           ))}
         </View>
       )}
+
+      {/* File City Image */}
+      <View
+        style={[
+          styles.fileCityContainer,
+          { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
+        ]}
+      >
+        {!fileCityLoaded && !fileCityError && (
+          <View style={styles.fileCityPlaceholder}>
+            <Logo
+              width={120}
+              height={120}
+              color={theme.colors.textSecondary}
+              opacity={0.6}
+            />
+          </View>
+        )}
+        {fileCityError ? (
+          <View style={styles.fileCityPlaceholder}>
+            <Logo
+              width={80}
+              height={80}
+              color={theme.colors.textSecondary}
+              opacity={0.4}
+            />
+          </View>
+        ) : (
+          <Image
+            source={{ uri: fileCityImageUrl }}
+            style={styles.fileCityImage}
+            resizeMode="contain"
+            onLoad={() => setFileCityLoaded(true)}
+            onError={() => setFileCityError(true)}
+          />
+        )}
+      </View>
 
       {/* Commits Carousel */}
       <View style={[styles.commitsSection, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom }]}>
@@ -397,14 +401,7 @@ const styles = StyleSheet.create({
   fileCityPlaceholder: {
     position: 'absolute',
     alignItems: 'center',
-    gap: 8,
-  },
-  placeholderIcon: {
-    fontSize: 32,
-    opacity: 0.5,
-  },
-  placeholderText: {
-    fontSize: 12,
+    justifyContent: 'center',
   },
   fileCityImage: {
     width: '100%',
