@@ -125,11 +125,23 @@ export async function fetchActivityFeed(
         return null;
       }
 
+      // Fetch stats for each commit in parallel
+      const commitsWithStats = await Promise.all(
+        commits.map(async (commit) => {
+          const stats = await fetchCommitStats(owner, repo, commit.sha);
+          return {
+            ...commit,
+            additions: stats?.additions,
+            deletions: stats?.deletions,
+          };
+        })
+      );
+
       const summary: RepoActivitySummary = {
         owner,
         repo,
         fullName,
-        commits,
+        commits: commitsWithStats,
         latestCommitAt: new Date(commits[0]!.date),
         commitCount: commits.length,
       };

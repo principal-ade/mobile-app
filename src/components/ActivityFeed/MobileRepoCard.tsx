@@ -7,6 +7,7 @@ import {
   FlatList,
   ViewToken,
   LayoutChangeEvent,
+  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -64,6 +65,8 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
   const [fileCityLoaded, setFileCityLoaded] = useState(false);
   const [fileCityError, setFileCityError] = useState(false);
   const [containerWidth, setContainerWidth] = useState(375);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const commitsListRef = useRef<FlatList<ActivityCommit>>(null);
 
   const onContainerLayout = useCallback((event: LayoutChangeEvent) => {
     setContainerWidth(event.nativeEvent.layout.width);
@@ -98,6 +101,14 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
     itemVisiblePercentThreshold: 50,
   }).current;
 
+  const scrollToCommit = useCallback((index: number) => {
+    setIsScrolling(true);
+    commitsListRef.current?.scrollToIndex({ index, animated: true });
+    // Fallback timeout for programmatic scrolls
+    setTimeout(() => setIsScrolling(false), 350);
+  }, []);
+
+
   const cardWidth = containerWidth;
   const itemWidth = containerWidth;
 
@@ -110,6 +121,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
             backgroundColor: theme.colors.surface,
             width: cardWidth,
             height: commitSectionHeight,
+            opacity: isScrolling ? 0 : 1,
           },
         ]}
       >
@@ -137,25 +149,29 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
           {commit.message}
         </Text>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
+        {/* Footer */}
+        <View style={styles.commitFooter}>
           <Text style={[styles.sha, { color: theme.colors.textSecondary }]}>
             {commit.sha.slice(0, 7)}
           </Text>
-          {commit.additions != null && commit.additions > 0 && (
-            <Text style={[styles.statText, { color: theme.colors.success }]}>
-              +{commit.additions}
-            </Text>
-          )}
-          {commit.deletions != null && commit.deletions > 0 && (
-            <Text style={[styles.statText, { color: theme.colors.error }]}>
-              -{commit.deletions}
-            </Text>
+          {(commit.additions != null || commit.deletions != null) && (
+            <View style={styles.statsRow}>
+              {commit.additions != null && (
+                <Text style={[styles.statText, { color: theme.colors.success }]}>
+                  +{commit.additions}
+                </Text>
+              )}
+              {commit.deletions != null && (
+                <Text style={[styles.statText, { color: theme.colors.error }]}>
+                  -{commit.deletions}
+                </Text>
+              )}
+            </View>
           )}
         </View>
       </View>
     ),
-    [theme, cardWidth, commitSectionHeight]
+    [theme, cardWidth, commitSectionHeight, isScrolling]
   );
 
   return (
@@ -256,36 +272,38 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
                 />
               )}
               {/* Author avatar */}
-              <View
-                style={[
-                  styles.timelineAvatarContainer,
-                  index === activeCommitIndex && {
-                    borderColor: theme.colors.primary,
-                    borderWidth: 2,
-                  },
-                  index !== activeCommitIndex && {
-                    opacity: 0.5,
-                  },
-                ]}
-              >
-                {commit.authorAvatarUrl ? (
-                  <Image
-                    source={{ uri: commit.authorAvatarUrl }}
-                    style={styles.timelineAvatar}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.timelineAvatarFallback,
-                      { backgroundColor: theme.colors.border },
-                    ]}
-                  >
-                    <Text style={[styles.timelineAvatarText, { color: theme.colors.textSecondary }]}>
-                      {commit.author.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              <Pressable onPress={() => scrollToCommit(index)}>
+                <View
+                  style={[
+                    styles.timelineAvatarContainer,
+                    index === activeCommitIndex && {
+                      borderColor: theme.colors.primary,
+                      borderWidth: 2,
+                    },
+                    index !== activeCommitIndex && {
+                      opacity: 0.5,
+                    },
+                  ]}
+                >
+                  {commit.authorAvatarUrl ? (
+                    <Image
+                      source={{ uri: commit.authorAvatarUrl }}
+                      style={styles.timelineAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.timelineAvatarFallback,
+                        { backgroundColor: theme.colors.border },
+                      ]}
+                    >
+                      <Text style={[styles.timelineAvatarText, { color: theme.colors.textSecondary }]}>
+                        {commit.author.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
             </React.Fragment>
           ))}
         </View>
@@ -294,6 +312,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
       {/* Commits Carousel */}
       <View style={[styles.commitsSection, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom }]}>
         <FlatList
+          ref={commitsListRef}
           data={summary.commits}
           renderItem={renderCommitCard}
           keyExtractor={(item) => item.sha}
@@ -423,19 +442,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     flex: 1,
   },
-  statsRow: {
+  commitFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     marginTop: 8,
   },
   sha: {
     fontFamily: 'monospace',
     fontSize: 12,
   },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   statText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   timelineContainer: {
     flexDirection: 'row',
