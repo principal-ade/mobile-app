@@ -52,7 +52,9 @@ function getTimeRangeText(commits: ActivityCommit[]): string {
 const HOUR_LABEL_HEIGHT = 37; // paddingTop 16 + text ~17 + paddingBottom 4
 const HEADER_HEIGHT = 80; // padding 16 + avatar 48 + padding 16
 const FILE_CITY_BORDER = 2; // top + bottom border
-const DOTS_HEIGHT = 38; // paddingTop 16 + dot 6 + paddingBottom 16 (safe area added separately)
+const TIMELINE_HEIGHT = 52; // paddingTop 12 + avatar 28 + paddingBottom 12 (safe area added separately)
+const TIMELINE_AVATAR_SIZE = 28;
+const TIMELINE_LINE_HEIGHT = 2;
 
 export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRepoCardProps) {
   const { theme } = useTheme();
@@ -72,8 +74,8 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
   const topContentHeight = hourLabel
     ? insets.top + HOUR_LABEL_HEIGHT + HEADER_HEIGHT
     : insets.top + HEADER_HEIGHT;
-  // Bottom safe area is applied as padding on dotsContainer
-  const commitSectionHeight = containerHeight - topContentHeight - fileCityHeight - DOTS_HEIGHT - insets.bottom;
+  // Bottom safe area is applied as padding on timeline container
+  const commitSectionHeight = containerHeight - topContentHeight - fileCityHeight - TIMELINE_HEIGHT - insets.bottom;
 
   const activeCommit = summary.commits[activeCommitIndex];
 
@@ -239,8 +241,58 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
         )}
       </View>
 
+      {/* Commit Timeline */}
+      {summary.commits.length > 1 && (
+        <View style={[styles.timelineContainer, { backgroundColor: theme.colors.surface }]}>
+          {summary.commits.map((commit, index) => (
+            <React.Fragment key={commit.sha}>
+              {/* Connecting line before avatar (except first) */}
+              {index > 0 && (
+                <View
+                  style={[
+                    styles.timelineLine,
+                    { backgroundColor: theme.colors.border },
+                  ]}
+                />
+              )}
+              {/* Author avatar */}
+              <View
+                style={[
+                  styles.timelineAvatarContainer,
+                  index === activeCommitIndex && {
+                    borderColor: theme.colors.primary,
+                    borderWidth: 2,
+                  },
+                  index !== activeCommitIndex && {
+                    opacity: 0.5,
+                  },
+                ]}
+              >
+                {commit.authorAvatarUrl ? (
+                  <Image
+                    source={{ uri: commit.authorAvatarUrl }}
+                    style={styles.timelineAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.timelineAvatarFallback,
+                      { backgroundColor: theme.colors.border },
+                    ]}
+                  >
+                    <Text style={[styles.timelineAvatarText, { color: theme.colors.textSecondary }]}>
+                      {commit.author.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </React.Fragment>
+          ))}
+        </View>
+      )}
+
       {/* Commits Carousel */}
-      <View style={[styles.commitsSection, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.commitsSection, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom }]}>
         <FlatList
           data={summary.commits}
           renderItem={renderCommitCard}
@@ -255,27 +307,6 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
         />
-
-        {/* Carousel dots */}
-        {summary.commits.length > 1 && (
-          <View style={[styles.dotsContainer, { paddingBottom: insets.bottom + 16 }]}>
-            {summary.commits.map((commit, index) => (
-              <View
-                key={commit.sha}
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor:
-                      index === activeCommitIndex
-                        ? theme.colors.primary
-                        : theme.colors.border,
-                    width: index === activeCommitIndex ? 16 : 6,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        )}
       </View>
     </View>
   );
@@ -406,16 +437,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  dotsContainer: {
+  timelineContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 4,
-    paddingTop: 16,
-    paddingBottom: 16, // Safe area added via inline style
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  dot: {
-    height: 6,
-    borderRadius: 3,
+  timelineLine: {
+    width: 24,
+    height: TIMELINE_LINE_HEIGHT,
+    marginHorizontal: 4,
+  },
+  timelineAvatarContainer: {
+    width: TIMELINE_AVATAR_SIZE,
+    height: TIMELINE_AVATAR_SIZE,
+    borderRadius: TIMELINE_AVATAR_SIZE / 2,
+    overflow: 'hidden',
+  },
+  timelineAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  timelineAvatarFallback: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineAvatarText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 
