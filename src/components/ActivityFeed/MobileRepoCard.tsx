@@ -154,8 +154,13 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
           <Text style={[styles.sha, { color: theme.colors.textSecondary }]}>
             {commit.sha.slice(0, 7)}
           </Text>
-          {(commit.additions != null || commit.deletions != null) && (
+          {(commit.filesChanged != null || commit.additions != null || commit.deletions != null) && (
             <View style={styles.statsRow}>
+              {commit.filesChanged != null && (
+                <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
+                  {commit.filesChanged} {commit.filesChanged === 1 ? 'file' : 'files'}
+                </Text>
+              )}
               {commit.additions != null && (
                 <Text style={[styles.statText, { color: theme.colors.success }]}>
                   +{commit.additions}

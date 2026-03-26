@@ -133,6 +133,7 @@ export async function fetchActivityFeed(
             ...commit,
             additions: stats?.additions,
             deletions: stats?.deletions,
+            filesChanged: stats?.filesChanged,
           };
         })
       );

@@ -10,6 +10,7 @@ export interface ActivityCommit {
   date: string;
   additions?: number;
   deletions?: number;
+  filesChanged?: number;
 }
 
 export interface RepoActivitySummary {
