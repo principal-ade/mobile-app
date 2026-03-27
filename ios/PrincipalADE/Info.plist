@@ -28,7 +28,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>githubmarkdownreader</string>
-				<string>com.a24z.principal-ade-mobile</string>
+				<string>com.noetic-labs.principal-ai-mobile</string>
 			</array>
 		</dict>
 	</array>

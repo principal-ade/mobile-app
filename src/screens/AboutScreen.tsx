@@ -15,8 +15,8 @@ import { Logo } from '../components/Logo';
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 const LINKS = {
-  privacyPolicy: 'https://principal-ade.com/legal/privacy-policy',
-  termsOfService: 'https://principal-ade.com/legal/terms-of-service',
+  privacyPolicy: 'https://principal-ade.com/privacy',
+  termsOfService: 'https://principal-ade.com/terms',
   discord: 'https://discord.gg/G3qdcC2DXq',
   website: 'https://principal-ade.com',
 };

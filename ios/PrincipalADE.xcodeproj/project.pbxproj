@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		37680968CD463D6E22B25FC9 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86517032EDE8AB2B91C29BAA /* ExpoModulesProvider.swift */; };
+		29E9804380A4516531688377 /* libPods-PrincipalADE.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19B1C46F311CC599581773D6 /* libPods-PrincipalADE.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		5B2E3D5663220703509A5B02 /* libPods-PrincipalADE.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B217F9FB94A461D7C0C57730 /* libPods-PrincipalADE.a */; };
+		6FB9730D9FEF2F0874FAD09B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F9EC44D28D9E4B7B03B19275 /* PrivacyInfo.xcprivacy */; };
+		781A8811024308F486832FBA /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E404303175A96CC3514E1E /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D0053FF9EEF4878B1B4B087D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A8D5A793A62CA7014E50C7B0 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		05D7754B18630C2203428109 /* Pods-PrincipalADE.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalADE.debug.xcconfig"; path = "Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* PrincipalADE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrincipalADE.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PrincipalADE/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PrincipalADE/Info.plist; sourceTree = "<group>"; };
-		86517032EDE8AB2B91C29BAA /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PrincipalADE/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		A8D5A793A62CA7014E50C7B0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = PrincipalADE/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		19B1C46F311CC599581773D6 /* libPods-PrincipalADE.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrincipalADE.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E5FF2CB2F140D62F3E90720 /* Pods-PrincipalADE.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalADE.release.xcconfig"; path = "Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE.release.xcconfig"; sourceTree = "<group>"; };
+		8939CF20EB1CFAC28BB51992 /* Pods-PrincipalADE.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalADE.debug.xcconfig"; path = "Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = PrincipalADE/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B217F9FB94A461D7C0C57730 /* libPods-PrincipalADE.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrincipalADE.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BD3F71FFACBD07FE682AFF16 /* Pods-PrincipalADE.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalADE.release.xcconfig"; path = "Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE.release.xcconfig"; sourceTree = "<group>"; };
+		D6E404303175A96CC3514E1E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PrincipalADE/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = PrincipalADE/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* PrincipalADE-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "PrincipalADE-Bridging-Header.h"; path = "PrincipalADE/PrincipalADE-Bridging-Header.h"; sourceTree = "<group>"; };
+		F9EC44D28D9E4B7B03B19275 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = PrincipalADE/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B2E3D5663220703509A5B02 /* libPods-PrincipalADE.a in Frameworks */,
+				29E9804380A4516531688377 /* libPods-PrincipalADE.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				A8D5A793A62CA7014E50C7B0 /* PrivacyInfo.xcprivacy */,
+				F9EC44D28D9E4B7B03B19275 /* PrivacyInfo.xcprivacy */,
 			);
 			name = PrincipalADE;
 			sourceTree = "<group>";
@@ -62,25 +62,17 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				B217F9FB94A461D7C0C57730 /* libPods-PrincipalADE.a */,
+				19B1C46F311CC599581773D6 /* libPods-PrincipalADE.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		5A2B4C4EA2B088647CFB0991 /* PrincipalADE */ = {
+		613BD2530BD5642D63BC36EC /* PrincipalADE */ = {
 			isa = PBXGroup;
 			children = (
-				86517032EDE8AB2B91C29BAA /* ExpoModulesProvider.swift */,
+				D6E404303175A96CC3514E1E /* ExpoModulesProvider.swift */,
 			);
 			name = PrincipalADE;
-			sourceTree = "<group>";
-		};
-		6A6F82448DC4D0048A72E727 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				5A2B4C4EA2B088647CFB0991 /* PrincipalADE */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -97,8 +89,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				B0958291BFE3541F0316CFA9 /* Pods */,
-				6A6F82448DC4D0048A72E727 /* ExpoModulesProviders */,
+				C6C0A5907A1D1283182C83A0 /* Pods */,
+				F8A5038AC630747EC8701C13 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -113,16 +105,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		B0958291BFE3541F0316CFA9 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				05D7754B18630C2203428109 /* Pods-PrincipalADE.debug.xcconfig */,
-				BD3F71FFACBD07FE682AFF16 /* Pods-PrincipalADE.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -130,6 +112,24 @@
 			);
 			name = Supporting;
 			path = PrincipalADE/Supporting;
+			sourceTree = "<group>";
+		};
+		C6C0A5907A1D1283182C83A0 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				8939CF20EB1CFAC28BB51992 /* Pods-PrincipalADE.debug.xcconfig */,
+				7E5FF2CB2F140D62F3E90720 /* Pods-PrincipalADE.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		F8A5038AC630747EC8701C13 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				613BD2530BD5642D63BC36EC /* PrincipalADE */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PrincipalADE" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				0C225829C7BE18FFD5C96071 /* [Expo] Configure project */,
+				3DA3F5EDD2A74D61A7B97801 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				CF1F8DA358D524215C760D99 /* [CP] Embed Pods Frameworks */,
+				0D4E18681BFAC7E11784A250 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -166,7 +166,9 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
+						DevelopmentTeam = 4TNFXHR5WN;
 						LastSwiftMigration = 1250;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -196,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				D0053FF9EEF4878B1B4B087D /* PrivacyInfo.xcprivacy in Resources */,
+				6FB9730D9FEF2F0874FAD09B /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -242,7 +244,29 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		0C225829C7BE18FFD5C96071 /* [Expo] Configure project */ = {
+		0D4E18681BFAC7E11784A250 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermesvm.framework/hermesvm",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3DA3F5EDD2A74D61A7B97801 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -277,6 +301,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
 			);
@@ -286,34 +311,13 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		CF1F8DA358D524215C760D99 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermesvm.framework/hermesvm",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -324,7 +328,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				37680968CD463D6E22B25FC9 /* ExpoModulesProvider.swift in Sources */,
+				781A8811024308F486832FBA /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,12 +337,15 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 05D7754B18630C2203428109 /* Pods-PrincipalADE.debug.xcconfig */;
+			baseConfigurationReference = 8939CF20EB1CFAC28BB51992 /* Pods-PrincipalADE.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PrincipalADE/PrincipalADE.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4TNFXHR5WN;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -357,7 +364,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.a24z.principal-ade-mobile";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.noetic-labs.principal-ai-mobile";
 				PRODUCT_NAME = PrincipalADE;
 				SWIFT_OBJC_BRIDGING_HEADER = "PrincipalADE/PrincipalADE-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -369,12 +376,15 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = BD3F71FFACBD07FE682AFF16 /* Pods-PrincipalADE.release.xcconfig */;
+			baseConfigurationReference = 7E5FF2CB2F140D62F3E90720 /* Pods-PrincipalADE.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PrincipalADE/PrincipalADE.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4TNFXHR5WN;
 				INFOPLIST_FILE = PrincipalADE/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -388,7 +398,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.a24z.principal-ade-mobile";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.noetic-labs.principal-ai-mobile";
 				PRODUCT_NAME = PrincipalADE;
 				SWIFT_OBJC_BRIDGING_HEADER = "PrincipalADE/PrincipalADE-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
