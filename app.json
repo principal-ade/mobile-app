@@ -32,10 +32,7 @@
     "scheme": "githubmarkdownreader",
     "extra": {
       "githubClientId": "Ov23libhQoLcZYmvIovc",
-      "githubScopes": [
-        "repo",
-        "repo"
-      ],
+      "githubScopes": ["repo"],
       "eas": {
         "projectId": "f1206516-031c-4186-87a2-a4cbdbdb1e9a"
       }

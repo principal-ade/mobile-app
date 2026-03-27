@@ -3,14 +3,17 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider } from '@principal-ade/industry-theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
