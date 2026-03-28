@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList, MainTabParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import AboutScreen from '../screens/AboutScreen';
-import LoginScreen from '../screens/LoginScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -112,13 +111,7 @@ export default function AppNavigator() {
           options={{ headerShown: false }}
         />
 
-        {!isAuthenticated ? (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-        ) : (
+        {isAuthenticated && (
           <>
             <Stack.Screen
               name="RepositoryList"

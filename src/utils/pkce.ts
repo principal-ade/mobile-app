@@ -24,6 +24,52 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 /**
+ * Generates PKCE code verifier and challenge pair
+ */
+export async function generatePKCE(): Promise<{
+  codeVerifier: string;
+  codeChallenge: string;
+}> {
+  const codeVerifier = await generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  return { codeVerifier, codeChallenge };
+}
+
+/**
+ * Generates a state parameter with CSRF token
+ * State is a base64url-encoded JSON object: {csrf: string}
+ */
+export async function generateState(): Promise<string> {
+  const csrfBytes = await Crypto.getRandomBytesAsync(16);
+  const csrf = base64UrlEncode(csrfBytes);
+  const stateObj = { csrf };
+  const stateJson = JSON.stringify(stateObj);
+  // Convert string to bytes and base64url encode
+  const stateBytes = new Uint8Array(stateJson.split('').map(c => c.charCodeAt(0)));
+  return base64UrlEncode(stateBytes);
+}
+
+/**
+ * Decodes the state parameter
+ * @param state - Base64URL encoded state string
+ * @returns Decoded state object with csrf token
+ */
+export function decodeState(state: string): { csrf: string } {
+  try {
+    // Convert base64url to base64
+    let base64 = state.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    // Decode base64 to string
+    const decoded = atob(base64);
+    return JSON.parse(decoded);
+  } catch {
+    throw new Error('Invalid state parameter');
+  }
+}
+
+/**
  * Converts a byte array to base64url encoding
  */
 function base64UrlEncode(buffer: Uint8Array): string {

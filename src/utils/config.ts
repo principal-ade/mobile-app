@@ -1,20 +1,25 @@
 import Constants from 'expo-constants';
 
-interface GitHubConfig {
-  clientId: string;
-  scopes: string[];
+interface AuthConfig {
+  authServerUrl: string;
+  appScheme: string;
 }
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Partial<{
-  githubClientId: string;
-  githubScopes: string[];
+  authServerUrl: string;
 }>;
 
-export const githubConfig: GitHubConfig = {
-  clientId: extra.githubClientId ?? '',
-  scopes: Array.isArray(extra.githubScopes) ? extra.githubScopes : ['repo'],
+const scheme = Constants.expoConfig?.scheme ?? 'principal-ai';
+
+export const authConfig: AuthConfig = {
+  authServerUrl: extra.authServerUrl ?? 'https://auth.principal-ade.com',
+  appScheme: typeof scheme === 'string' ? scheme : scheme[0] ?? 'principal-ai',
 };
 
-export function isGitHubConfigValid(): boolean {
-  return Boolean(githubConfig.clientId);
+export function isAuthConfigValid(): boolean {
+  return Boolean(authConfig.authServerUrl);
+}
+
+export function getAuthCallbackUrl(): string {
+  return `${authConfig.appScheme}://auth/callback`;
 }

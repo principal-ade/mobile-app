@@ -30,10 +30,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "scheme": "githubmarkdownreader",
+    "scheme": "principal-ai",
     "extra": {
-      "githubClientId": "Ov23libhQoLcZYmvIovc",
-      "githubScopes": ["repo"],
+      "authServerUrl": "https://auth.principal-ade.com",
       "eas": {
         "projectId": "f1206516-031c-4186-87a2-a4cbdbdb1e9a"
       }

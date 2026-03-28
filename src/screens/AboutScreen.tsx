@@ -6,11 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import { Logo } from '../components/Logo';
+import { useAuth } from '../hooks/useAuth';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -55,6 +57,15 @@ function LinkRow({ title, subtitle, url, theme }: LinkRowProps) {
 export function AboutScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { isAuthenticated, user, signIn, signOut } = useAuth();
+
+  const handleSignIn = async () => {
+    await signIn();
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -75,6 +86,48 @@ export function AboutScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Account Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+            ACCOUNT
+          </Text>
+        </View>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          {isAuthenticated && user ? (
+            <>
+              <View style={styles.accountRow}>
+                <Image
+                  source={{ uri: user.avatar_url }}
+                  style={styles.avatar}
+                />
+                <View style={styles.accountInfo}>
+                  <Text style={[styles.accountName, { color: theme.colors.text }]}>
+                    {user.name || user.login}
+                  </Text>
+                  <Text style={[styles.accountUsername, { color: theme.colors.textSecondary }]}>
+                    @{user.login}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+              <TouchableOpacity style={styles.linkRow} onPress={handleSignOut}>
+                <Text style={[styles.signOutText, { color: theme.colors.error || '#ef4444' }]}>
+                  Sign out
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.signInRow} onPress={handleSignIn}>
+              <Text style={[styles.signInText, { color: theme.colors.primary }]}>
+                Sign in with GitHub
+              </Text>
+              <Text style={[styles.linkArrow, { color: theme.colors.primary }]}>
+                ›
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Links Section */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
@@ -197,6 +250,42 @@ const styles = StyleSheet.create({
   separator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 16,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  accountInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  accountName: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  accountUsername: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  signOutText: {
+    fontSize: 16,
+  },
+  signInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  signInText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   footer: {
     alignItems: 'center',

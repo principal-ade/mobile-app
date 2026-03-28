@@ -1,0 +1,325 @@
+{
+  "nodes": [
+    {
+      "id": "current-label",
+      "type": "text",
+      "text": "# Current State\n\nDirect GitHub OAuth",
+      "x": 0,
+      "y": -80,
+      "width": 200,
+      "height": 60,
+      "color": "#ef4444"
+    },
+    {
+      "id": "mobile-current",
+      "type": "text",
+      "text": "# Mobile App\n\nExpo + React Native\n`expo-auth-session`",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 120,
+      "color": "#06b6d4",
+      "pv": {
+        "nodeType": "client",
+        "icon": "Smartphone",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "github-current",
+      "type": "text",
+      "text": "# GitHub OAuth\n\nDirect OAuth 2.0\nClient ID in app",
+      "x": 350,
+      "y": 0,
+      "width": 200,
+      "height": 120,
+      "color": "#8b5cf6",
+      "pv": {
+        "nodeType": "service",
+        "icon": "GitBranch",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "token-current",
+      "type": "text",
+      "text": "# Tokens\n\n- GitHub token only\n- No refresh token\n- No WorkOS session",
+      "x": 700,
+      "y": 0,
+      "width": 200,
+      "height": 120,
+      "color": "#ef4444",
+      "pv": {
+        "nodeType": "data",
+        "icon": "Key",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "target-label",
+      "type": "text",
+      "text": "# Implemented\n\nAuth Server Integration",
+      "x": 0,
+      "y": 220,
+      "width": 200,
+      "height": 60,
+      "color": "#22c55e"
+    },
+    {
+      "id": "mobile-target",
+      "type": "text",
+      "text": "# Mobile App\n\nExpo + React Native\n`openAuthSessionAsync`",
+      "x": 0,
+      "y": 300,
+      "width": 200,
+      "height": 120,
+      "color": "#06b6d4",
+      "pv": {
+        "nodeType": "client",
+        "icon": "Smartphone",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "auth-server",
+      "type": "text",
+      "text": "# Auth Server\n\nNext.js\n`/api/auth/workos/*`",
+      "x": 280,
+      "y": 300,
+      "width": 200,
+      "height": 120,
+      "color": "#22c55e",
+      "pv": {
+        "nodeType": "service",
+        "icon": "Server",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "workos",
+      "type": "text",
+      "text": "# WorkOS\n\nEnterprise SSO\nSession management",
+      "x": 560,
+      "y": 300,
+      "width": 200,
+      "height": 120,
+      "color": "#8b5cf6",
+      "pv": {
+        "nodeType": "service",
+        "icon": "Shield",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "github-target",
+      "type": "text",
+      "text": "# GitHub OAuth\n\nVia WorkOS\nOAuth 2.0 + PKCE",
+      "x": 840,
+      "y": 300,
+      "width": 200,
+      "height": 120,
+      "color": "#8b5cf6",
+      "pv": {
+        "nodeType": "service",
+        "icon": "GitBranch",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "token-target",
+      "type": "text",
+      "text": "# Tokens\n\n- GitHub token\n- WorkOS token\n- Refresh token",
+      "x": 280,
+      "y": 480,
+      "width": 200,
+      "height": 120,
+      "color": "#22c55e",
+      "pv": {
+        "nodeType": "data",
+        "icon": "Key",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "web-ade",
+      "type": "text",
+      "text": "# Web-ade API\n\nPrincipal services\nAuthenticated access",
+      "x": 560,
+      "y": 480,
+      "width": 200,
+      "height": 120,
+      "color": "#06b6d4",
+      "pv": {
+        "nodeType": "service",
+        "icon": "Cloud",
+        "shape": "rectangle"
+      }
+    },
+    {
+      "id": "problem-1",
+      "type": "text",
+      "text": "No web-ade access",
+      "x": 700,
+      "y": 140,
+      "width": 150,
+      "height": 50,
+      "color": "#ef4444"
+    },
+    {
+      "id": "benefit-1",
+      "type": "text",
+      "text": "Unified auth system",
+      "x": 0,
+      "y": 480,
+      "width": 150,
+      "height": 50,
+      "color": "#22c55e"
+    }
+  ],
+  "edges": [
+    {
+      "id": "current-flow-1",
+      "fromNode": "mobile-current",
+      "toNode": "github-current",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "Direct OAuth",
+      "pv": {
+        "style": "dashed",
+        "edgeType": "auth-flow"
+      }
+    },
+    {
+      "id": "current-flow-2",
+      "fromNode": "github-current",
+      "toNode": "token-current",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "GitHub token only",
+      "pv": {
+        "style": "dashed",
+        "edgeType": "data-flow"
+      }
+    },
+    {
+      "id": "target-flow-1",
+      "fromNode": "mobile-target",
+      "toNode": "auth-server",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "1. /start + PKCE",
+      "pv": {
+        "style": "solid",
+        "edgeType": "auth-flow",
+        "animation": {
+          "type": "flow",
+          "duration": 2000,
+          "color": "#22c55e"
+        }
+      }
+    },
+    {
+      "id": "target-flow-2",
+      "fromNode": "auth-server",
+      "toNode": "workos",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "2. WorkOS OAuth",
+      "pv": {
+        "style": "solid",
+        "edgeType": "auth-flow",
+        "animation": {
+          "type": "flow",
+          "duration": 2000,
+          "color": "#8b5cf6"
+        }
+      }
+    },
+    {
+      "id": "target-flow-3",
+      "fromNode": "workos",
+      "toNode": "github-target",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "3. GitHub OAuth",
+      "pv": {
+        "style": "solid",
+        "edgeType": "auth-flow",
+        "animation": {
+          "type": "flow",
+          "duration": 2000,
+          "color": "#8b5cf6"
+        }
+      }
+    },
+    {
+      "id": "target-flow-4",
+      "fromNode": "auth-server",
+      "toNode": "token-target",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "4. /token + verify",
+      "pv": {
+        "style": "solid",
+        "edgeType": "data-flow",
+        "animation": {
+          "type": "flow",
+          "duration": 2000,
+          "color": "#22c55e"
+        }
+      }
+    },
+    {
+      "id": "target-flow-5",
+      "fromNode": "token-target",
+      "toNode": "mobile-target",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "label": "5. Store tokens",
+      "pv": {
+        "style": "solid",
+        "edgeType": "data-flow"
+      }
+    },
+    {
+      "id": "target-flow-6",
+      "fromNode": "mobile-target",
+      "toNode": "web-ade",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "label": "6. Call APIs",
+      "pv": {
+        "style": "solid",
+        "edgeType": "api-call",
+        "animation": {
+          "type": "flow",
+          "duration": 2000,
+          "color": "#06b6d4"
+        }
+      }
+    },
+    {
+      "id": "benefit-link",
+      "fromNode": "benefit-1",
+      "toNode": "token-target",
+      "fromSide": "right",
+      "toSide": "left",
+      "pv": {
+        "style": "dotted"
+      }
+    }
+  ],
+  "pv": {
+    "version": "1.0",
+    "name": "Auth Server Integration",
+    "description": "Migration from direct GitHub OAuth to centralized auth server with WorkOS",
+    "markdown": ".principal-views/auth-integration.md",
+    "display": {
+      "layout": "manual",
+      "theme": {
+        "primary": "#22c55e",
+        "danger": "#ef4444"
+      }
+    }
+  }
+}

@@ -9,13 +9,24 @@ import React, {
 } from 'react';
 import { Alert } from 'react-native';
 
-import { AuthState, GitHubAuthResponse } from '../types/auth';
 import { GitHubUser } from '../types/github';
-import { deleteToken, getToken, saveToken } from '../utils/authStorage';
+import {
+  getTokens,
+  deleteTokens,
+  AuthTokens,
+} from '../utils/authStorage';
+import { startAuthFlow } from '../services/AuthService';
+
+interface AuthState {
+  isAuthenticated: boolean;
+  tokens: AuthTokens | null;
+  user: GitHubUser | null;
+}
 
 interface AuthContextValue extends AuthState {
   isLoading: boolean;
-  signInWithToken: (token: string, user: GitHubUser) => Promise<void>;
+  token: string | null; // Convenience accessor for GitHub token
+  signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -36,51 +47,39 @@ async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> {
   return (await response.json()) as GitHubUser;
 }
 
-function mapGitHubAuthResponse(response: GitHubAuthResponse): string {
-  if (response.access_token) {
-    return response.access_token;
-  }
-
-  const maybeToken = (response as unknown as { accessToken?: string }).accessToken;
-  if (maybeToken) {
-    return maybeToken;
-  }
-
-  throw new Error('GitHub token missing from response');
-}
-
 export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
-    token: null,
+    tokens: null,
     user: null,
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  // Bootstrap: restore session from stored tokens
   useEffect(() => {
     let isMounted = true;
 
     const bootstrap = async () => {
       try {
-        const storedToken = await getToken();
-        if (!storedToken) {
+        const storedTokens = await getTokens();
+        if (!storedTokens) {
           return;
         }
 
-        const user = await fetchGitHubUser(storedToken);
+        // Validate token by fetching user
+        const user = await fetchGitHubUser(storedTokens.githubAccessToken);
         if (!isMounted) {
           return;
         }
 
         setState({
           isAuthenticated: true,
-          token: storedToken,
+          tokens: storedTokens,
           user,
         });
       } catch (error) {
         console.error('Failed to restore authentication state', error);
-        Alert.alert('Authentication Error', 'Please sign in with GitHub again.');
-        await deleteToken();
+        await deleteTokens();
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -95,20 +94,29 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     };
   }, []);
 
-  const signInWithToken = useCallback(async (token: string, user: GitHubUser) => {
-    await saveToken(token);
-    setState({
-      isAuthenticated: true,
-      token,
-      user,
-    });
+  const signIn = useCallback(async () => {
+    try {
+      // startAuthFlow opens browser, waits for completion, returns tokens
+      const result = await startAuthFlow();
+      setState({
+        isAuthenticated: true,
+        tokens: result.tokens,
+        user: result.user,
+      });
+    } catch (error) {
+      console.error('Sign in failed:', error);
+      Alert.alert(
+        'Sign In Failed',
+        error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
+      );
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    await deleteToken();
+    await deleteTokens();
     setState({
       isAuthenticated: false,
-      token: null,
+      tokens: null,
       user: null,
     });
   }, []);
@@ -117,10 +125,11 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     () => ({
       ...state,
       isLoading,
-      signInWithToken,
+      token: state.tokens?.githubAccessToken ?? null,
+      signIn,
       signOut,
     }),
-    [isLoading, signInWithToken, signOut, state],
+    [isLoading, signIn, signOut, state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -133,14 +142,4 @@ export function useAuthContext(): AuthContextValue {
   }
 
   return context;
-}
-
-export async function exchangeGitHubCodeForToken(
-  exchange: () => Promise<GitHubAuthResponse>,
-): Promise<{ token: string; user: GitHubUser }> {
-  const response = await exchange();
-  const token = mapGitHubAuthResponse(response);
-  const user = await fetchGitHubUser(token);
-
-  return { token, user };
 }

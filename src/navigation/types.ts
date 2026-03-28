@@ -7,7 +7,6 @@ export type MainTabParamList = {
 
 export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
-  Login: undefined;
   RepositoryList: undefined;
   Document: {
     owner: string;
