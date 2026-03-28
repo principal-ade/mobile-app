@@ -15,7 +15,7 @@ import {
   deleteTokens,
   AuthTokens,
 } from '../utils/authStorage';
-import { startAuthFlow } from '../services/AuthService';
+import { startAuthFlow, AuthResult } from '../services/AuthService';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -28,6 +28,7 @@ interface AuthContextValue extends AuthState {
   token: string | null; // Convenience accessor for GitHub token
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  completeVerification: (result: AuthResult) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -121,6 +122,14 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     });
   }, []);
 
+  const completeVerification = useCallback((result: AuthResult) => {
+    setState({
+      isAuthenticated: true,
+      tokens: result.tokens,
+      user: result.user,
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
@@ -128,8 +137,9 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
       token: state.tokens?.githubAccessToken ?? null,
       signIn,
       signOut,
+      completeVerification,
     }),
-    [isLoading, signIn, signOut, state],
+    [completeVerification, isLoading, signIn, signOut, state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

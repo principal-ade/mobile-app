@@ -14,4 +14,8 @@ export type RootStackParamList = {
     path: string;
     fileName: string;
   };
+  EmailVerification: {
+    state: string;
+    email: string;
+  };
 };

@@ -181,6 +181,34 @@ async function exchangeForTokens(returnedState: string): Promise<AuthResult> {
 }
 
 /**
+ * Verifies email with the 6-digit code sent to the user
+ * Returns the auth result after successful verification
+ */
+export async function verifyEmail(state: string, verificationCode: string): Promise<AuthResult> {
+  const { authServerUrl } = authConfig;
+
+  // First, verify the email with the code
+  const verifyResponse = await fetch(`${authServerUrl}/api/auth/workos/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      state,
+      verificationCode,
+    }),
+  });
+
+  if (!verifyResponse.ok) {
+    const errorData = await verifyResponse.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error_description || errorData.error || 'Verification failed');
+  }
+
+  // After verification succeeds, exchange for tokens using PKCE
+  return await exchangeForTokens(state);
+}
+
+/**
  * Refreshes the access tokens using the refresh token
  */
 export async function refreshTokens(refreshToken: string): Promise<AuthTokens> {

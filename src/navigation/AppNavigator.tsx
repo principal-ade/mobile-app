@@ -1,16 +1,41 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 import { RootStackParamList, MainTabParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import AboutScreen from '../screens/AboutScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
+import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
+
+const prefix = Linking.createURL('/');
+
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [prefix, 'principal-ai://'],
+  config: {
+    screens: {
+      EmailVerification: {
+        path: 'auth/verify',
+        parse: {
+          state: (state: string) => state,
+          email: (email: string) => decodeURIComponent(email),
+        },
+      },
+      MainTabs: {
+        screens: {
+          Feed: 'feed',
+          About: 'about',
+        },
+      },
+    },
+  },
+};
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -92,7 +117,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         initialRouteName="MainTabs"
         screenOptions={{
@@ -109,6 +134,15 @@ export default function AppNavigator() {
           name="MainTabs"
           component={MainTabs}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EmailVerification"
+          component={EmailVerificationScreen}
+          options={{
+            title: 'Verify Email',
+            headerShown: false,
+            presentation: 'modal',
+          }}
         />
 
         {isAuthenticated && (
