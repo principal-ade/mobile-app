@@ -128,26 +128,68 @@ The main feature is an activity feed showing recent GitHub commits from featured
 
 ---
 
-## Step 6: Build and Upload
+## Step 6: Verify EAS Configuration
 
-### Option A: Using EAS Build (Recommended)
+Before building, check `eas.json` has the correct Apple App ID:
+
+1. In App Store Connect → Your App → **App Information** (left sidebar)
+2. Find **Apple ID** (a number like `6761268899`)
+3. Verify it matches `ascAppId` in `eas.json`:
+
+```json
+"submit": {
+  "production": {
+    "ios": {
+      "appleId": "your-apple-id@email.com",
+      "ascAppId": "6761268899",
+      "appleTeamId": "YOUR_TEAM_ID"
+    }
+  }
+}
+```
+
+## Step 7: Build and Upload
+
+### Increment Build Number
+
+Each submission needs a unique build number. In `app.json`, increment `ios.buildNumber`:
+
+```json
+"ios": {
+  "buildNumber": "2",
+  ...
+}
+```
+
+Or enable auto-increment in `eas.json` (recommended):
+
+```json
+"production": {
+  "ios": {
+    "autoIncrement": true,
+    ...
+  }
+}
+```
+
+### Build and Submit
 
 ```bash
-# Build for App Store
-npx eas build --platform ios --profile production
+# Install EAS CLI if needed
+npm install -g eas-cli
 
-# Wait for build to complete (10-20 minutes)
-# EAS will show a URL to monitor progress
+# Build for App Store (10-20 minutes)
+eas build --platform ios --profile production
 
-# Submit to App Store Connect
-npx eas submit --platform ios
+# Wait for build to complete, then submit
+eas submit --platform ios
 ```
 
 When prompted:
 - Select the build you just created
 - Confirm Apple ID credentials
 
-### Option B: Using the Deploy Script
+### Alternative: Using the Deploy Script
 
 ```bash
 ./scripts/deploy-testflight.sh
@@ -157,7 +199,7 @@ This builds and submits to TestFlight automatically.
 
 ---
 
-## Step 7: Select Build in App Store Connect
+## Step 8: Select Build in App Store Connect
 
 1. After upload completes, wait 5-10 minutes for processing
 2. In App Store Connect → Your App → iOS App
@@ -168,7 +210,7 @@ This builds and submits to TestFlight automatically.
 
 ---
 
-## Step 8: App Privacy
+## Step 9: App Privacy
 
 ### App Privacy Section
 
@@ -202,7 +244,7 @@ For **Identifiers**:
 
 ---
 
-## Step 9: Final Review
+## Step 10: Final Review
 
 Before submitting, verify:
 - [ ] All screenshots uploaded
@@ -214,7 +256,7 @@ Before submitting, verify:
 
 ---
 
-## Step 10: Submit for Review
+## Step 11: Submit for Review
 
 1. Click **Add for Review** button (top right)
 2. Review the summary
