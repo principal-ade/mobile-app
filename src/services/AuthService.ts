@@ -131,8 +131,8 @@ async function exchangeForTokens(returnedState: string): Promise<AuthResult> {
 
   const { authServerUrl } = authConfig;
 
-  // Exchange code_verifier for tokens
-  const response = await fetch(`${authServerUrl}/api/auth/workos/token`, {
+  // Exchange code_verifier for tokens (using mobile-specific endpoint)
+  const response = await fetch(`${authServerUrl}/api/auth/workos/token/mobile`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

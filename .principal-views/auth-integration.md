@@ -64,7 +64,7 @@ The auth server callback (`/api/auth/workos/callback`) was updated to:
    - Stores tokens in session
    - Redirects to principal-ai://auth/callback?state=...
 8. Browser auto-closes, app receives redirect
-9. App extracts state, calls /api/auth/workos/token with:
+9. App extracts state, calls /api/auth/workos/token/mobile with:
    - state
    - code_verifier (PKCE proof)
 10. Auth server verifies PKCE, returns tokens
