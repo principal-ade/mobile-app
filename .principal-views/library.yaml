@@ -1,0 +1,13 @@
+name: mobile-app-telemetry
+version: 1.0.0
+description: OpenTelemetry instrumentation library for Principal AI Mobile App
+
+nodeComponents: {}
+edgeComponents: {}
+
+resources: {}
+
+scopes:
+  activity-feed:
+    color: "#06b6d4"
+    description: Activity feed telemetry instrumentation

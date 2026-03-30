@@ -216,7 +216,8 @@
       "fromSide": "right",
       "toSide": "left",
       "pv": {
-        "style": "dotted"
+        "style": "dotted",
+        "edgeType": "data-flow"
       }
     }
   ],
@@ -230,6 +231,31 @@
       "theme": {
         "primary": "#22c55e",
         "danger": "#ef4444"
+      }
+    },
+    "nodeTypes": {
+      "client": {
+        "label": "Client",
+        "shape": "rectangle"
+      },
+      "service": {
+        "label": "Service",
+        "shape": "rectangle"
+      },
+      "data": {
+        "label": "Data",
+        "shape": "rectangle"
+      }
+    },
+    "edgeTypes": {
+      "auth-flow": {
+        "label": "Auth Flow"
+      },
+      "data-flow": {
+        "label": "Data Flow"
+      },
+      "api-call": {
+        "label": "API Call"
       }
     }
   }

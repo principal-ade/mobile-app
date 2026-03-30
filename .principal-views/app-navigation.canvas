@@ -236,6 +236,48 @@
     "markdown": ".principal-views/app-navigation.md",
     "display": {
       "layout": "manual"
+    },
+    "nodeTypes": {
+      "component": {
+        "label": "Component",
+        "shape": "rectangle"
+      },
+      "decision": {
+        "label": "Decision",
+        "shape": "diamond"
+      },
+      "screen": {
+        "label": "Screen",
+        "shape": "rectangle"
+      },
+      "external": {
+        "label": "External Service",
+        "shape": "rectangle"
+      },
+      "storage": {
+        "label": "Storage",
+        "shape": "rectangle"
+      }
+    },
+    "edgeTypes": {
+      "flow": {
+        "label": "Flow"
+      },
+      "conditional": {
+        "label": "Conditional"
+      },
+      "data-flow": {
+        "label": "Data Flow"
+      },
+      "navigation": {
+        "label": "Navigation"
+      },
+      "api-call": {
+        "label": "API Call"
+      },
+      "planned": {
+        "label": "Planned"
+      }
     }
   }
 }

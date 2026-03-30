@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "name": "Feed Refresh",
+  "description": "Workflow showing feed refresh scenarios",
+  "spanPattern": "activity-feed.refresh",
+  "canvas": ".principal-views/activity-feed/activity-feed.otel.canvas",
+  "scenarios": [
+    {
+      "id": "app-foreground-refresh",
+      "priority": 1,
+      "description": "App comes to foreground and triggers refresh",
+      "outcomeType": "expected",
+      "template": {
+        "introduction": "Feed refreshes when app returns to foreground.",
+        "events": {
+          "activity-feed.app-state.change": "App state changes to {{state}}, action: {{action}}",
+          "activity-feed.refresh.started": "Refresh triggered by {{trigger}}",
+          "activity-feed.refresh.complete": "Refresh completed: {{updatedCount}} repos updated with {{newCommitCount}} new commits"
+        }
+      }
+    }
+  ]
+}
