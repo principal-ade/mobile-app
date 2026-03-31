@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "PrincipalAI",
-    "slug": "principal-ai-mobile",
-    "version": "1.0.0",
+    "slug": "principal-ade-mobile",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.noetic-labs.principal-ai-mobile",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "CFBundleDisplayName": "Principal AI",
         "ITSAppUsesNonExemptEncryption": false
@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-"predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,6 +40,7 @@
     "plugins": [
       "expo-secure-store",
       "expo-web-browser"
-    ]
+    ],
+    "owner": "principal-ade"
   }
 }

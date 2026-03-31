@@ -10,6 +10,7 @@ import Svg, {
   Stop,
   G,
 } from 'react-native-svg';
+import { useTheme } from '@principal-ade/industry-theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -95,11 +96,13 @@ function OrbitingParticle({
 export function Logo({
   width = 150,
   height = 150,
-  color = '#FFFFFF',
+  color,
   particleColor,
   opacity = 0.9,
 }: LogoProps) {
-  const finalParticleColor = particleColor || color;
+  const { theme } = useTheme();
+  const lineColor = theme.colors.accent;
+  const dotColor = '#FFFFFF';
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -132,8 +135,8 @@ export function Logo({
     >
       <Defs>
         <RadialGradient id="sphereGlow" cx="50%" cy="50%" r="50%">
-          <Stop offset="0%" stopColor={color} stopOpacity={0.3} />
-          <Stop offset="100%" stopColor={color} stopOpacity={0} />
+          <Stop offset="0%" stopColor={lineColor} stopOpacity={0.3} />
+          <Stop offset="100%" stopColor={lineColor} stopOpacity={0} />
         </RadialGradient>
       </Defs>
 
@@ -146,7 +149,7 @@ export function Logo({
         cy={100}
         rx={67}
         ry={27}
-        color={finalParticleColor}
+        color={dotColor}
         duration={8000}
         delay={1000}
         isHorizontal={true}
@@ -156,7 +159,7 @@ export function Logo({
         cy={100}
         rx={67}
         ry={40}
-        color={finalParticleColor}
+        color={dotColor}
         duration={8000}
         delay={2000}
         isHorizontal={true}
@@ -166,7 +169,7 @@ export function Logo({
         cy={100}
         rx={67}
         ry={53}
-        color={finalParticleColor}
+        color={dotColor}
         duration={8000}
         delay={3000}
         isHorizontal={true}
@@ -178,7 +181,7 @@ export function Logo({
         cy={100}
         rx={27}
         ry={67}
-        color={finalParticleColor}
+        color={dotColor}
         duration={8000}
         delay={1500}
         isHorizontal={false}
@@ -188,7 +191,7 @@ export function Logo({
         cy={100}
         rx={40}
         ry={67}
-        color={finalParticleColor}
+        color={dotColor}
         duration={8000}
         delay={2500}
         isHorizontal={false}
@@ -198,32 +201,32 @@ export function Logo({
         cy={100}
         rx={53}
         ry={67}
-        color={finalParticleColor}
+        color={dotColor}
         duration={8000}
         delay={3500}
         isHorizontal={false}
       />
 
       {/* "P" made of dots at center - vertical stem */}
-      <Circle cx={93} cy={85} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={93} cy={90} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={93} cy={95} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={93} cy={100} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={93} cy={105} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={93} cy={110} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={93} cy={115} r={2} fill={finalParticleColor} opacity={0.9} />
+      <Circle cx={93} cy={85} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={93} cy={90} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={93} cy={95} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={93} cy={100} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={93} cy={105} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={93} cy={110} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={93} cy={115} r={2} fill={dotColor} opacity={0.9} />
 
       {/* "P" top horizontal */}
-      <Circle cx={98} cy={85} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={103} cy={85} r={2} fill={finalParticleColor} opacity={0.9} />
+      <Circle cx={98} cy={85} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={103} cy={85} r={2} fill={dotColor} opacity={0.9} />
 
       {/* "P" bowl - right side */}
-      <Circle cx={108} cy={90} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={108} cy={95} r={2} fill={finalParticleColor} opacity={0.9} />
+      <Circle cx={108} cy={90} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={108} cy={95} r={2} fill={dotColor} opacity={0.9} />
 
       {/* "P" bowl - middle horizontal */}
-      <Circle cx={103} cy={100} r={2} fill={finalParticleColor} opacity={0.9} />
-      <Circle cx={98} cy={100} r={2} fill={finalParticleColor} opacity={0.9} />
+      <Circle cx={103} cy={100} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={98} cy={100} r={2} fill={dotColor} opacity={0.9} />
 
       {/* Main sphere outline */}
       <Circle
@@ -231,7 +234,7 @@ export function Logo({
         cy={100}
         r={67}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.9}
       />
@@ -240,28 +243,28 @@ export function Logo({
       <Path
         d="M 33,100 A 67,13 0 0,1 73,88.1"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
         d="M 127,88.1 A 67,13 0 0,1 167,100"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
         d="M 33,100 A 67,13 0 0,0 73,111.9"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
         d="M 127,111.9 A 67,13 0 0,0 167,100"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -273,7 +276,7 @@ export function Logo({
         rx={67}
         ry={27}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -283,7 +286,7 @@ export function Logo({
         rx={67}
         ry={40}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -293,7 +296,7 @@ export function Logo({
         rx={67}
         ry={53}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -302,28 +305,28 @@ export function Logo({
       <Path
         d="M 100,33 A 13,67 0 0,0 87,73"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
         d="M 113,73 A 13,67 0 0,0 100,33"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
         d="M 100,167 A 13,67 0 0,1 87,127"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
         d="M 113,127 A 13,67 0 0,1 100,167"
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -335,7 +338,7 @@ export function Logo({
         rx={27}
         ry={67}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -345,7 +348,7 @@ export function Logo({
         rx={40}
         ry={67}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -355,7 +358,7 @@ export function Logo({
         rx={53}
         ry={67}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
@@ -368,7 +371,7 @@ export function Logo({
           rx={67}
           ry={33}
           fill="none"
-          stroke={color}
+          stroke={lineColor}
           strokeWidth={1}
           opacity={0.6}
         />
@@ -380,7 +383,7 @@ export function Logo({
           rx={67}
           ry={33}
           fill="none"
-          stroke={color}
+          stroke={lineColor}
           strokeWidth={1}
           opacity={0.6}
         />
@@ -392,7 +395,7 @@ export function Logo({
           rx={67}
           ry={33}
           fill="none"
-          stroke={color}
+          stroke={lineColor}
           strokeWidth={1}
           opacity={0.6}
         />
@@ -404,7 +407,7 @@ export function Logo({
           rx={67}
           ry={33}
           fill="none"
-          stroke={color}
+          stroke={lineColor}
           strokeWidth={1}
           opacity={0.6}
         />
@@ -416,7 +419,7 @@ export function Logo({
         y1={100}
         x2={73}
         y2={100}
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.8}
       />
@@ -425,7 +428,7 @@ export function Logo({
         y1={100}
         x2={167}
         y2={100}
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.8}
       />
@@ -436,7 +439,7 @@ export function Logo({
         y1={33}
         x2={100}
         y2={73}
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.8}
       />
@@ -445,7 +448,7 @@ export function Logo({
         y1={127}
         x2={100}
         y2={167}
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.8}
       />
