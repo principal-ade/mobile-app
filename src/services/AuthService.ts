@@ -18,6 +18,21 @@ export interface AuthResult {
   user: GitHubUser;
 }
 
+/**
+ * Error thrown when email verification is required
+ */
+export class EmailVerificationRequiredError extends Error {
+  public readonly email: string;
+  public readonly state: string;
+
+  constructor(email: string, state: string) {
+    super('Email verification required');
+    this.name = 'EmailVerificationRequiredError';
+    this.email = email;
+    this.state = state;
+  }
+}
+
 interface AuthServerStartResponse {
   auth_url: string;
 }
@@ -54,7 +69,7 @@ export async function startAuthFlow(): Promise<AuthResult> {
   const callbackUrl = getAuthCallbackUrl();
 
   // Call auth server to get OAuth URL with mobile callback
-  const response = await fetch(`${authServerUrl}/api/auth/workos/start`, {
+  const response = await fetch(`${authServerUrl}/api/auth/workos/start/mobile`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -145,6 +160,13 @@ async function exchangeForTokens(returnedState: string): Promise<AuthResult> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+    // Check if email verification is required
+    if (errorData.error === 'email_verification_required') {
+      // Don't clear pending auth - we need it for verification
+      throw new EmailVerificationRequiredError(errorData.email, errorData.state);
+    }
+
     await clearPendingAuth();
     throw new Error(errorData.error_description || errorData.error || 'Token exchange failed');
   }

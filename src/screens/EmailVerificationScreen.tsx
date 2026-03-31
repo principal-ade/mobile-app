@@ -18,10 +18,10 @@ import { useAuth } from '../hooks/useAuth';
 
 type Props = StackScreenProps<RootStackParamList, 'EmailVerification'>;
 
-export function EmailVerificationScreen({ route, navigation }: Props) {
+export function EmailVerificationScreen({ route }: Props) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { completeVerification } = useAuth();
+  const { completeVerification, cancelVerification } = useAuth();
   const { state, email } = route.params;
 
   const [code, setCode] = useState('');
@@ -55,7 +55,7 @@ export function EmailVerificationScreen({ route, navigation }: Props) {
 
     try {
       const result = await verifyEmail(state, code);
-      await completeVerification(result);
+      completeVerification(result);
       // Navigation will happen automatically via auth state change
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Verification failed';
@@ -136,7 +136,7 @@ export function EmailVerificationScreen({ route, navigation }: Props) {
 
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
+          onPress={cancelVerification}
           disabled={isLoading}
         >
           <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>

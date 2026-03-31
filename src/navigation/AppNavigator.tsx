@@ -106,7 +106,7 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { theme } = useTheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, pendingVerification } = useAuth();
 
   if (isLoading) {
     return (
@@ -117,9 +117,11 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer
+      key={pendingVerification ? 'verification' : 'main'}
+      linking={pendingVerification ? undefined : linking}
+    >
       <Stack.Navigator
-        initialRouteName="MainTabs"
         screenOptions={{
           headerStyle: {
             backgroundColor: theme.colors.surface,
@@ -130,33 +132,46 @@ export default function AppNavigator() {
           },
         }}
       >
-        <Stack.Screen
-          name="MainTabs"
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="EmailVerification"
-          component={EmailVerificationScreen}
-          options={{
-            title: 'Verify Email',
-            headerShown: false,
-            presentation: 'modal',
-          }}
-        />
-
-        {isAuthenticated && (
+        {pendingVerification ? (
+          <Stack.Screen
+            name="EmailVerification"
+            component={EmailVerificationScreen}
+            initialParams={{
+              state: pendingVerification.state,
+              email: pendingVerification.email,
+            }}
+            options={{ headerShown: false }}
+          />
+        ) : (
           <>
             <Stack.Screen
-              name="RepositoryList"
-              component={RepositoryListScreen}
-              options={{ title: 'Repositories' }}
+              name="MainTabs"
+              component={MainTabs}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="Document"
-              component={DocumentScreen}
-              options={({ route }) => ({ title: route.params.fileName })}
+              name="EmailVerification"
+              component={EmailVerificationScreen}
+              options={{
+                title: 'Verify Email',
+                headerShown: false,
+                presentation: 'modal',
+              }}
             />
+            {isAuthenticated && (
+              <>
+                <Stack.Screen
+                  name="RepositoryList"
+                  component={RepositoryListScreen}
+                  options={{ title: 'Repositories' }}
+                />
+                <Stack.Screen
+                  name="Document"
+                  component={DocumentScreen}
+                  options={({ route }) => ({ title: route.params.fileName })}
+                />
+              </>
+            )}
           </>
         )}
       </Stack.Navigator>

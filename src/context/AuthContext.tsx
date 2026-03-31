@@ -13,14 +13,19 @@ import { GitHubUser } from '../types/github';
 import {
   getTokens,
   deleteTokens,
+  clearPendingAuth,
   AuthTokens,
 } from '../utils/authStorage';
-import { startAuthFlow, AuthResult } from '../services/AuthService';
+import { startAuthFlow, AuthResult, EmailVerificationRequiredError } from '../services/AuthService';
 
 interface AuthState {
   isAuthenticated: boolean;
   tokens: AuthTokens | null;
   user: GitHubUser | null;
+  pendingVerification: {
+    email: string;
+    state: string;
+  } | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -29,6 +34,7 @@ interface AuthContextValue extends AuthState {
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   completeVerification: (result: AuthResult) => void;
+  cancelVerification: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -53,6 +59,7 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     isAuthenticated: false,
     tokens: null,
     user: null,
+    pendingVerification: null,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -77,6 +84,7 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
           isAuthenticated: true,
           tokens: storedTokens,
           user,
+          pendingVerification: null,
         });
       } catch (error) {
         console.error('Failed to restore authentication state', error);
@@ -103,8 +111,21 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
         isAuthenticated: true,
         tokens: result.tokens,
         user: result.user,
+        pendingVerification: null,
       });
     } catch (error) {
+      // Check if email verification is required
+      if (error instanceof EmailVerificationRequiredError) {
+        setState(prev => ({
+          ...prev,
+          pendingVerification: {
+            email: error.email,
+            state: error.state,
+          },
+        }));
+        return;
+      }
+
       console.error('Sign in failed:', error);
       Alert.alert(
         'Sign In Failed',
@@ -115,10 +136,12 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
 
   const signOut = useCallback(async () => {
     await deleteTokens();
+    await clearPendingAuth();
     setState({
       isAuthenticated: false,
       tokens: null,
       user: null,
+      pendingVerification: null,
     });
   }, []);
 
@@ -127,7 +150,16 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
       isAuthenticated: true,
       tokens: result.tokens,
       user: result.user,
+      pendingVerification: null,
     });
+  }, []);
+
+  const cancelVerification = useCallback(async () => {
+    await clearPendingAuth();
+    setState(prev => ({
+      ...prev,
+      pendingVerification: null,
+    }));
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -138,8 +170,9 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
       signIn,
       signOut,
       completeVerification,
+      cancelVerification,
     }),
-    [completeVerification, isLoading, signIn, signOut, state],
+    [cancelVerification, completeVerification, isLoading, signIn, signOut, state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
