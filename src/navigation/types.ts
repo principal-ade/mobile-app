@@ -18,5 +18,10 @@ export type RootStackParamList = {
     state: string;
     email: string;
   };
-  FeedCustomization: undefined;
+  FeedCustomization: {
+    addedUser?: string;
+    addedRepo?: { owner: string; name: string };
+  } | undefined;
+  AddUser: undefined;
+  AddRepo: undefined;
 };

@@ -12,6 +12,8 @@ import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
 import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
+import AddUserScreen from '../screens/AddUserScreen';
+import AddRepoScreen from '../screens/AddRepoScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 
@@ -175,6 +177,16 @@ export default function AppNavigator() {
                   name="FeedCustomization"
                   component={FeedCustomizationScreen}
                   options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="AddUser"
+                  component={AddUserScreen}
+                  options={{ headerShown: false, presentation: 'modal' }}
+                />
+                <Stack.Screen
+                  name="AddRepo"
+                  component={AddRepoScreen}
+                  options={{ headerShown: false, presentation: 'modal' }}
                 />
               </>
             )}

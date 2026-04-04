@@ -96,8 +96,8 @@ function OrbitingParticle({
 export function Logo({
   width = 150,
   height = 150,
-  color,
-  particleColor,
+  color: _color,
+  particleColor: _particleColor,
   opacity = 0.9,
 }: LogoProps) {
   const { theme } = useTheme();
