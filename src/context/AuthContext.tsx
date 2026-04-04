@@ -16,7 +16,7 @@ import {
   clearPendingAuth,
   AuthTokens,
 } from '../utils/authStorage';
-import { startAuthFlow, AuthResult, EmailVerificationRequiredError } from '../services/AuthService';
+import { startAuthFlow, demoLogin, AuthResult, EmailVerificationRequiredError } from '../services/AuthService';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -32,6 +32,7 @@ interface AuthContextValue extends AuthState {
   isLoading: boolean;
   token: string | null; // Convenience accessor for GitHub token
   signIn: () => Promise<void>;
+  demoSignIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   completeVerification: (result: AuthResult) => void;
   cancelVerification: () => void;
@@ -134,6 +135,24 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     }
   }, []);
 
+  const demoSignIn = useCallback(async (email: string, password: string) => {
+    try {
+      const result = await demoLogin(email, password);
+      setState({
+        isAuthenticated: true,
+        tokens: result.tokens,
+        user: result.user,
+        pendingVerification: null,
+      });
+    } catch (error) {
+      console.error('Demo sign in failed:', error);
+      Alert.alert(
+        'Sign In Failed',
+        error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
+      );
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     await deleteTokens();
     await clearPendingAuth();
@@ -168,11 +187,12 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
       isLoading,
       token: state.tokens?.githubAccessToken ?? null,
       signIn,
+      demoSignIn,
       signOut,
       completeVerification,
       cancelVerification,
     }),
-    [cancelVerification, completeVerification, isLoading, signIn, signOut, state],
+    [cancelVerification, completeVerification, demoSignIn, isLoading, signIn, signOut, state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

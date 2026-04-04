@@ -261,3 +261,48 @@ export async function refreshTokens(refreshToken: string): Promise<AuthTokens> {
   await saveTokens(tokens);
   return tokens;
 }
+
+/**
+ * Demo login for App Store review - bypasses GitHub OAuth
+ * Uses email/password to authenticate and returns a pre-configured GitHub PAT
+ */
+export async function demoLogin(email: string, password: string): Promise<AuthResult> {
+  const { authServerUrl } = authConfig;
+
+  const response = await fetch(`${authServerUrl}/api/auth/demo-login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error_description || errorData.error || 'Demo login failed');
+  }
+
+  const data = await response.json();
+
+  if (!data.github_access_token) {
+    throw new Error('Invalid response from demo login');
+  }
+
+  const tokens: AuthTokens = {
+    githubAccessToken: data.github_access_token,
+    workosAccessToken: data.workos_access_token || '',
+    refreshToken: data.refresh_token || '',
+  };
+
+  await saveTokens(tokens);
+
+  const user: GitHubUser = {
+    id: typeof data.user.id === 'string' ? parseInt(data.user.id, 10) || 0 : data.user.id,
+    login: data.user.login,
+    name: data.user.name,
+    avatar_url: data.user.avatar_url,
+    html_url: `https://github.com/${data.user.login}`,
+  };
+
+  return { tokens, user };
+}
