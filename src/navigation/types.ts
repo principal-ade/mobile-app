@@ -18,4 +18,5 @@ export type RootStackParamList = {
     state: string;
     email: string;
   };
+  FeedCustomization: undefined;
 };

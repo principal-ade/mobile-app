@@ -11,6 +11,7 @@ import AboutScreen from '../screens/AboutScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
 import EmailVerificationScreen from '../screens/EmailVerificationScreen';
+import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 
@@ -169,6 +170,11 @@ export default function AppNavigator() {
                   name="Document"
                   component={DocumentScreen}
                   options={({ route }) => ({ title: route.params.fileName })}
+                />
+                <Stack.Screen
+                  name="FeedCustomization"
+                  component={FeedCustomizationScreen}
+                  options={{ headerShown: false }}
                 />
               </>
             )}

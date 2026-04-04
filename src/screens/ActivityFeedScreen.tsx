@@ -8,12 +8,18 @@ import {
   RefreshControl,
   ViewToken,
   LayoutChangeEvent,
+  TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
 import { groupSummariesByHour, HourlyRepoCard } from '../utils/activityGrouping';
+import { useAuth } from '../hooks/useAuth';
 import type { RepoActivitySummary } from '../types/activity';
+import type { RootStackParamList } from '../navigation/types';
 
 interface ActivityFeedScreenProps {
   summaries: RepoActivitySummary[];
@@ -30,9 +36,20 @@ export function ActivityFeedScreen({
 }: ActivityFeedScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const { isAuthenticated } = useAuth();
   const [activeIndex, setActiveIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [containerHeight, setContainerHeight] = useState(812);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  const handleCustomize = useCallback(() => {
+    if (isAuthenticated) {
+      navigation.navigate('FeedCustomization');
+    } else {
+      setShowLoginPrompt(true);
+    }
+  }, [isAuthenticated, navigation]);
 
   const onContainerLayout = useCallback((event: LayoutChangeEvent) => {
     const { height } = event.nativeEvent.layout;
@@ -138,6 +155,14 @@ export function ActivityFeedScreen({
         }
       />
 
+      {/* Feed Header */}
+      <View style={[styles.feedHeader, { paddingTop: insets.top + 8, backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.feedTitle, { color: theme.colors.text }]}>Your Feed</Text>
+        <TouchableOpacity onPress={handleCustomize} style={styles.customizeButton}>
+          <Text style={[styles.customizeText, { color: theme.colors.primary }]}>Customize</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Side indicator dots */}
       {cards.length > 1 && (
         <View style={styles.indicatorContainer}>
@@ -160,6 +185,46 @@ export function ActivityFeedScreen({
           )}
         </View>
       )}
+
+      {/* Login Prompt Modal */}
+      <Modal
+        visible={showLoginPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLoginPrompt(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              Sign in Required
+            </Text>
+            <Text style={[styles.modalMessage, { color: theme.colors.textSecondary }]}>
+              Sign in to customize your feed by following users and repositories.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: theme.colors.background }]}
+                onPress={() => setShowLoginPrompt(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: theme.colors.textSecondary }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => {
+                  setShowLoginPrompt(false);
+                  navigation.navigate('MainTabs', { screen: 'About' });
+                }}
+              >
+                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                  Sign In
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -167,6 +232,31 @@ export function ActivityFeedScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  feedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    elevation: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  feedTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  customizeButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  customizeText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   cardContainer: {
     width: '100%',
@@ -216,6 +306,45 @@ const styles = StyleSheet.create({
   indicatorOverflow: {
     fontSize: 10,
     marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 
