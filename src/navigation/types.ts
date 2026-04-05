@@ -24,4 +24,18 @@ export type RootStackParamList = {
   } | undefined;
   AddUser: undefined;
   AddRepo: undefined;
+  SwipeFeed: undefined;
+  CardDetail: {
+    owner: string;
+    repo: string;
+    commits: Array<{
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorAvatarUrl: string | null;
+      date: string;
+    }>;
+  };
+  SavedCards: undefined;
 };

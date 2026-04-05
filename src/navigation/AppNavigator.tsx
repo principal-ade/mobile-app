@@ -6,7 +6,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
 import { RootStackParamList, MainTabParamList } from './types';
-import HomeScreen from '../screens/HomeScreen';
 import AboutScreen from '../screens/AboutScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
@@ -14,6 +13,9 @@ import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
 import AddUserScreen from '../screens/AddUserScreen';
 import AddRepoScreen from '../screens/AddRepoScreen';
+import SwipeFeedScreen from '../screens/SwipeFeedScreen';
+import SavedCardsScreen from '../screens/SavedCardsScreen';
+import CardDetailScreen from '../screens/CardDetailScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 
@@ -91,7 +93,7 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Feed"
-        component={HomeScreen}
+        component={SwipeFeedScreen}
         options={{
           tabBarIcon: ({ color }) => <FeedIcon color={color} />,
         }}
@@ -186,6 +188,21 @@ export default function AppNavigator() {
                 <Stack.Screen
                   name="AddRepo"
                   component={AddRepoScreen}
+                  options={{ headerShown: false, presentation: 'modal' }}
+                />
+                <Stack.Screen
+                  name="SwipeFeed"
+                  component={SwipeFeedScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="SavedCards"
+                  component={SavedCardsScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="CardDetail"
+                  component={CardDetailScreen}
                   options={{ headerShown: false, presentation: 'modal' }}
                 />
               </>

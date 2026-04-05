@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import React from 'react';
 import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MobileRepoCard } from './MobileRepoCard';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 
@@ -55,23 +56,25 @@ const createMockSummary = (
 
 const DEFAULT_HEIGHT = 667;
 
-// Wrapper to simulate mobile device size
+// Wrapper to simulate mobile device size with SafeAreaProvider
 const MobileFrame: React.FC<{ children: React.ReactNode; height?: number }> = ({
   children,
   height = DEFAULT_HEIGHT,
 }) => (
-  <View
-    style={{
-      width: 375,
-      height,
-      borderWidth: 1,
-      borderColor: '#ccc',
-      borderRadius: 8,
-      overflow: 'hidden',
-    }}
-  >
-    {children}
-  </View>
+  <SafeAreaProvider>
+    <View
+      style={{
+        width: 375,
+        height,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    >
+      {children}
+    </View>
+  </SafeAreaProvider>
 );
 
 const meta: Meta<typeof MobileRepoCard> = {
