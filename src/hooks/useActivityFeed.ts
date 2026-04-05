@@ -40,7 +40,7 @@ export function useActivityFeed(
       try {
         const savedRepos = await getFollowedRepos();
         if (savedRepos && savedRepos.length > 0) {
-          setResolvedRepos(savedRepos.map((r) => `${r.owner}/${r.name}`));
+          setResolvedRepos(savedRepos.map((r) => `${r.owner}/${r.repo}`));
         } else {
           setResolvedRepos(FEATURED_REPOS);
         }

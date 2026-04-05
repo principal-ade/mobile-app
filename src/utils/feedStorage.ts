@@ -4,13 +4,15 @@ const FOLLOWED_USERS_KEY = 'feed_followed_users';
 const FOLLOWED_REPOS_KEY = 'feed_followed_repos';
 
 export interface FollowedUser {
-  username: string;
+  login: string;
+  followedAt?: string;
   avatarUrl?: string;
 }
 
 export interface FollowedRepo {
   owner: string;
-  name: string;
+  repo: string;
+  followedAt?: string;
   isFeatured?: boolean;
 }
 

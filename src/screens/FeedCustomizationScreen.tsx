@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,14 @@ import {
   saveFollowedUsers,
   saveFollowedRepos,
 } from '../utils/feedStorage';
+import {
+  getFollows,
+  followUser as apiFollowUser,
+  unfollowUser as apiUnfollowUser,
+  followRepo as apiFollowRepo,
+  unfollowRepo as apiUnfollowRepo,
+} from '../services/FeedApiService';
+import { getToken } from '../utils/authStorage';
 import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'FeedCustomization'>;
@@ -29,8 +37,8 @@ type ScreenRouteProp = RouteProp<RootStackParamList, 'FeedCustomization'>;
 
 // Parse featured repos into structured format
 const DEFAULT_REPOS: FollowedRepo[] = FEATURED_REPOS.map((fullName) => {
-  const [owner, name] = fullName.split('/') as [string, string];
-  return { owner, name, isFeatured: true };
+  const [owner, repo] = fullName.split('/') as [string, string];
+  return { owner, repo, isFeatured: true };
 });
 
 export function FeedCustomizationScreen() {
@@ -40,19 +48,47 @@ export function FeedCustomizationScreen() {
   const route = useRoute<ScreenRouteProp>();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [followedUsers, setFollowedUsers] = useState<FollowedUser[]>([]);
   const [followedRepos, setFollowedRepos] = useState<FollowedRepo[]>([]);
+  const tokenRef = useRef<string | null>(null);
 
-  // Load saved data on mount
+  // Load data from API with local fallback
   useEffect(() => {
     async function loadData() {
       try {
+        const token = await getToken();
+        tokenRef.current = token;
+
+        // Try API first if authenticated
+        if (token) {
+          try {
+            const apiData = await getFollows(token);
+            const users: FollowedUser[] = apiData.followedUsers.map((u) => ({
+              login: u.login,
+              followedAt: u.followedAt,
+            }));
+            const repos: FollowedRepo[] = apiData.followedRepos.map((r) => ({
+              owner: r.owner,
+              repo: r.repo,
+              followedAt: r.followedAt,
+            }));
+            setFollowedUsers(users);
+            setFollowedRepos(repos.length > 0 ? repos : DEFAULT_REPOS);
+            // Cache locally
+            await Promise.all([saveFollowedUsers(users), saveFollowedRepos(repos.length > 0 ? repos : DEFAULT_REPOS)]);
+            return;
+          } catch (apiError) {
+            console.warn('API fetch failed, falling back to local:', apiError);
+          }
+        }
+
+        // Fall back to local storage
         const [savedUsers, savedRepos] = await Promise.all([
           getFollowedUsers(),
           getFollowedRepos(),
         ]);
         setFollowedUsers(savedUsers ?? []);
-        // Use saved repos if available, otherwise use defaults
         setFollowedRepos(savedRepos ?? DEFAULT_REPOS);
       } catch (error) {
         console.error('Failed to load feed settings:', error);
@@ -69,12 +105,20 @@ export function FeedCustomizationScreen() {
     const addedUser = route.params?.addedUser;
     if (addedUser && !isLoading) {
       const alreadyFollowing = followedUsers.some(
-        (u) => u.username.toLowerCase() === addedUser.toLowerCase()
+        (u) => u.login.toLowerCase() === addedUser.toLowerCase()
       );
       if (!alreadyFollowing) {
-        setFollowedUsers((prev) => [...prev, { username: addedUser }]);
+        const newUser: FollowedUser = { login: addedUser };
+        setFollowedUsers((prev) => [...prev, newUser]);
+
+        // Sync to API
+        if (tokenRef.current) {
+          setIsSyncing(true);
+          apiFollowUser(tokenRef.current, addedUser)
+            .catch((err) => console.warn('Failed to sync follow user:', err))
+            .finally(() => setIsSyncing(false));
+        }
       }
-      // Clear the param to prevent re-adding on re-render
       navigation.setParams({ addedUser: undefined });
     }
   }, [route.params?.addedUser, isLoading, followedUsers, navigation]);
@@ -86,12 +130,20 @@ export function FeedCustomizationScreen() {
       const alreadyFollowing = followedRepos.some(
         (r) =>
           r.owner.toLowerCase() === addedRepo.owner.toLowerCase() &&
-          r.name.toLowerCase() === addedRepo.name.toLowerCase()
+          r.repo.toLowerCase() === addedRepo.name.toLowerCase()
       );
       if (!alreadyFollowing) {
-        setFollowedRepos((prev) => [...prev, { owner: addedRepo.owner, name: addedRepo.name }]);
+        const newRepo: FollowedRepo = { owner: addedRepo.owner, repo: addedRepo.name };
+        setFollowedRepos((prev) => [...prev, newRepo]);
+
+        // Sync to API
+        if (tokenRef.current) {
+          setIsSyncing(true);
+          apiFollowRepo(tokenRef.current, addedRepo.owner, addedRepo.name)
+            .catch((err) => console.warn('Failed to sync follow repo:', err))
+            .finally(() => setIsSyncing(false));
+        }
       }
-      // Clear the param to prevent re-adding on re-render
       navigation.setParams({ addedRepo: undefined });
     }
   }, [route.params?.addedRepo, isLoading, followedRepos, navigation]);
@@ -110,12 +162,28 @@ export function FeedCustomizationScreen() {
     }
   }, [followedRepos, isLoading]);
 
-  const handleRemoveUser = useCallback((username: string) => {
-    setFollowedUsers((prev) => prev.filter((u) => u.username !== username));
+  const handleRemoveUser = useCallback((login: string) => {
+    setFollowedUsers((prev) => prev.filter((u) => u.login !== login));
+
+    // Sync to API
+    if (tokenRef.current) {
+      setIsSyncing(true);
+      apiUnfollowUser(tokenRef.current, login)
+        .catch((err) => console.warn('Failed to sync unfollow user:', err))
+        .finally(() => setIsSyncing(false));
+    }
   }, []);
 
-  const handleRemoveRepo = useCallback((owner: string, name: string) => {
-    setFollowedRepos((prev) => prev.filter((r) => !(r.owner === owner && r.name === name)));
+  const handleRemoveRepo = useCallback((owner: string, repo: string) => {
+    setFollowedRepos((prev) => prev.filter((r) => !(r.owner === owner && r.repo === repo)));
+
+    // Sync to API
+    if (tokenRef.current) {
+      setIsSyncing(true);
+      apiUnfollowRepo(tokenRef.current, owner, repo)
+        .catch((err) => console.warn('Failed to sync unfollow repo:', err))
+        .finally(() => setIsSyncing(false));
+    }
   }, []);
 
   const handleResetToDefaults = useCallback(() => {
@@ -148,7 +216,12 @@ export function FeedCustomizationScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={[styles.backText, { color: theme.colors.primary }]}>Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Customize Feed</Text>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Customize Feed</Text>
+          {isSyncing && (
+            <Text style={[styles.syncingText, { color: theme.colors.textSecondary }]}>Syncing...</Text>
+          )}
+        </View>
         <View style={styles.backButton} />
       </View>
 
@@ -174,21 +247,21 @@ export function FeedCustomizationScreen() {
             )}
             {followedUsers.map((user) => (
               <View
-                key={user.username}
+                key={user.login}
                 style={[styles.listItem, { borderBottomColor: theme.colors.border }]}
               >
                 <View style={styles.listItemContent}>
                   <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
                     <Text style={styles.avatarText}>
-                      {user.username.charAt(0).toUpperCase()}
+                      {user.login.charAt(0).toUpperCase()}
                     </Text>
                   </View>
                   <Text style={[styles.listItemText, { color: theme.colors.text }]}>
-                    @{user.username}
+                    @{user.login}
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => handleRemoveUser(user.username)}
+                  onPress={() => handleRemoveUser(user.login)}
                   style={styles.removeButton}
                 >
                   <Text style={[styles.removeText, { color: theme.colors.error }]}>Remove</Text>
@@ -219,7 +292,7 @@ export function FeedCustomizationScreen() {
             )}
             {followedRepos.map((repo) => (
               <View
-                key={`${repo.owner}/${repo.name}`}
+                key={`${repo.owner}/${repo.repo}`}
                 style={[styles.listItem, { borderBottomColor: theme.colors.border }]}
               >
                 <View style={styles.listItemContent}>
@@ -228,7 +301,7 @@ export function FeedCustomizationScreen() {
                   </View>
                   <View style={styles.repoTextContainer}>
                     <Text style={[styles.listItemText, { color: theme.colors.text }]}>
-                      {repo.owner}/{repo.name}
+                      {repo.owner}/{repo.repo}
                     </Text>
                     {repo.isFeatured && (
                       <Text style={[styles.featuredBadge, { color: theme.colors.textSecondary }]}>
@@ -238,7 +311,7 @@ export function FeedCustomizationScreen() {
                   </View>
                 </View>
                 <TouchableOpacity
-                  onPress={() => handleRemoveRepo(repo.owner, repo.name)}
+                  onPress={() => handleRemoveRepo(repo.owner, repo.repo)}
                   style={styles.removeButton}
                 >
                   <Text style={[styles.removeText, { color: theme.colors.error }]}>Remove</Text>
@@ -301,9 +374,16 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 17,
   },
+  headerCenter: {
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
+  },
+  syncingText: {
+    fontSize: 11,
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,
