@@ -9,7 +9,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
 import type { RepoActivitySummary } from '../../types/activity';
@@ -82,7 +81,6 @@ export function SwipeCard({
   swipeDisabled = false,
 }: SwipeCardProps) {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const [avatarError, setAvatarError] = useState(false);
   const [fileCityLoaded, setFileCityLoaded] = useState(false);
   const [fileCityError, setFileCityError] = useState(false);
@@ -288,7 +286,7 @@ export function SwipeCard({
       )}
       {/* Hour Label */}
       {hourLabel && (
-        <View style={[styles.hourLabelContainer, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.hourLabelContainer}>
           <Text style={[styles.hourLabel, { color: theme.colors.textSecondary }]}>
             {hourLabel}
           </Text>
@@ -296,7 +294,7 @@ export function SwipeCard({
       )}
 
       {/* Header */}
-      <View style={[styles.header, !hourLabel && { paddingTop: insets.top + 16 }]}>
+      <View style={styles.header}>
         <View
           style={[
             styles.avatarContainer,
@@ -408,7 +406,7 @@ export function SwipeCard({
       </View>
 
       {/* Summary Footer */}
-      <View style={[styles.summarySection, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.summarySection, { backgroundColor: theme.colors.surface }]}>
         {/* Latest commit preview */}
         {latestCommit && (
           <Text
@@ -500,6 +498,7 @@ const styles = StyleSheet.create({
   },
   hourLabelContainer: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 4,
   },
   hourLabel: {

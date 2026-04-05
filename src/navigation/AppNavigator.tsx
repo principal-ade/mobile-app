@@ -14,7 +14,8 @@ import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
 import AddUserScreen from '../screens/AddUserScreen';
 import AddRepoScreen from '../screens/AddRepoScreen';
 import SwipeFeedScreen from '../screens/SwipeFeedScreen';
-import SavedCardsScreen from '../screens/SavedCardsScreen';
+import FeedTabScreen from '../screens/FeedTabScreen';
+import SavedTabScreen from '../screens/SavedTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
@@ -35,6 +36,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       MainTabs: {
         screens: {
           Feed: 'feed',
+          Saved: 'saved',
           About: 'about',
         },
       },
@@ -52,6 +54,25 @@ function FeedIcon({ color }: { color: string }) {
         <View style={[styles.feedLine, { backgroundColor: color }]} />
         <View style={[styles.feedLine, { backgroundColor: color, width: 12 }]} />
         <View style={[styles.feedLine, { backgroundColor: color, width: 8 }]} />
+      </View>
+    </View>
+  );
+}
+
+function SavedIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.iconContainer}>
+      <View style={[styles.savedIcon, { borderColor: color }]}>
+        <View
+          style={[
+            styles.savedNotch,
+            {
+              borderLeftColor: 'transparent',
+              borderRightColor: 'transparent',
+              borderBottomColor: color,
+            },
+          ]}
+        />
       </View>
     </View>
   );
@@ -93,9 +114,16 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Feed"
-        component={SwipeFeedScreen}
+        component={FeedTabScreen}
         options={{
           tabBarIcon: ({ color }) => <FeedIcon color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Saved"
+        component={SavedTabScreen}
+        options={{
+          tabBarIcon: ({ color }) => <SavedIcon color={color} />,
         }}
       />
       <Tab.Screen
@@ -196,11 +224,6 @@ export default function AppNavigator() {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen
-                  name="SavedCards"
-                  component={SavedCardsScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
                   name="CardDetail"
                   component={CardDetailScreen}
                   options={{ headerShown: false, presentation: 'modal' }}
@@ -236,6 +259,25 @@ const styles = StyleSheet.create({
     height: 2,
     width: 16,
     borderRadius: 1,
+  },
+  savedIcon: {
+    width: 14,
+    height: 18,
+    borderWidth: 2,
+    borderRadius: 2,
+    position: 'relative',
+  },
+  savedNotch: {
+    position: 'absolute',
+    bottom: -2,
+    left: '50%',
+    marginLeft: -4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderBottomWidth: 4,
+    transform: [{ rotate: '180deg' }],
   },
   aboutIcon: {
     width: 20,

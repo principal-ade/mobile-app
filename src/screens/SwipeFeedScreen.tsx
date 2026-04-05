@@ -22,6 +22,15 @@ import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'SwipeFeed'>;
 
+interface SwipeFeedScreenProps {
+  /** Pre-loaded cards for guest mode (skips auth and API fetch) */
+  initialCards?: CommitActivityCard[];
+  /** Whether this is a guest viewing featured repos */
+  isGuest?: boolean;
+  /** Callback to refresh guest cards */
+  onRefresh?: () => Promise<void>;
+}
+
 // Convert API card to RepoActivitySummary format for SwipeCard
 function cardToSummary(card: CommitActivityCard) {
   return {
@@ -44,21 +53,35 @@ function cardToSummary(card: CommitActivityCard) {
   };
 }
 
-export function SwipeFeedScreen() {
+export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: SwipeFeedScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(isGuest ? !initialCards : true);
   const [error, setError] = useState<string | null>(null);
-  const [cards, setCards] = useState<CommitActivityCard[]>([]);
+  const [cards, setCards] = useState<CommitActivityCard[]>(initialCards || []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [token, setToken] = useState<string | null>(null);
   const [lastSwipedCard, setLastSwipedCard] = useState<{ card: CommitActivityCard; action: 'seen' | 'saved' } | null>(null);
 
-
-  // Load cards on mount
+  // Update cards when initialCards changes (for guest mode)
   useEffect(() => {
+    if (isGuest) {
+      if (initialCards) {
+        setCards(initialCards);
+        setCurrentIndex(0);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
+    }
+  }, [isGuest, initialCards]);
+
+  // Load cards on mount (only for authenticated users, not guests)
+  useEffect(() => {
+    if (isGuest) return; // Guests get cards via initialCards prop
+
     async function loadCards() {
       try {
         const authToken = await getToken();
@@ -78,12 +101,12 @@ export function SwipeFeedScreen() {
       }
     }
     loadCards();
-  }, []);
+  }, [isGuest]);
 
   const currentCard = cards[currentIndex];
 
   const handleSwipeLeft = useCallback(async () => {
-    if (!token || !currentCard) return;
+    if (!currentCard) return;
 
     // Track for undo
     setLastSwipedCard({ card: currentCard, action: 'seen' });
@@ -91,16 +114,18 @@ export function SwipeFeedScreen() {
     // Optimistically advance to next card
     setCurrentIndex((prev) => prev + 1);
 
-    // Pass the card in background
-    try {
-      await passCard(token, currentCard.itemId);
-    } catch (err) {
-      console.warn('Failed to pass card:', err);
+    // Pass the card in background (only for authenticated users)
+    if (token && !isGuest) {
+      try {
+        await passCard(token, currentCard.itemId);
+      } catch (err) {
+        console.warn('Failed to pass card:', err);
+      }
     }
-  }, [token, currentCard]);
+  }, [token, currentCard, isGuest]);
 
   const handleSwipeRight = useCallback(async () => {
-    if (!token || !currentCard) return;
+    if (!currentCard) return;
 
     // Track for undo
     setLastSwipedCard({ card: currentCard, action: 'saved' });
@@ -108,13 +133,15 @@ export function SwipeFeedScreen() {
     // Optimistically advance to next card
     setCurrentIndex((prev) => prev + 1);
 
-    // Save the card in background
-    try {
-      await saveCard(token, currentCard);
-    } catch (err) {
-      console.warn('Failed to save card:', err);
+    // Save the card in background (only for authenticated users)
+    if (token && !isGuest) {
+      try {
+        await saveCard(token, currentCard);
+      } catch (err) {
+        console.warn('Failed to save card:', err);
+      }
     }
-  }, [token, currentCard]);
+  }, [token, currentCard, isGuest]);
 
   const handleUndo = useCallback(() => {
     if (!lastSwipedCard || currentIndex === 0) return;
@@ -145,7 +172,7 @@ export function SwipeFeedScreen() {
   }, [currentCard, navigation]);
 
   const handleGoToSaved = useCallback(() => {
-    navigation.navigate('SavedCards');
+    navigation.navigate('MainTabs', { screen: 'Saved' });
   }, [navigation]);
 
   const handleGoToCustomize = useCallback(() => {
@@ -194,21 +221,44 @@ export function SwipeFeedScreen() {
           You're all caught up!
         </Text>
         <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
-          No more activity cards to review right now.
+          {isGuest
+            ? 'Sign in to customize your feed and save cards.'
+            : 'No more activity cards to review right now.'}
         </Text>
         <View style={styles.emptyButtonsContainer}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={handleGoToCustomize}
-          >
-            <Text style={styles.primaryButtonText}>Edit Feed</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
-            onPress={handleGoToSaved}
-          >
-            <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>View Saved</Text>
-          </TouchableOpacity>
+          {isGuest ? (
+            <>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => navigation.navigate('MainTabs', { screen: 'About' })}
+              >
+                <Text style={styles.primaryButtonText}>Sign In</Text>
+              </TouchableOpacity>
+              {onRefresh && (
+                <TouchableOpacity
+                  style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
+                  onPress={onRefresh}
+                >
+                  <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Refresh</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+                onPress={handleGoToCustomize}
+              >
+                <Text style={styles.primaryButtonText}>Edit Feed</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
+                onPress={handleGoToSaved}
+              >
+                <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>View Saved</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     );
@@ -259,7 +309,7 @@ export function SwipeFeedScreen() {
       </View>
 
       {/* Bottom action bar */}
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={styles.actionBar}>
         {/* Swipe hints */}
         <View style={styles.hintRow}>
           <Text style={[styles.hintText, { color: theme.colors.textSecondary }]}>← ↑ Seen</Text>
@@ -377,6 +427,7 @@ const styles = StyleSheet.create({
   },
   actionBar: {
     paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   hintRow: {
     flexDirection: 'row',

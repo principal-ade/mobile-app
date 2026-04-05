@@ -23,6 +23,44 @@ import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'SavedCards'>;
 
+function BookmarkIcon({ color, size = 64 }: { color: string; size?: number }) {
+  const width = size * 0.6;
+  const height = size * 0.8;
+  const notchSize = size * 0.2;
+
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderWidth: 3,
+        borderColor: color,
+        borderRadius: 4,
+        position: 'relative',
+      }}
+    >
+      {/* Notch at bottom */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: -3,
+          left: '50%',
+          marginLeft: -notchSize / 2,
+          width: 0,
+          height: 0,
+          borderLeftWidth: notchSize / 2,
+          borderRightWidth: notchSize / 2,
+          borderBottomWidth: notchSize / 2,
+          borderLeftColor: 'transparent',
+          borderRightColor: 'transparent',
+          borderBottomColor: color,
+          transform: [{ rotate: '180deg' }],
+        }}
+      />
+    </View>
+  );
+}
+
 function formatRelativeTime(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -196,16 +234,14 @@ export function SavedCardsScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backText, { color: theme.colors.primary }]}>Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Saved Cards</Text>
-        <View style={styles.backButton} />
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Saved</Text>
       </View>
 
       {savedCards.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📚</Text>
+          <View style={styles.emptyIconContainer}>
+            <BookmarkIcon color={theme.colors.textSecondary} size={64} />
+          </View>
           <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No saved cards</Text>
           <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
             Swipe right on cards in your feed to save them here
@@ -243,18 +279,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 60,
-  },
-  backText: {
-    fontSize: 17,
   },
   headerTitle: {
     fontSize: 17,
@@ -266,8 +293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconContainer: {
     marginBottom: 16,
   },
   emptyTitle: {
