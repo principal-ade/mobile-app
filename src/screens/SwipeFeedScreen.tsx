@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { SwipeCard } from '../components/ActivityFeed/SwipeCard';
@@ -78,30 +78,46 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     }
   }, [isGuest, initialCards]);
 
-  // Load cards on mount (only for authenticated users, not guests)
-  useEffect(() => {
+  // Load cards function (reusable for initial load and refresh)
+  const loadCards = useCallback(async (showLoading = true) => {
     if (isGuest) return; // Guests get cards via initialCards prop
 
-    async function loadCards() {
-      try {
-        const authToken = await getToken();
-        if (!authToken) {
-          setError('Please sign in to view your feed');
-          setIsLoading(false);
-          return;
-        }
-        setToken(authToken);
-
-        const result = await getCommitQueue(authToken, 50);
-        setCards(result.cards);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load feed');
-      } finally {
+    try {
+      if (showLoading) setIsLoading(true);
+      const authToken = await getToken();
+      if (!authToken) {
+        setError('Please sign in to view your feed');
         setIsLoading(false);
+        return;
       }
+      setToken(authToken);
+
+      const result = await getCommitQueue(authToken, 50);
+      setCards(result.cards);
+      setCurrentIndex(0);
+      setLastSwipedCard(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load feed');
+    } finally {
+      setIsLoading(false);
     }
-    loadCards();
   }, [isGuest]);
+
+  // Load cards on mount
+  useEffect(() => {
+    loadCards();
+  }, [loadCards]);
+
+  // Refresh when screen comes back into focus (e.g., after editing feed)
+  useFocusEffect(
+    useCallback(() => {
+      // Skip on initial mount (handled by useEffect above)
+      // Only refresh if we already have a token (meaning we loaded before)
+      if (token && !isGuest) {
+        loadCards(false); // Don't show loading spinner on refocus
+      }
+    }, [token, isGuest, loadCards])
+  );
 
   const currentCard = cards[currentIndex];
 
@@ -115,9 +131,11 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     setCurrentIndex((prev) => prev + 1);
 
     // Pass the card in background (only for authenticated users)
+    // Send commit SHAs so only these specific commits are marked as seen
     if (token && !isGuest) {
       try {
-        await passCard(token, currentCard.itemId);
+        const seenShas = currentCard.commits.map((c) => c.sha);
+        await passCard(token, currentCard.itemId, seenShas);
       } catch (err) {
         console.warn('Failed to pass card:', err);
       }
@@ -157,17 +175,26 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const handleCardPress = useCallback(() => {
     if (!currentCard) return;
 
+    const summary = cardToSummary(currentCard);
     navigation.navigate('CardDetail', {
-      owner: currentCard.repo.owner,
-      repo: currentCard.repo.name,
-      commits: currentCard.commits.map((c) => ({
-        sha: c.sha,
-        message: c.message,
-        author: c.author.login,
-        authorLogin: c.author.login,
-        authorAvatarUrl: c.author.avatarUrl || null,
-        date: c.committedAt,
-      })),
+      summary: {
+        owner: summary.owner,
+        repo: summary.repo,
+        fullName: summary.fullName,
+        commits: summary.commits.map((c) => ({
+          repoOwner: c.repoOwner,
+          repoName: c.repoName,
+          sha: c.sha,
+          message: c.message,
+          author: c.author,
+          authorLogin: c.authorLogin,
+          authorEmail: c.authorEmail,
+          authorAvatarUrl: c.authorAvatarUrl,
+          date: c.date,
+        })),
+        latestCommitAt: summary.latestCommitAt.toISOString(),
+        commitCount: summary.commitCount,
+      },
     });
   }, [currentCard, navigation]);
 
@@ -264,63 +291,44 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     );
   }
 
-  const currentSummary = cardToSummary(currentCard);
-  const nextCard = cards[currentIndex + 1];
-  const nextSummary = nextCard ? cardToSummary(nextCard) : null;
+  // Get visible cards (current + next) - using slice preserves keys
+  const visibleCards = cards.slice(currentIndex, currentIndex + 2);
 
   return (
     <View
       style={[
         styles.container,
-        { backgroundColor: theme.colors.background },
+        { backgroundColor: theme.colors.background, paddingTop: insets.top },
       ]}
     >
-      {/* Drag handle */}
-      <View style={[styles.dragHandleContainer, { paddingTop: insets.top + 8 }]}>
-        <View style={[styles.dragHandle, { backgroundColor: theme.colors.border }]} />
-      </View>
-
-      {/* Card Stack */}
+      {/* Card Stack - render in reverse so first card is on top */}
       <View style={styles.cardContainer}>
-        {/* Next card (underneath) */}
-        {nextSummary && (
-          <View style={styles.nextCard}>
-            <SwipeCard
-              key={nextCard.itemId}
-              summary={nextSummary}
-              containerHeight={0}
-              swipeDisabled
-            />
-          </View>
-        )}
+        {visibleCards.map((card, index) => {
+          const isCurrentCard = index === 0;
+          const summary = cardToSummary(card);
 
-        {/* Current card (on top) */}
-        <View style={styles.currentCard}>
-          <SwipeCard
-            key={currentCard.itemId}
-            summary={currentSummary}
-            containerHeight={0}
-            onPress={handleCardPress}
-            onSwipeLeft={handleSwipeLeft}
-            onSwipeRight={handleSwipeRight}
-            onSwipeDown={lastSwipedCard ? handleUndo : undefined}
-          />
-        </View>
+          return (
+            <View
+              key={card.itemId}
+              style={[
+                styles.stackedCard,
+                { zIndex: visibleCards.length - index },
+              ]}
+            >
+              <SwipeCard
+                summary={summary}
+                containerHeight={0}
+                swipeDisabled={!isCurrentCard}
+                onPress={isCurrentCard ? handleCardPress : undefined}
+                onSwipeLeft={isCurrentCard ? handleSwipeLeft : undefined}
+                onSwipeRight={isCurrentCard ? handleSwipeRight : undefined}
+                onSwipeDown={isCurrentCard && lastSwipedCard ? handleUndo : undefined}
+              />
+            </View>
+          );
+        })}
       </View>
 
-      {/* Bottom action bar */}
-      <View style={styles.actionBar}>
-        {/* Swipe hints */}
-        <View style={styles.hintRow}>
-          <Text style={[styles.hintText, { color: theme.colors.textSecondary }]}>← ↑ Seen</Text>
-          {lastSwipedCard ? (
-            <Text style={[styles.hintText, { color: theme.colors.warning || '#FF9500' }]}>↓ Undo</Text>
-          ) : (
-            <Text style={[styles.hintText, { color: theme.colors.textSecondary }]}>Swipe</Text>
-          )}
-          <Text style={[styles.hintText, { color: theme.colors.success }]}>Save →</Text>
-        </View>
-      </View>
     </View>
   );
 }
@@ -404,40 +412,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  dragHandleContainer: {
-    alignItems: 'center',
-    paddingBottom: 8,
-  },
-  dragHandle: {
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-  },
   cardContainer: {
     flex: 1,
     position: 'relative',
   },
-  nextCard: {
+  stackedCard: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
-  },
-  currentCard: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 2,
-  },
-  actionBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  hintRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  hintText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
 });
 

@@ -20,6 +20,8 @@ interface LogoProps {
   color?: string;
   particleColor?: string;
   opacity?: number;
+  /** Disable animations for performance */
+  animated?: boolean;
 }
 
 interface OrbitingParticleProps {
@@ -99,6 +101,7 @@ export function Logo({
   color: _color,
   particleColor: _particleColor,
   opacity = 0.9,
+  animated = true,
 }: LogoProps) {
   const { theme } = useTheme();
   const lineColor = theme.colors.accent;
@@ -106,6 +109,8 @@ export function Logo({
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    if (!animated) return;
+
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -124,14 +129,15 @@ export function Logo({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [pulseAnim]);
+  }, [pulseAnim, animated]);
 
   return (
     <Svg
       width={width}
       height={height}
       viewBox="30 30 140 140"
-      style={{ opacity }}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ opacity, minWidth: width, minHeight: height }}
     >
       <Defs>
         <RadialGradient id="sphereGlow" cx="50%" cy="50%" r="50%">
@@ -144,68 +150,72 @@ export function Logo({
       <Circle cx={100} cy={100} r={80} fill="url(#sphereGlow)" opacity={0.5} />
 
       {/* Orbiting particles - horizontal ellipses */}
-      <OrbitingParticle
-        cx={100}
-        cy={100}
-        rx={67}
-        ry={27}
-        color={dotColor}
-        duration={8000}
-        delay={1000}
-        isHorizontal={true}
-      />
-      <OrbitingParticle
-        cx={100}
-        cy={100}
-        rx={67}
-        ry={40}
-        color={dotColor}
-        duration={8000}
-        delay={2000}
-        isHorizontal={true}
-      />
-      <OrbitingParticle
-        cx={100}
-        cy={100}
-        rx={67}
-        ry={53}
-        color={dotColor}
-        duration={8000}
-        delay={3000}
-        isHorizontal={true}
-      />
+      {animated && (
+        <>
+          <OrbitingParticle
+            cx={100}
+            cy={100}
+            rx={67}
+            ry={27}
+            color={dotColor}
+            duration={8000}
+            delay={1000}
+            isHorizontal={true}
+          />
+          <OrbitingParticle
+            cx={100}
+            cy={100}
+            rx={67}
+            ry={40}
+            color={dotColor}
+            duration={8000}
+            delay={2000}
+            isHorizontal={true}
+          />
+          <OrbitingParticle
+            cx={100}
+            cy={100}
+            rx={67}
+            ry={53}
+            color={dotColor}
+            duration={8000}
+            delay={3000}
+            isHorizontal={true}
+          />
 
-      {/* Orbiting particles - vertical ellipses */}
-      <OrbitingParticle
-        cx={100}
-        cy={100}
-        rx={27}
-        ry={67}
-        color={dotColor}
-        duration={8000}
-        delay={1500}
-        isHorizontal={false}
-      />
-      <OrbitingParticle
-        cx={100}
-        cy={100}
-        rx={40}
-        ry={67}
-        color={dotColor}
-        duration={8000}
-        delay={2500}
-        isHorizontal={false}
-      />
-      <OrbitingParticle
-        cx={100}
-        cy={100}
-        rx={53}
-        ry={67}
-        color={dotColor}
-        duration={8000}
-        delay={3500}
-        isHorizontal={false}
-      />
+          {/* Orbiting particles - vertical ellipses */}
+          <OrbitingParticle
+            cx={100}
+            cy={100}
+            rx={27}
+            ry={67}
+            color={dotColor}
+            duration={8000}
+            delay={1500}
+            isHorizontal={false}
+          />
+          <OrbitingParticle
+            cx={100}
+            cy={100}
+            rx={40}
+            ry={67}
+            color={dotColor}
+            duration={8000}
+            delay={2500}
+            isHorizontal={false}
+          />
+          <OrbitingParticle
+            cx={100}
+            cy={100}
+            rx={53}
+            ry={67}
+            color={dotColor}
+            duration={8000}
+            delay={3500}
+            isHorizontal={false}
+          />
+        </>
+      )}
 
       {/* "P" made of dots at center - vertical stem */}
       <Circle cx={93} cy={85} r={2} fill={dotColor} opacity={0.9} />

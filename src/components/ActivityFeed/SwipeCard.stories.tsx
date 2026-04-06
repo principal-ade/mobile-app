@@ -251,3 +251,178 @@ export const StaticNoSwipe: Story = {
     </MobileFrame>
   ),
 };
+
+// Test that simulates the exact transition from "next card" to "current card"
+const TransitionTest: React.FC = () => {
+  const [swipeDisabled, setSwipeDisabled] = useState(true);
+  const [key, setKey] = useState(0);
+  const summary = createMockSummary('octocat', 'hello-world', 3);
+
+  return (
+    <View style={styles.demoContainer}>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: swipeDisabled ? '#FF9500' : '#34C759',
+            borderRadius: 6,
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>
+            {swipeDisabled ? 'Next Card (disabled)' : 'Current Card (active)'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: '#007AFF',
+            borderRadius: 6,
+          }}
+          onTouchEnd={() => setSwipeDisabled((d) => !d)}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>
+            Toggle swipeDisabled
+          </Text>
+        </View>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: '#007AFF',
+            borderRadius: 6,
+          }}
+          onTouchEnd={() => setKey((k) => k + 1)}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Remount</Text>
+        </View>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: '#FF3B30',
+            borderRadius: 6,
+          }}
+          onTouchEnd={() => {
+            // Simulate exact transition: disabled -> enabled (same instance)
+            setSwipeDisabled(false);
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>
+            Simulate Transition
+          </Text>
+        </View>
+      </View>
+
+      <MobileFrame>
+        <SwipeCard
+          key={key}
+          summary={summary}
+          containerHeight={DEFAULT_HEIGHT}
+          swipeDisabled={swipeDisabled}
+          skipRemoteContent
+          onSwipeLeft={() => console.log('swipe left')}
+          onSwipeRight={() => console.log('swipe right')}
+        />
+      </MobileFrame>
+
+      <Text style={{ marginTop: 12, color: '#666', fontSize: 12 }}>
+        Watch the logo when clicking "Simulate Transition" - this mimics{'\n'}
+        what happens when the top card is swiped away.
+      </Text>
+    </View>
+  );
+};
+
+export const SwipeDisabledTransition: Story = {
+  name: 'Disabled → Active Transition',
+  render: () => <TransitionTest />,
+};
+
+// Test the card stack behavior
+const CardStackTest: React.FC = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const cards = [
+    createMockSummary('facebook', 'react', 3),
+    createMockSummary('microsoft', 'vscode', 2),
+    createMockSummary('google', 'material-design', 4),
+  ];
+
+  const visibleCards = cards.slice(currentIndex, currentIndex + 2);
+
+  return (
+    <View style={styles.demoContainer}>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: '#007AFF',
+            borderRadius: 6,
+          }}
+          onTouchEnd={() => setCurrentIndex((i) => Math.min(i + 1, cards.length - 1))}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>
+            Next Card (swipe away)
+          </Text>
+        </View>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: '#FF9500',
+            borderRadius: 6,
+          }}
+          onTouchEnd={() => setCurrentIndex(0)}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Reset</Text>
+        </View>
+      </View>
+
+      <Text style={{ marginBottom: 8, color: '#666' }}>
+        Index: {currentIndex} | Visible: {visibleCards.map((c) => c.repo).join(', ')}
+      </Text>
+
+      <MobileFrame>
+        <View style={{ flex: 1, position: 'relative' }}>
+          {visibleCards.map((card, index) => {
+            const isCurrentCard = index === 0;
+            return (
+              <View
+                key={card.fullName}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: visibleCards.length - index,
+                }}
+              >
+                <SwipeCard
+                  summary={card}
+                  containerHeight={DEFAULT_HEIGHT}
+                  swipeDisabled={!isCurrentCard}
+                  skipRemoteContent
+                />
+              </View>
+            );
+          })}
+        </View>
+      </MobileFrame>
+
+      <Text style={{ marginTop: 12, color: '#666', fontSize: 12 }}>
+        Click "Next Card" to simulate swiping away the top card.{'\n'}
+        Watch the logo on the card underneath.
+      </Text>
+    </View>
+  );
+};
+
+export const CardStackTransition: Story = {
+  render: () => <CardStackTest />,
+};

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   Pressable,
   Animated,
   Dimensions,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
 import type { RepoActivitySummary } from '../../types/activity';
+import { getCommitsSummary } from '../../services/FeedApiService';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
 interface SwipeCardProps {
@@ -32,6 +35,8 @@ interface SwipeCardProps {
   onSwipeDown?: () => void;
   /** Disable swipe gestures */
   swipeDisabled?: boolean;
+  /** Skip loading File City image and AI summary (for testing) */
+  skipRemoteContent?: boolean;
 }
 
 function formatRelativeTime(date: Date): string {
@@ -79,11 +84,15 @@ export function SwipeCard({
   onSwipeRight,
   onSwipeDown,
   swipeDisabled = false,
+  skipRemoteContent = false,
 }: SwipeCardProps) {
   const { theme } = useTheme();
   const [avatarError, setAvatarError] = useState(false);
   const [fileCityLoaded, setFileCityLoaded] = useState(false);
   const [fileCityError, setFileCityError] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
 
   // Animation values
   const translateX = useRef(new Animated.Value(0)).current;
@@ -93,8 +102,41 @@ export function SwipeCard({
   const authors = getUniqueAuthors(summary.commits);
   const latestCommit = summary.commits[0];
 
-  // File City image URL (no commit param - static view)
-  const fileCityImageUrl = `https://app.principal-ade.com/api/file-city/${summary.owner}/${summary.repo}?width=800&height=800`;
+  // File City image URL with all commit SHAs for highlighting
+  const apiBase = __DEV__ ? 'http://localhost:3000/api' : 'https://app.principal-ade.com/api';
+  const commitShas = summary.commits.map(c => c.sha).join(',');
+  const fileCityImageUrl = `${apiBase}/file-city/${summary.owner}/${summary.repo}?width=800&height=800&commits=${commitShas}`;
+
+  // Stable key for the card based on commits
+  const cardKey = summary.commits.map(c => c.sha).join(',');
+
+  // Fetch AI summary for commits
+  useEffect(() => {
+    if (skipRemoteContent || summary.commits.length === 0) return;
+
+    setSummaryLoading(true);
+    setAiSummary(null);
+
+    const commitsForSummary = summary.commits.map(c => ({
+      sha: c.sha,
+      message: c.message,
+      author: c.authorLogin || c.author,
+      additions: c.additions,
+      deletions: c.deletions,
+      filesChanged: c.filesChanged,
+    }));
+
+    getCommitsSummary(commitsForSummary, summary.fullName, 'non-technical')
+      .then(text => {
+        setAiSummary(text);
+      })
+      .catch(err => {
+        console.warn('[SwipeCard] Failed to get AI summary:', err);
+      })
+      .finally(() => {
+        setSummaryLoading(false);
+      });
+  }, [cardKey, summary.fullName, skipRemoteContent]);
 
   // Swipe handlers
   const resetPosition = useCallback(() => {
@@ -102,12 +144,14 @@ export function SwipeCard({
       Animated.spring(translateX, {
         toValue: 0,
         useNativeDriver: true,
-        friction: 5,
+        tension: 100,
+        friction: 10,
       }),
       Animated.spring(translateY, {
         toValue: 0,
         useNativeDriver: true,
-        friction: 5,
+        tension: 100,
+        friction: 10,
       }),
     ]).start(() => {
       isAnimating.current = false;
@@ -153,13 +197,16 @@ export function SwipeCard({
     });
   }, [translateY, translateX, onSwipeDown]);
 
-  const swipeUp = useCallback(() => {
+  const swipeUp = useCallback((velocityY: number = -800) => {
     if (isAnimating.current) return;
     isAnimating.current = true;
 
-    Animated.timing(translateY, {
-      toValue: -300,
-      duration: 200,
+    // Use spring with velocity for natural feel
+    Animated.spring(translateY, {
+      toValue: -SCREEN_HEIGHT,
+      velocity: Math.min(velocityY / 1000, -0.5), // Normalize velocity, ensure minimum speed
+      tension: 40,
+      friction: 8,
       useNativeDriver: true,
     }).start(() => {
       onSwipeLeft?.();
@@ -175,14 +222,18 @@ export function SwipeCard({
       if (swipeDisabled || isAnimating.current) return;
       const { translationX: tx, translationY: ty } = event.nativeEvent;
 
-      // Determine if horizontal or vertical swipe based on initial direction
-      if (Math.abs(tx) > Math.abs(ty)) {
+      // Determine primary direction but allow some secondary movement for natural feel
+      const absX = Math.abs(tx);
+      const absY = Math.abs(ty);
+
+      if (absX > absY) {
+        // Primarily horizontal - allow slight vertical drift
         translateX.setValue(tx);
-        translateY.setValue(0);
+        translateY.setValue(ty * 0.3); // Dampen vertical movement
       } else {
-        // Allow both up and down swipes
+        // Primarily vertical - allow slight horizontal drift
         translateY.setValue(ty);
-        translateX.setValue(0);
+        translateX.setValue(tx * 0.3); // Dampen horizontal movement
       }
     },
     [swipeDisabled, translateX, translateY]
@@ -195,21 +246,34 @@ export function SwipeCard({
       if (event.nativeEvent.state === State.END) {
         const { translationX, translationY, velocityX, velocityY } = event.nativeEvent;
 
-        // Check for swipe up (seen)
-        if (translationY < -SWIPE_DOWN_THRESHOLD || velocityY < -500) {
-          swipeUp();
-        }
-        // Check for swipe down (undo)
-        else if (translationY > SWIPE_DOWN_THRESHOLD || velocityY > 500) {
-          swipeDown();
-        }
-        // Check for horizontal swipes
-        else if (translationX < -SWIPE_THRESHOLD || velocityX < -500) {
-          swipeOut('left');
-        } else if (translationX > SWIPE_THRESHOLD || velocityX > 500) {
-          swipeOut('right');
+        // Determine primary swipe direction based on both distance and velocity
+        const absTransX = Math.abs(translationX);
+        const absTransY = Math.abs(translationY);
+        const absVelX = Math.abs(velocityX);
+        const absVelY = Math.abs(velocityY);
+
+        // Weight velocity more heavily for determining direction
+        const horizontalIntent = absTransX + absVelX * 0.1;
+        const verticalIntent = absTransY + absVelY * 0.1;
+
+        if (verticalIntent > horizontalIntent) {
+          // Vertical swipe takes precedence
+          if (translationY < -SWIPE_DOWN_THRESHOLD || velocityY < -500) {
+            swipeUp(velocityY);
+          } else if (translationY > SWIPE_DOWN_THRESHOLD || velocityY > 500) {
+            swipeDown();
+          } else {
+            resetPosition();
+          }
         } else {
-          resetPosition();
+          // Horizontal swipe
+          if (translationX < -SWIPE_THRESHOLD || velocityX < -500) {
+            swipeOut('left');
+          } else if (translationX > SWIPE_THRESHOLD || velocityX > 500) {
+            swipeOut('right');
+          } else {
+            resetPosition();
+          }
         }
       }
     },
@@ -252,7 +316,7 @@ export function SwipeCard({
       style={[
         styles.container,
         { backgroundColor: theme.colors.background },
-        !swipeDisabled && {
+        {
           transform: [{ translateX }, { translateY }, { rotate }],
         },
       ]}
@@ -284,6 +348,7 @@ export function SwipeCard({
           <Text style={styles.swipeIndicatorText}>SEEN</Text>
         </Animated.View>
       )}
+
       {/* Hour Label */}
       {hourLabel && (
         <View style={styles.hourLabelContainer}>
@@ -315,57 +380,56 @@ export function SwipeCard({
         </View>
 
         <View style={styles.headerText}>
-          <Text
-            style={[styles.repoName, { color: theme.colors.text }]}
-            numberOfLines={1}
-          >
-            {summary.repo}
-          </Text>
-          <Text style={[styles.repoMeta, { color: theme.colors.textSecondary }]}>
-            {summary.owner} · {summary.commitCount} commit
-            {summary.commitCount !== 1 ? 's' : ''}
-          </Text>
-        </View>
-      </View>
-
-      {/* Authors row */}
-      <View style={[styles.authorsRow, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.avatarStack}>
-          {authors.map((author, index) => (
-            <View
-              key={author.login}
-              style={[
-                styles.stackedAvatarContainer,
-                {
-                  marginLeft: index > 0 ? -8 : 0,
-                  zIndex: authors.length - index,
-                  borderColor: theme.colors.surface,
-                },
-              ]}
+          <View style={styles.repoRow}>
+            <Text
+              style={[styles.repoName, { color: theme.colors.text }]}
+              numberOfLines={1}
             >
-              {author.avatarUrl ? (
-                <Image
-                  source={{ uri: author.avatarUrl }}
-                  style={styles.stackedAvatar}
-                />
-              ) : (
-                <View style={[styles.stackedAvatarFallback, { backgroundColor: theme.colors.border }]}>
-                  <Text style={[styles.stackedAvatarText, { color: theme.colors.textSecondary }]}>
-                    {author.login.charAt(0).toUpperCase()}
-                  </Text>
+              {summary.repo}
+            </Text>
+            <Text style={[styles.commitCount, { color: theme.colors.textSecondary }]}>
+              {summary.commitCount} commit{summary.commitCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
+          <View style={styles.authorInfo}>
+            <View style={styles.avatarStack}>
+              {authors.map((author, index) => (
+                <View
+                  key={author.login}
+                  style={[
+                    styles.stackedAvatarContainer,
+                    {
+                      marginLeft: index > 0 ? -6 : 0,
+                      zIndex: authors.length - index,
+                      borderColor: theme.colors.background,
+                    },
+                  ]}
+                >
+                  {author.avatarUrl ? (
+                    <Image
+                      source={{ uri: author.avatarUrl }}
+                      style={styles.stackedAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.stackedAvatarFallback, { backgroundColor: theme.colors.border }]}>
+                      <Text style={[styles.stackedAvatarText, { color: theme.colors.textSecondary }]}>
+                        {author.login.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              )}
+              ))}
             </View>
-          ))}
+            <Text style={[styles.authorsText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+              {authors.length === 1
+                ? authors[0]?.login
+                : `${authors[0]?.login} +${authors.length - 1}`}
+            </Text>
+            <Text style={[styles.timeText, { color: theme.colors.textSecondary }]}>
+              {formatRelativeTime(new Date(summary.latestCommitAt))}
+            </Text>
+          </View>
         </View>
-        <Text style={[styles.authorsText, { color: theme.colors.textSecondary }]}>
-          {authors.length === 1
-            ? authors[0]?.login
-            : `${authors[0]?.login} and ${authors.length - 1} other${authors.length > 2 ? 's' : ''}`}
-        </Text>
-        <Text style={[styles.timeText, { color: theme.colors.textSecondary }]}>
-          {formatRelativeTime(new Date(summary.latestCommitAt))}
-        </Text>
       </View>
 
       {/* File City Image */}
@@ -375,8 +439,9 @@ export function SwipeCard({
           { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
         ]}
       >
-        {!fileCityLoaded && !fileCityError && (
-          <View style={styles.fileCityPlaceholder}>
+        {/* Always render placeholder to avoid layout shifts - use opacity to hide */}
+        <View style={[styles.fileCityPlaceholder, { opacity: !fileCityLoaded && !fileCityError ? 1 : 0 }]}>
+          <View style={styles.logoWrapper}>
             <Logo
               width={120}
               height={120}
@@ -384,7 +449,7 @@ export function SwipeCard({
               opacity={0.6}
             />
           </View>
-        )}
+        </View>
         {fileCityError ? (
           <View style={styles.fileCityPlaceholder}>
             <Logo
@@ -394,7 +459,7 @@ export function SwipeCard({
               opacity={0.4}
             />
           </View>
-        ) : (
+        ) : !skipRemoteContent ? (
           <Image
             source={{ uri: fileCityImageUrl }}
             style={styles.fileCityImage}
@@ -402,42 +467,46 @@ export function SwipeCard({
             onLoad={() => setFileCityLoaded(true)}
             onError={() => setFileCityError(true)}
           />
-        )}
+        ) : null}
       </View>
 
       {/* Summary Footer */}
-      <View style={[styles.summarySection, { backgroundColor: theme.colors.surface }]}>
-        {/* Latest commit preview */}
-        {latestCommit && (
-          <Text
-            style={[styles.commitPreview, { color: theme.colors.text }]}
-            numberOfLines={2}
+      <Pressable
+        style={[
+          styles.summarySection,
+          { backgroundColor: theme.colors.surface },
+          summaryExpanded && styles.summarySectionExpanded,
+        ]}
+        onPress={() => setSummaryExpanded(!summaryExpanded)}
+      >
+        {summaryLoading ? (
+          <View style={styles.summaryLoading}>
+            <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+            <Text style={[styles.summaryLoadingText, { color: theme.colors.textSecondary }]}>
+              Summarizing commits...
+            </Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.summaryScroll}
+            showsVerticalScrollIndicator={summaryExpanded}
+            scrollEnabled={summaryExpanded}
           >
-            {latestCommit.message}
-          </Text>
+            <Text style={[styles.commitPreview, { color: theme.colors.text }]}>
+              {aiSummary || latestCommit?.message}
+            </Text>
+          </ScrollView>
         )}
-
-        {/* Tap hint */}
-        <Text style={[styles.tapHint, { color: theme.colors.textSecondary }]}>
-          {swipeDisabled ? 'Tap for details' : 'Swipe or tap for details'}
-        </Text>
-      </View>
+      </Pressable>
     </Animated.View>
   );
 
-  // Wrap with gesture handler if swipe is enabled
-  if (swipeDisabled) {
-    return (
-      <Pressable style={styles.wrapper} onPress={onPress}>
-        {cardContent}
-      </Pressable>
-    );
-  }
-
+  // Always use same structure to avoid layout shifts when transitioning
   return (
     <PanGestureHandler
       onGestureEvent={onGestureEvent}
       onHandlerStateChange={onHandlerStateChange}
+      enabled={!swipeDisabled}
     >
       <Pressable style={styles.wrapper} onPress={onPress}>
         {cardContent}
@@ -533,9 +602,15 @@ const styles = StyleSheet.create({
   headerText: {
     flex: 1,
   },
+  repoRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
   repoName: {
     fontSize: 18,
     fontWeight: '700',
+    flex: 1,
   },
   repoMeta: {
     fontSize: 13,
@@ -551,34 +626,58 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fileCityPlaceholder: {
-    position: 'absolute',
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoWrapper: {
+    width: 120,
+    height: 120,
   },
   fileCityImage: {
     width: '100%',
     height: '100%',
   },
   summarySection: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    overflow: 'hidden',
   },
-  authorsRow: {
+  summarySectionExpanded: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: '70%',
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    marginTop: 4,
+    gap: 6,
   },
   avatarStack: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   stackedAvatarContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     overflow: 'hidden',
   },
@@ -593,25 +692,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stackedAvatarText: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '600',
   },
   authorsText: {
-    flex: 1,
     fontSize: 13,
+    flex: 1,
+  },
+  commitCount: {
+    fontSize: 12,
   },
   timeText: {
-    fontSize: 12,
+    fontSize: 11,
+  },
+  summaryScroll: {
+    flex: 1,
   },
   commitPreview: {
     fontSize: 15,
     lineHeight: 22,
+  },
+  summaryLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginTop: 12,
   },
-  tapHint: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 12,
+  summaryLoadingText: {
+    fontSize: 14,
   },
 });
 
