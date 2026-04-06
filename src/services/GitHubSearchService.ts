@@ -7,7 +7,9 @@
  * See: web-ade/docs/mobile-feed-api-requests.md
  */
 
-const API_BASE = 'https://app.principal-ade.com/api';
+import { apiConfig } from '../utils/config';
+
+const API_BASE = apiConfig.baseUrl;
 
 export interface GitHubUser {
   login: string;

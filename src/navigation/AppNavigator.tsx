@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -89,9 +89,21 @@ function AboutIcon({ color }: { color: string }) {
   );
 }
 
+function UserAvatarIcon({ avatarUrl, color }: { avatarUrl: string; color: string }) {
+  return (
+    <View style={styles.iconContainer}>
+      <Image
+        source={{ uri: avatarUrl }}
+        style={[styles.userAvatarIcon, { borderColor: color }]}
+      />
+    </View>
+  );
+}
+
 function MainTabs() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <Tab.Navigator
@@ -130,7 +142,13 @@ function MainTabs() {
         name="About"
         component={AboutScreen}
         options={{
-          tabBarIcon: ({ color }) => <AboutIcon color={color} />,
+          tabBarLabel: isAuthenticated && user ? 'You' : 'About',
+          tabBarIcon: ({ color }) =>
+            isAuthenticated && user ? (
+              <UserAvatarIcon avatarUrl={user.avatar_url} color={color} />
+            ) : (
+              <AboutIcon color={color} />
+            ),
         }}
       />
     </Tab.Navigator>
@@ -297,5 +315,11 @@ const styles = StyleSheet.create({
     width: 2,
     height: 6,
     borderRadius: 1,
+  },
+  userAvatarIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
   },
 });

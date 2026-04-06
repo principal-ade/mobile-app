@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { FEATURED_REPOS } from '../services/ActivityFeedService';
 import {
@@ -23,17 +23,13 @@ import {
   saveFollowedRepos,
 } from '../utils/feedStorage';
 import {
-  getFollows,
-  followUser as apiFollowUser,
   unfollowUser as apiUnfollowUser,
-  followRepo as apiFollowRepo,
   unfollowRepo as apiUnfollowRepo,
 } from '../services/FeedApiService';
 import { getToken } from '../utils/authStorage';
 import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'FeedCustomization'>;
-type ScreenRouteProp = RouteProp<RootStackParamList, 'FeedCustomization'>;
 
 // Parse featured repos into structured format
 const DEFAULT_REPOS: FollowedRepo[] = FEATURED_REPOS.map((fullName) => {
@@ -45,7 +41,6 @@ export function FeedCustomizationScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<ScreenRouteProp>();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -53,100 +48,31 @@ export function FeedCustomizationScreen() {
   const [followedRepos, setFollowedRepos] = useState<FollowedRepo[]>([]);
   const tokenRef = useRef<string | null>(null);
 
-  // Load data from API with local fallback
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const token = await getToken();
-        tokenRef.current = token;
+  // Load data from local storage (reloads on focus to pick up changes from Add screens)
+  useFocusEffect(
+    useCallback(() => {
+      async function loadData() {
+        try {
+          const token = await getToken();
+          tokenRef.current = token;
 
-        // Try API first if authenticated
-        if (token) {
-          try {
-            const apiData = await getFollows(token);
-            const users: FollowedUser[] = apiData.followedUsers.map((u) => ({
-              login: u.login,
-              followedAt: u.followedAt,
-            }));
-            const repos: FollowedRepo[] = apiData.followedRepos.map((r) => ({
-              owner: r.owner,
-              repo: r.repo,
-              followedAt: r.followedAt,
-            }));
-            setFollowedUsers(users);
-            setFollowedRepos(repos.length > 0 ? repos : DEFAULT_REPOS);
-            // Cache locally
-            await Promise.all([saveFollowedUsers(users), saveFollowedRepos(repos.length > 0 ? repos : DEFAULT_REPOS)]);
-            return;
-          } catch (apiError) {
-            console.warn('API fetch failed, falling back to local:', apiError);
-          }
-        }
-
-        // Fall back to local storage
-        const [savedUsers, savedRepos] = await Promise.all([
-          getFollowedUsers(),
-          getFollowedRepos(),
-        ]);
-        setFollowedUsers(savedUsers ?? []);
-        setFollowedRepos(savedRepos ?? DEFAULT_REPOS);
-      } catch (error) {
-        console.error('Failed to load feed settings:', error);
-        setFollowedRepos(DEFAULT_REPOS);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  // Handle added user from AddUserScreen
-  useEffect(() => {
-    const addedUser = route.params?.addedUser;
-    if (addedUser && !isLoading) {
-      const alreadyFollowing = followedUsers.some(
-        (u) => u.login.toLowerCase() === addedUser.toLowerCase()
-      );
-      if (!alreadyFollowing) {
-        const newUser: FollowedUser = { login: addedUser };
-        setFollowedUsers((prev) => [...prev, newUser]);
-
-        // Sync to API
-        if (tokenRef.current) {
-          setIsSyncing(true);
-          apiFollowUser(tokenRef.current, addedUser)
-            .catch((err) => console.warn('Failed to sync follow user:', err))
-            .finally(() => setIsSyncing(false));
+          // Load from local storage (Add screens save here directly)
+          const [savedUsers, savedRepos] = await Promise.all([
+            getFollowedUsers(),
+            getFollowedRepos(),
+          ]);
+          setFollowedUsers(savedUsers ?? []);
+          setFollowedRepos(savedRepos ?? DEFAULT_REPOS);
+        } catch (error) {
+          console.error('Failed to load feed settings:', error);
+          setFollowedRepos(DEFAULT_REPOS);
+        } finally {
+          setIsLoading(false);
         }
       }
-      navigation.setParams({ addedUser: undefined });
-    }
-  }, [route.params?.addedUser, isLoading, followedUsers, navigation]);
-
-  // Handle added repo from AddRepoScreen
-  useEffect(() => {
-    const addedRepo = route.params?.addedRepo;
-    if (addedRepo && !isLoading) {
-      const alreadyFollowing = followedRepos.some(
-        (r) =>
-          r.owner.toLowerCase() === addedRepo.owner.toLowerCase() &&
-          r.repo.toLowerCase() === addedRepo.name.toLowerCase()
-      );
-      if (!alreadyFollowing) {
-        const newRepo: FollowedRepo = { owner: addedRepo.owner, repo: addedRepo.name };
-        setFollowedRepos((prev) => [...prev, newRepo]);
-
-        // Sync to API
-        if (tokenRef.current) {
-          setIsSyncing(true);
-          apiFollowRepo(tokenRef.current, addedRepo.owner, addedRepo.name)
-            .catch((err) => console.warn('Failed to sync follow repo:', err))
-            .finally(() => setIsSyncing(false));
-        }
-      }
-      navigation.setParams({ addedRepo: undefined });
-    }
-  }, [route.params?.addedRepo, isLoading, followedRepos, navigation]);
+      loadData();
+    }, [])
+  );
 
   // Save users when they change
   useEffect(() => {
@@ -251,11 +177,10 @@ export function FeedCustomizationScreen() {
                 style={[styles.listItem, { borderBottomColor: theme.colors.border }]}
               >
                 <View style={styles.listItemContent}>
-                  <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.avatarText}>
-                      {user.login.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
+                  <Image
+                    source={{ uri: user.avatarUrl || `https://github.com/${user.login}.png` }}
+                    style={styles.avatarImage}
+                  />
                   <Text style={[styles.listItemText, { color: theme.colors.text }]}>
                     @{user.login}
                   </Text>
@@ -296,9 +221,10 @@ export function FeedCustomizationScreen() {
                 style={[styles.listItem, { borderBottomColor: theme.colors.border }]}
               >
                 <View style={styles.listItemContent}>
-                  <View style={[styles.repoIcon, { backgroundColor: repo.isFeatured ? theme.colors.primary : theme.colors.textSecondary }]}>
-                    <Text style={styles.repoIconText}>{repo.isFeatured ? '★' : 'R'}</Text>
-                  </View>
+                  <Image
+                    source={{ uri: `https://github.com/${repo.owner}.png` }}
+                    style={styles.repoAvatarImage}
+                  />
                   <View style={styles.repoTextContainer}>
                     <Text style={[styles.listItemText, { color: theme.colors.text }]}>
                       {repo.owner}/{repo.repo}
@@ -423,31 +349,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  avatar: {
+  avatarImage: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 12,
   },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  repoIcon: {
+  repoAvatarImage: {
     width: 32,
     height: 32,
     borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 12,
-  },
-  repoIconText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
   },
   repoTextContainer: {
     flex: 1,

@@ -15,6 +15,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
 import type { RepoActivitySummary } from '../../types/activity';
 import { getCommitsSummary } from '../../services/FeedApiService';
+import { apiConfig } from '../../utils/config';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
@@ -103,9 +104,8 @@ export function SwipeCard({
   const latestCommit = summary.commits[0];
 
   // File City image URL with all commit SHAs for highlighting
-  const apiBase = __DEV__ ? 'http://localhost:3000/api' : 'https://app.principal-ade.com/api';
   const commitShas = summary.commits.map(c => c.sha).join(',');
-  const fileCityImageUrl = `${apiBase}/file-city/${summary.owner}/${summary.repo}?width=800&height=800&commits=${commitShas}`;
+  const fileCityImageUrl = `${apiConfig.baseUrl}/file-city/${summary.owner}/${summary.repo}?width=800&height=800&commits=${commitShas}`;
 
   // Stable key for the card based on commits
   const cardKey = summary.commits.map(c => c.sha).join(',');

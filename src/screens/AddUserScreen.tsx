@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   SectionList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import {
   searchUsers,
@@ -20,7 +20,9 @@ import {
   type GitHubUser,
   type SuggestedUser,
 } from '../services/GitHubSearchService';
+import { followUser } from '../services/FeedApiService';
 import { getToken } from '../utils/authStorage';
+import { saveFollowedUsers, getFollowedUsers, type FollowedUser } from '../utils/feedStorage';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -44,11 +46,25 @@ export function AddUserScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Load suggestions on mount
+  // Track users added in this session and already-followed users
+  const [addedUsers, setAddedUsers] = useState<Set<string>>(new Set());
+  const [alreadyFollowing, setAlreadyFollowing] = useState<Set<string>>(new Set());
+  const tokenRef = useRef<string | null>(null);
+
+  // Load suggestions and already-followed users on mount
   useEffect(() => {
-    async function loadSuggestions() {
+    async function loadData() {
       try {
         const token = await getToken();
+        tokenRef.current = token;
+
+        // Load already-followed users
+        const followedUsers = await getFollowedUsers();
+        if (followedUsers) {
+          setAlreadyFollowing(new Set(followedUsers.map((u) => u.login.toLowerCase())));
+        }
+
+        // Load suggestions
         const { users } = await getSuggestedUsers(token);
 
         // Group by source
@@ -64,12 +80,12 @@ export function AddUserScreen() {
         }
         setSuggestions(sections);
       } catch (err) {
-        console.error('Failed to load suggestions:', err);
+        console.error('Failed to load data:', err);
       } finally {
         setIsLoadingSuggestions(false);
       }
     }
-    loadSuggestions();
+    loadData();
   }, []);
 
   // Debounced search
@@ -99,59 +115,113 @@ export function AddUserScreen() {
   }, [query]);
 
   const handleSelectUser = useCallback(
-    (login: string) => {
+    async (login: string, avatarUrl: string) => {
+      // Don't add if already following or just added
+      const loginLower = login.toLowerCase();
+      if (alreadyFollowing.has(loginLower) || addedUsers.has(loginLower)) {
+        return;
+      }
+
       Keyboard.dismiss();
-      navigation.navigate('FeedCustomization', { addedUser: login });
+
+      // Add to local state immediately for UI feedback
+      setAddedUsers((prev) => new Set(prev).add(loginLower));
+
+      // Sync to API and local storage
+      try {
+        // Add to local storage
+        const currentUsers = (await getFollowedUsers()) ?? [];
+        const newUser: FollowedUser = { login, avatarUrl };
+        await saveFollowedUsers([...currentUsers, newUser]);
+
+        // Sync to API if authenticated
+        if (tokenRef.current) {
+          await followUser(tokenRef.current, login);
+        }
+      } catch (err) {
+        console.warn('Failed to sync follow:', err);
+        // Still keep in addedUsers for UI - will sync later
+      }
     },
-    [navigation]
+    [alreadyFollowing, addedUsers]
   );
 
   const renderSearchResult = useCallback(
-    ({ item }: { item: GitHubUser }) => (
-      <TouchableOpacity
-        style={[styles.userItem, { borderBottomColor: theme.colors.border }]}
-        onPress={() => handleSelectUser(item.login)}
-        activeOpacity={0.7}
-      >
-        <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
-        <View style={styles.userInfo}>
-          <Text style={[styles.username, { color: theme.colors.text }]}>
-            @{item.login}
-          </Text>
-          {item.type && (
-            <Text style={[styles.userType, { color: theme.colors.textSecondary }]}>
-              {item.type}
+    ({ item }: { item: GitHubUser }) => {
+      const loginLower = item.login.toLowerCase();
+      const isFollowing = alreadyFollowing.has(loginLower);
+      const isAdded = addedUsers.has(loginLower);
+      const isDisabled = isFollowing || isAdded;
+
+      return (
+        <TouchableOpacity
+          style={[styles.userItem, { borderBottomColor: theme.colors.border }]}
+          onPress={() => handleSelectUser(item.login, item.avatar_url)}
+          activeOpacity={isDisabled ? 1 : 0.7}
+          disabled={isDisabled}
+        >
+          <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+          <View style={styles.userInfo}>
+            <Text style={[styles.username, { color: theme.colors.text }]}>
+              @{item.login}
             </Text>
-          )}
-        </View>
-        <Text style={[styles.addText, { color: theme.colors.primary }]}>Add</Text>
-      </TouchableOpacity>
-    ),
-    [theme, handleSelectUser]
+            {item.type && (
+              <Text style={[styles.userType, { color: theme.colors.textSecondary }]}>
+                {item.type}
+              </Text>
+            )}
+          </View>
+          <Text
+            style={[
+              styles.addText,
+              { color: isDisabled ? theme.colors.textSecondary : theme.colors.primary },
+            ]}
+          >
+            {isFollowing ? 'Following' : isAdded ? 'Added' : 'Add'}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [theme, handleSelectUser, alreadyFollowing, addedUsers]
   );
 
   const renderSuggestion = useCallback(
-    ({ item }: { item: SuggestedUser }) => (
-      <TouchableOpacity
-        style={[styles.userItem, { borderBottomColor: theme.colors.border }]}
-        onPress={() => handleSelectUser(item.login)}
-        activeOpacity={0.7}
-      >
-        <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
-        <View style={styles.userInfo}>
-          <Text style={[styles.username, { color: theme.colors.text }]}>
-            @{item.login}
-          </Text>
-          {item.name && (
-            <Text style={[styles.userType, { color: theme.colors.textSecondary }]}>
-              {item.name}
+    ({ item }: { item: SuggestedUser }) => {
+      const loginLower = item.login.toLowerCase();
+      const isFollowing = alreadyFollowing.has(loginLower);
+      const isAdded = addedUsers.has(loginLower);
+      const isDisabled = isFollowing || isAdded;
+
+      return (
+        <TouchableOpacity
+          style={[styles.userItem, { borderBottomColor: theme.colors.border }]}
+          onPress={() => handleSelectUser(item.login, item.avatar_url)}
+          activeOpacity={isDisabled ? 1 : 0.7}
+          disabled={isDisabled}
+        >
+          <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+          <View style={styles.userInfo}>
+            <Text style={[styles.username, { color: theme.colors.text }]}>
+              @{item.login}
             </Text>
-          )}
-        </View>
-        <Text style={[styles.addText, { color: theme.colors.primary }]}>Add</Text>
-      </TouchableOpacity>
-    ),
-    [theme, handleSelectUser]
+            {item.name && (
+              <Text style={[styles.userType, { color: theme.colors.textSecondary }]}>
+                {item.name}
+              </Text>
+            )}
+          </View>
+          <Text
+            style={[
+              styles.addText,
+              { color: isDisabled ? theme.colors.textSecondary : theme.colors.primary },
+            ]}
+          >
+            {isFollowing ? 'Following' : isAdded ? 'Added' : 'Add'}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [theme, handleSelectUser, alreadyFollowing, addedUsers]
   );
 
   const renderSectionHeader = useCallback(
@@ -175,8 +245,13 @@ export function AddUserScreen() {
         ]}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelButton}>
-          <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>
-            Cancel
+          <Text
+            style={[
+              styles.cancelText,
+              { color: addedUsers.size > 0 ? theme.colors.primary : theme.colors.textSecondary },
+            ]}
+          >
+            {addedUsers.size > 0 ? 'Done' : 'Cancel'}
           </Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Add User</Text>

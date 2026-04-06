@@ -11,10 +11,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import { Logo } from '../components/Logo';
 import { useAuth } from '../hooks/useAuth';
+import type { RootStackParamList } from '../navigation/types';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -56,9 +59,12 @@ function LinkRow({ title, subtitle, url, theme }: LinkRowProps) {
   );
 }
 
+type NavigationProp = StackNavigationProp<RootStackParamList>;
+
 export function AboutScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp>();
   const { isAuthenticated, user, signIn, demoSignIn, signOut } = useAuth();
   const [showDemoLogin, setShowDemoLogin] = useState(false);
   const [email, setEmail] = useState('');
@@ -128,6 +134,23 @@ export function AboutScreen() {
                   </Text>
                 </View>
               </View>
+              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+              <TouchableOpacity
+                style={styles.linkRow}
+                onPress={() => navigation.navigate('FeedCustomization', {})}
+              >
+                <View style={styles.linkContent}>
+                  <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
+                    Customize Feed
+                  </Text>
+                  <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
+                    Manage followed users and repos
+                  </Text>
+                </View>
+                <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
+                  ›
+                </Text>
+              </TouchableOpacity>
               <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
               <TouchableOpacity style={styles.linkRow} onPress={handleSignOut}>
                 <Text style={[styles.signOutText, { color: theme.colors.error || '#ef4444' }]}>

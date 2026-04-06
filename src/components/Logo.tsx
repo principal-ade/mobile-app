@@ -104,7 +104,7 @@ export function Logo({
   animated = true,
 }: LogoProps) {
   const { theme } = useTheme();
-  const lineColor = theme.colors.accent;
+  const lineColor = theme.colors.primary;
   const dotColor = '#FFFFFF';
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
 

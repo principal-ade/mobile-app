@@ -1,6 +1,7 @@
 import type { RepoActivitySummary, ActivityCommit } from '../types/activity';
+import { apiConfig } from '../utils/config';
 
-const API_BASE = 'https://app.principal-ade.com/api';
+const API_BASE = apiConfig.baseUrl;
 
 // Featured repos to show in the feed (matching web-ade)
 export const FEATURED_REPOS = [

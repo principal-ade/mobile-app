@@ -20,7 +20,7 @@ export type RootStackParamList = {
     email: string;
   };
   FeedCustomization: {
-    addedUser?: string;
+    addedUser?: { login: string; avatarUrl: string };
     addedRepo?: { owner: string; name: string };
   } | undefined;
   AddUser: undefined;

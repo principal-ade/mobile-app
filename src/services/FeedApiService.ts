@@ -7,8 +7,9 @@
  * See: web-ade/.principal-views/feed-collections/feed-collections.otel.canvas
  */
 
-// Use localhost for development, production URL for release
-const API_BASE = __DEV__ ? 'http://localhost:3000/api' : 'https://app.principal-ade.com/api';
+import { apiConfig } from '../utils/config';
+
+const API_BASE = apiConfig.baseUrl;
 
 export interface FollowedUser {
   login: string;

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
+import { apiConfig } from '../../utils/config';
 
 interface MobileRepoCardProps {
   summary: RepoActivitySummary;
@@ -87,8 +88,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
   const activeCommit = summary.commits[activeCommitIndex];
 
   // File City image URL
-  const apiBase = __DEV__ ? 'http://localhost:3000/api' : 'https://app.principal-ade.com/api';
-  const baseImageUrl = `${apiBase}/file-city/${summary.owner}/${summary.repo}?width=800&height=800`;
+  const baseImageUrl = `${apiConfig.baseUrl}/file-city/${summary.owner}/${summary.repo}?width=800&height=800`;
   const fileCityImageUrl = activeCommit
     ? `${baseImageUrl}&commit=${activeCommit.sha}`
     : baseImageUrl;

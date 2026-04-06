@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,9 @@ import {
   type GitHubRepo,
   type SuggestedRepo,
 } from '../services/GitHubSearchService';
+import { followRepo } from '../services/FeedApiService';
 import { getToken } from '../utils/authStorage';
+import { saveFollowedRepos, getFollowedRepos, type FollowedRepo } from '../utils/feedStorage';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -44,11 +46,27 @@ export function AddRepoScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Load suggestions on mount
+  // Track repos added in this session and already-followed repos
+  const [addedRepos, setAddedRepos] = useState<Set<string>>(new Set());
+  const [alreadyFollowing, setAlreadyFollowing] = useState<Set<string>>(new Set());
+  const tokenRef = useRef<string | null>(null);
+
+  // Load suggestions and already-followed repos on mount
   useEffect(() => {
-    async function loadSuggestions() {
+    async function loadData() {
       try {
         const token = await getToken();
+        tokenRef.current = token;
+
+        // Load already-followed repos
+        const followedRepos = await getFollowedRepos();
+        if (followedRepos) {
+          setAlreadyFollowing(
+            new Set(followedRepos.map((r) => `${r.owner}/${r.repo}`.toLowerCase()))
+          );
+        }
+
+        // Load suggestions
         const { repos } = await getSuggestedRepos(token);
 
         // Group by source
@@ -64,12 +82,12 @@ export function AddRepoScreen() {
         }
         setSuggestions(sections);
       } catch (err) {
-        console.error('Failed to load suggestions:', err);
+        console.error('Failed to load data:', err);
       } finally {
         setIsLoadingSuggestions(false);
       }
     }
-    loadSuggestions();
+    loadData();
   }, []);
 
   // Debounced search
@@ -99,95 +117,147 @@ export function AddRepoScreen() {
   }, [query]);
 
   const handleSelectRepo = useCallback(
-    (owner: string, name: string) => {
+    async (owner: string, name: string) => {
+      // Don't add if already following or just added
+      const repoKey = `${owner}/${name}`.toLowerCase();
+      if (alreadyFollowing.has(repoKey) || addedRepos.has(repoKey)) {
+        return;
+      }
+
       Keyboard.dismiss();
-      navigation.navigate('FeedCustomization', {
-        addedRepo: { owner, name },
-      });
+
+      // Add to local state immediately for UI feedback
+      setAddedRepos((prev) => new Set(prev).add(repoKey));
+
+      // Sync to API and local storage
+      try {
+        // Add to local storage
+        const currentRepos = (await getFollowedRepos()) ?? [];
+        const newRepo: FollowedRepo = { owner, repo: name };
+        await saveFollowedRepos([...currentRepos, newRepo]);
+
+        // Sync to API if authenticated
+        if (tokenRef.current) {
+          await followRepo(tokenRef.current, owner, name);
+        }
+      } catch (err) {
+        console.warn('Failed to sync follow:', err);
+        // Still keep in addedRepos for UI - will sync later
+      }
     },
-    [navigation]
+    [alreadyFollowing, addedRepos]
   );
 
   const renderSearchResult = useCallback(
-    ({ item }: { item: GitHubRepo }) => (
-      <TouchableOpacity
-        style={[styles.repoItem, { borderBottomColor: theme.colors.border }]}
-        onPress={() => handleSelectRepo(item.owner, item.name)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.repoContent}>
-          <View style={styles.repoHeader}>
-            <Text
-              style={[styles.repoName, { color: theme.colors.text }]}
-              numberOfLines={1}
-            >
-              {item.full_name}
-            </Text>
-            <View style={styles.metaRow}>
-              {item.language && (
-                <Text style={[styles.language, { color: theme.colors.textSecondary }]}>
-                  {item.language}
-                </Text>
-              )}
-              <Text style={[styles.stars, { color: theme.colors.textSecondary }]}>
-                ★ {formatStars(item.stargazers_count)}
+    ({ item }: { item: GitHubRepo }) => {
+      const repoKey = `${item.owner}/${item.name}`.toLowerCase();
+      const isFollowing = alreadyFollowing.has(repoKey);
+      const isAdded = addedRepos.has(repoKey);
+      const isDisabled = isFollowing || isAdded;
+
+      return (
+        <TouchableOpacity
+          style={[styles.repoItem, { borderBottomColor: theme.colors.border }]}
+          onPress={() => handleSelectRepo(item.owner, item.name)}
+          activeOpacity={isDisabled ? 1 : 0.7}
+          disabled={isDisabled}
+        >
+          <View style={styles.repoContent}>
+            <View style={styles.repoHeader}>
+              <Text
+                style={[styles.repoName, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
+                {item.full_name}
               </Text>
+              <View style={styles.metaRow}>
+                {item.language && (
+                  <Text style={[styles.language, { color: theme.colors.textSecondary }]}>
+                    {item.language}
+                  </Text>
+                )}
+                <Text style={[styles.stars, { color: theme.colors.textSecondary }]}>
+                  ★ {formatStars(item.stargazers_count)}
+                </Text>
+              </View>
             </View>
+            {item.description && (
+              <Text
+                style={[styles.description, { color: theme.colors.textSecondary }]}
+                numberOfLines={2}
+              >
+                {item.description}
+              </Text>
+            )}
           </View>
-          {item.description && (
-            <Text
-              style={[styles.description, { color: theme.colors.textSecondary }]}
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-          )}
-        </View>
-        <Text style={[styles.addText, { color: theme.colors.primary }]}>Add</Text>
-      </TouchableOpacity>
-    ),
-    [theme, handleSelectRepo]
+          <Text
+            style={[
+              styles.addText,
+              { color: isDisabled ? theme.colors.textSecondary : theme.colors.primary },
+            ]}
+          >
+            {isFollowing ? 'Following' : isAdded ? 'Added' : 'Add'}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [theme, handleSelectRepo, alreadyFollowing, addedRepos]
   );
 
   const renderSuggestion = useCallback(
-    ({ item }: { item: SuggestedRepo }) => (
-      <TouchableOpacity
-        style={[styles.repoItem, { borderBottomColor: theme.colors.border }]}
-        onPress={() => handleSelectRepo(item.owner, item.name)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.repoContent}>
-          <View style={styles.repoHeader}>
-            <Text
-              style={[styles.repoName, { color: theme.colors.text }]}
-              numberOfLines={1}
-            >
-              {item.full_name}
-            </Text>
-            <View style={styles.metaRow}>
-              {item.language && (
-                <Text style={[styles.language, { color: theme.colors.textSecondary }]}>
-                  {item.language}
-                </Text>
-              )}
-              <Text style={[styles.stars, { color: theme.colors.textSecondary }]}>
-                ★ {formatStars(item.stargazers_count)}
+    ({ item }: { item: SuggestedRepo }) => {
+      const repoKey = `${item.owner}/${item.name}`.toLowerCase();
+      const isFollowing = alreadyFollowing.has(repoKey);
+      const isAdded = addedRepos.has(repoKey);
+      const isDisabled = isFollowing || isAdded;
+
+      return (
+        <TouchableOpacity
+          style={[styles.repoItem, { borderBottomColor: theme.colors.border }]}
+          onPress={() => handleSelectRepo(item.owner, item.name)}
+          activeOpacity={isDisabled ? 1 : 0.7}
+          disabled={isDisabled}
+        >
+          <View style={styles.repoContent}>
+            <View style={styles.repoHeader}>
+              <Text
+                style={[styles.repoName, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
+                {item.full_name}
               </Text>
+              <View style={styles.metaRow}>
+                {item.language && (
+                  <Text style={[styles.language, { color: theme.colors.textSecondary }]}>
+                    {item.language}
+                  </Text>
+                )}
+                <Text style={[styles.stars, { color: theme.colors.textSecondary }]}>
+                  ★ {formatStars(item.stargazers_count)}
+                </Text>
+              </View>
             </View>
+            {item.description && (
+              <Text
+                style={[styles.description, { color: theme.colors.textSecondary }]}
+                numberOfLines={2}
+              >
+                {item.description}
+              </Text>
+            )}
           </View>
-          {item.description && (
-            <Text
-              style={[styles.description, { color: theme.colors.textSecondary }]}
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-          )}
-        </View>
-        <Text style={[styles.addText, { color: theme.colors.primary }]}>Add</Text>
-      </TouchableOpacity>
-    ),
-    [theme, handleSelectRepo]
+          <Text
+            style={[
+              styles.addText,
+              { color: isDisabled ? theme.colors.textSecondary : theme.colors.primary },
+            ]}
+          >
+            {isFollowing ? 'Following' : isAdded ? 'Added' : 'Add'}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [theme, handleSelectRepo, alreadyFollowing, addedRepos]
   );
 
   const renderSectionHeader = useCallback(
@@ -211,8 +281,13 @@ export function AddRepoScreen() {
         ]}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelButton}>
-          <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>
-            Cancel
+          <Text
+            style={[
+              styles.cancelText,
+              { color: addedRepos.size > 0 ? theme.colors.primary : theme.colors.textSecondary },
+            ]}
+          >
+            {addedRepos.size > 0 ? 'Done' : 'Cancel'}
           </Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
