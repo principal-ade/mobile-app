@@ -20,6 +20,8 @@ interface MobileRepoCardProps {
   hourLabel?: string;
   /** Container height for calculating commit area */
   containerHeight: number;
+  /** Skip top safe area inset (use when parent handles it) */
+  skipTopInset?: boolean;
 }
 
 function formatRelativeTime(date: Date): string {
@@ -58,9 +60,10 @@ const TIMELINE_HEIGHT = 52; // paddingTop 12 + avatar 28 + paddingBottom 12 (saf
 const TIMELINE_AVATAR_SIZE = 28;
 const TIMELINE_LINE_HEIGHT = 2;
 
-export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRepoCardProps) {
+export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopInset = false }: MobileRepoCardProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const topInset = skipTopInset ? 0 : insets.top;
   const [avatarError, setAvatarError] = useState(false);
   const [activeCommitIndex, setActiveCommitIndex] = useState(0);
   const [fileCityLoaded, setFileCityLoaded] = useState(false);
@@ -76,15 +79,16 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
   // Calculate commit section height based on known layout dimensions
   const fileCityHeight = containerWidth + FILE_CITY_BORDER;
   const topContentHeight = hourLabel
-    ? insets.top + HOUR_LABEL_HEIGHT + HEADER_HEIGHT
-    : insets.top + HEADER_HEIGHT;
+    ? topInset + HOUR_LABEL_HEIGHT + HEADER_HEIGHT
+    : topInset + HEADER_HEIGHT;
   // Bottom safe area is applied as padding on timeline container
   const commitSectionHeight = containerHeight - topContentHeight - fileCityHeight - TIMELINE_HEIGHT - insets.bottom;
 
   const activeCommit = summary.commits[activeCommitIndex];
 
   // File City image URL
-  const baseImageUrl = `https://app.principal-ade.com/api/file-city/${summary.owner}/${summary.repo}?width=800&height=800`;
+  const apiBase = __DEV__ ? 'http://localhost:3000/api' : 'https://app.principal-ade.com/api';
+  const baseImageUrl = `${apiBase}/file-city/${summary.owner}/${summary.repo}?width=800&height=800`;
   const fileCityImageUrl = activeCommit
     ? `${baseImageUrl}&commit=${activeCommit.sha}`
     : baseImageUrl;
@@ -143,10 +147,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
         </View>
 
         {/* Commit message */}
-        <Text
-          style={[styles.commitMessage, { color: theme.colors.text }]}
-          numberOfLines={4}
-        >
+        <Text style={[styles.commitMessage, { color: theme.colors.text }]}>
           {commit.message}
         </Text>
 
@@ -187,7 +188,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
     >
       {/* Hour Label */}
       {hourLabel && (
-        <View style={[styles.hourLabelContainer, { paddingTop: insets.top + 16 }]}>
+        <View style={[styles.hourLabelContainer, { paddingTop: topInset + 16 }]}>
           <Text style={[styles.hourLabel, { color: theme.colors.textSecondary }]}>
             {hourLabel}
           </Text>
@@ -195,7 +196,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight }: MobileRe
       )}
 
       {/* Header */}
-      <View style={[styles.header, !hourLabel && { paddingTop: insets.top + 16 }]}>
+      <View style={[styles.header, !hourLabel && { paddingTop: topInset + 16 }]}>
         <View
           style={[
             styles.avatarContainer,
@@ -417,8 +418,11 @@ const styles = StyleSheet.create({
     // No padding - edge to edge
   },
   commitCard: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
     justifyContent: 'space-between',
+    overflow: 'hidden',
   },
   authorRow: {
     flexDirection: 'row',

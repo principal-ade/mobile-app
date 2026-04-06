@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "name": "Onboarding Flow",
+  "description": "Workflow showing the complete feed onboarding experience for new users",
+  "spanPattern": "feed-onboarding",
+  "canvas": ".principal-views/feed-onboarding/feed-onboarding.otel.canvas",
+  "scenarios": [
+    {
+      "id": "full-onboarding",
+      "priority": 1,
+      "description": "User completes both steps of onboarding with selections",
+      "outcomeType": "expected",
+      "template": {
+        "introduction": "A new authenticated user with no follows goes through the onboarding wizard.",
+        "events": {
+          "feed-onboarding.check": "Checking onboarding status: authenticated={{isAuthenticated}}, followed users={{followedUsersCount}}, followed repos={{followedReposCount}}, needsOnboarding={{needsOnboarding}}",
+          "feed-onboarding.started": "Onboarding started with {{suggestedUsersCount}} suggested users",
+          "feed-onboarding.step1.view": "Step 1 displayed with {{suggestedUsersCount}} suggested users",
+          "feed-onboarding.user.selected": "User selected {{login}} from {{source}}, total selected: {{totalSelected}}",
+          "feed-onboarding.step1.complete": "Step 1 complete: {{selectedUsersCount}} users selected, skipped={{wasSkipped}}",
+          "feed-onboarding.step2.view": "Step 2 displayed with {{suggestedReposCount}} suggested and {{featuredReposCount}} featured repos",
+          "feed-onboarding.repo.selected": "User selected {{repoFullName}} from {{source}}, total selected: {{totalSelected}}",
+          "feed-onboarding.complete": "Onboarding complete: {{totalUsersFollowed}} users, {{totalReposFollowed}} repos followed, wasFullySkipped={{wasFullySkipped}}",
+          "feed-onboarding.follow-user.success": "Successfully followed user {{login}}",
+          "feed-onboarding.follow-repo.success": "Successfully followed repo {{repoFullName}}"
+        }
+      }
+    },
+    {
+      "id": "skipped-onboarding",
+      "priority": 2,
+      "description": "User skips onboarding entirely",
+      "outcomeType": "expected",
+      "template": {
+        "introduction": "User chooses to skip onboarding and explore the feed first.",
+        "events": {
+          "feed-onboarding.check": "Checking onboarding status: needsOnboarding={{needsOnboarding}}",
+          "feed-onboarding.started": "Onboarding started",
+          "feed-onboarding.step1.view": "Step 1 displayed",
+          "feed-onboarding.skipped": "User skipped onboarding at step {{skippedAtStep}}"
+        }
+      }
+    },
+    {
+      "id": "search-and-select",
+      "priority": 3,
+      "description": "User uses search to find specific users and repos",
+      "outcomeType": "expected",
+      "template": {
+        "introduction": "User searches for specific users and repositories during onboarding.",
+        "events": {
+          "feed-onboarding.check": "Checking onboarding status: authenticated={{isAuthenticated}}, needsOnboarding={{needsOnboarding}}",
+          "feed-onboarding.started": "Onboarding started",
+          "feed-onboarding.step1.view": "Step 1 displayed",
+          "feed-onboarding.user.search": "User searched for '{{query}}', found {{resultsCount}} results",
+          "feed-onboarding.user.selected": "User selected {{login}} from search, total selected: {{totalSelected}}",
+          "feed-onboarding.step1.complete": "Step 1 complete with search-based selections",
+          "feed-onboarding.step2.view": "Step 2 displayed",
+          "feed-onboarding.repo.search": "User searched for '{{query}}', found {{resultsCount}} results",
+          "feed-onboarding.repo.selected": "User selected {{repoFullName}} from search, total selected: {{totalSelected}}",
+          "feed-onboarding.complete": "Onboarding complete with search-based selections, wasFullySkipped={{wasFullySkipped}}"
+        }
+      }
+    }
+  ]
+}

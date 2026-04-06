@@ -27,16 +27,27 @@ export type RootStackParamList = {
   AddRepo: undefined;
   SwipeFeed: undefined;
   CardDetail: {
-    owner: string;
-    repo: string;
-    commits: Array<{
-      sha: string;
-      message: string;
-      author: string;
-      authorLogin: string | null;
-      authorAvatarUrl: string | null;
-      date: string;
-    }>;
+    summary: {
+      owner: string;
+      repo: string;
+      fullName: string;
+      commits: Array<{
+        repoOwner: string;
+        repoName: string;
+        sha: string;
+        message: string;
+        author: string;
+        authorLogin: string | null;
+        authorEmail: string;
+        authorAvatarUrl: string | null;
+        date: string;
+        additions?: number;
+        deletions?: number;
+        filesChanged?: number;
+      }>;
+      latestCommitAt: string; // ISO string for serialization
+      commitCount: number;
+    };
   };
   SavedCards: undefined;
 };

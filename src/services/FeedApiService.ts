@@ -112,7 +112,7 @@ export async function followUser(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: { login } }),
+    body: JSON.stringify({ login }),
   });
 
   if (!response.ok) {
@@ -152,7 +152,7 @@ export async function unfollowUser(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: { login } }),
+    body: JSON.stringify({ login }),
   });
 
   if (!response.ok) {
@@ -184,7 +184,7 @@ export async function followRepo(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: { owner, repo } }),
+    body: JSON.stringify({ owner, repo }),
   });
 
   if (!response.ok) {
@@ -225,7 +225,7 @@ export async function unfollowRepo(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: { owner, repo } }),
+    body: JSON.stringify({ owner, repo }),
   });
 
   if (!response.ok) {
@@ -275,12 +275,14 @@ export async function getCommitQueue(
 
 /**
  * Pass a card (swipe left)
- * Card won't show again for this 24h cycle
+ * Marks specific commits as seen so they won't show again
+ * New commits for the same repo/hour will still appear
  * Requires authentication
  */
 export async function passCard(
   githubToken: string,
-  itemId: string
+  itemId: string,
+  seenCommitShas: string[]
 ): Promise<{ success: boolean }> {
   const url = `${API_BASE}/trpc/feed.passCard`;
 
@@ -290,7 +292,7 @@ export async function passCard(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: { itemId } }),
+    body: JSON.stringify({ itemId, seenCommitShas }),
   });
 
   if (!response.ok) {
@@ -321,7 +323,7 @@ export async function saveCard(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: card }),
+    body: JSON.stringify(card),
   });
 
   if (!response.ok) {
@@ -378,7 +380,7 @@ export async function unsaveCard(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${githubToken}`,
     },
-    body: JSON.stringify({ json: { itemId } }),
+    body: JSON.stringify({ itemId }),
   });
 
   if (!response.ok) {
@@ -390,4 +392,60 @@ export async function unsaveCard(
 
   const data: TRPCResponse<{ success: boolean }> = await response.json();
   return data.result.data;
+}
+
+// ============================================================================
+// AI Commit Summary
+// ============================================================================
+
+export interface CommitForSummary {
+  sha: string;
+  message: string;
+  author: string;
+  additions?: number;
+  deletions?: number;
+  filesChanged?: number;
+}
+
+/**
+ * Get AI-generated summary of commits
+ * Uses OpenRouter API via server endpoint
+ */
+export async function getCommitsSummary(
+  commits: CommitForSummary[],
+  repoName: string,
+  audienceLevel: 'maintainer' | 'non-technical' = 'non-technical'
+): Promise<string> {
+  const url = `${API_BASE}/explain-commits`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ commits, repoName, audienceLevel }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get commits summary: ${response.status}`);
+  }
+
+  // Parse SSE response
+  const text = await response.text();
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      try {
+        const data = JSON.parse(line.slice(6));
+        if (data.type === 'text' && data.content) {
+          return data.content;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  throw new Error('No summary in response');
 }

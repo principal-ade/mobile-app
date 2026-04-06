@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "name": "Follow API Errors",
+  "description": "Workflow showing error handling when following users or repos fails",
+  "spanPattern": "feed-onboarding.follow",
+  "canvas": ".principal-views/feed-onboarding/feed-onboarding.otel.canvas",
+  "scenarios": [
+    {
+      "id": "partial-success",
+      "priority": 1,
+      "description": "Some follows succeed while others fail",
+      "outcomeType": "expected-issue",
+      "template": {
+        "introduction": "User completes onboarding with partial success due to API errors.",
+        "events": {
+          "feed-onboarding.complete": "Onboarding complete: saving {{totalUsersFollowed}} users and {{totalReposFollowed}} repos, wasFullySkipped={{wasFullySkipped}}",
+          "feed-onboarding.follow-user.success": "Successfully followed user {{login}}",
+          "feed-onboarding.follow-user.error": "Failed to follow user {{login}}: {{error.message}}",
+          "feed-onboarding.follow-repo.success": "Successfully followed repo {{repoFullName}}",
+          "feed-onboarding.follow-repo.error": "Failed to follow repo {{repoFullName}}: {{error.message}}"
+        }
+      }
+    }
+  ]
+}

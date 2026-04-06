@@ -1,0 +1,764 @@
+{
+  "pv": {
+    "name": "Swipe Feed",
+    "version": "1.0.0",
+    "markdown": ".principal-views/swipe-feed/swipe-feed.md",
+    "edgeTypes": {
+      "flow": {
+        "label": "Flow"
+      },
+      "error": {
+        "label": "Error Path"
+      },
+      "user-action": {
+        "label": "User Action"
+      },
+      "data-flow": {
+        "label": "Data Flow"
+      },
+      "conditional": {
+        "label": "Conditional"
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "feed-load-started",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Feed Load Started",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx",
+          "src/screens/FeedTabScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "swipe-feed.load.started",
+        "attributes": {
+          "mode": {
+            "type": "string",
+            "description": "Feed mode: 'guest' or 'authenticated'",
+            "required": true
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max cards to fetch",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "feed-load-success",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Feed Load Success",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "swipe-feed.load.success",
+        "attributes": {
+          "cardCount": {
+            "type": "integer",
+            "description": "Number of cards loaded",
+            "required": true
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "Whether more cards are available",
+            "required": true
+          },
+          "mode": {
+            "type": "string",
+            "description": "Feed mode: 'guest' or 'authenticated'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "feed-load-error",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "label": "Feed Load Error",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#ef4444",
+        "stroke": "#dc2626"
+      },
+      "event": {
+        "name": "swipe-feed.load.error",
+        "attributes": {
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          },
+          "mode": {
+            "type": "string",
+            "description": "Feed mode when error occurred",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "feed-empty",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#4b5563",
+      "label": "Feed Empty",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#6b7280",
+        "stroke": "#4b5563"
+      },
+      "event": {
+        "name": "swipe-feed.empty",
+        "attributes": {
+          "mode": {
+            "type": "string",
+            "description": "Feed mode: 'guest' or 'authenticated'",
+            "required": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why feed is empty: 'no-follows', 'all-seen', 'no-activity'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "card-view",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 350,
+      "width": 200,
+      "height": 100,
+      "color": "#0891b2",
+      "label": "Card Viewed",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx",
+          "src/components/ActivityFeed/SwipeCard.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#06b6d4",
+        "stroke": "#0891b2"
+      },
+      "event": {
+        "name": "swipe-feed.card.view",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID (YYYY-MM-DD:HH:owner/repo)",
+            "required": true
+          },
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name",
+            "required": true
+          },
+          "commitCount": {
+            "type": "integer",
+            "description": "Number of commits in card",
+            "required": true
+          },
+          "cardIndex": {
+            "type": "integer",
+            "description": "Position in the card stack",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "card-pass",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -200,
+      "y": 500,
+      "width": 200,
+      "height": 100,
+      "color": "#f59e0b",
+      "label": "Card Passed (Seen)",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx",
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#fbbf24",
+        "stroke": "#f59e0b"
+      },
+      "event": {
+        "name": "swipe-feed.card.pass",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          },
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name",
+            "required": true
+          },
+          "seenCommitCount": {
+            "type": "integer",
+            "description": "Number of commits marked as seen",
+            "required": true
+          },
+          "seenCommitShas": {
+            "type": "array",
+            "description": "Array of commit SHAs marked as seen",
+            "required": true
+          },
+          "swipeDirection": {
+            "type": "string",
+            "description": "Swipe direction: 'left' or 'up'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "card-save",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 500,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Card Saved",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx",
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "swipe-feed.card.save",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          },
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name",
+            "required": true
+          },
+          "commitCount": {
+            "type": "integer",
+            "description": "Number of commits in saved card",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "card-undo",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 500,
+      "width": 200,
+      "height": 100,
+      "color": "#6d28d9",
+      "label": "Card Undo",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#8b5cf6",
+        "stroke": "#6d28d9"
+      },
+      "event": {
+        "name": "swipe-feed.card.undo",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID being restored",
+            "required": true
+          },
+          "previousAction": {
+            "type": "string",
+            "description": "Action being undone: 'pass' or 'save'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "card-tap",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#0891b2",
+      "label": "Card Tapped",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#06b6d4",
+        "stroke": "#0891b2"
+      },
+      "event": {
+        "name": "swipe-feed.card.tap",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          },
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name",
+            "required": true
+          },
+          "destination": {
+            "type": "string",
+            "description": "Where user navigated: 'card-detail'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "pass-api-success",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -200,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Pass API Success",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "swipe-feed.pass-api.success",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          },
+          "seenCommitCount": {
+            "type": "integer",
+            "description": "Number of commits marked as seen",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "pass-api-error",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -400,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "label": "Pass API Error",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#ef4444",
+        "stroke": "#dc2626"
+      },
+      "event": {
+        "name": "swipe-feed.pass-api.error",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "save-api-success",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Save API Success",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "swipe-feed.save-api.success",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "save-api-error",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 600,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "label": "Save API Error",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#ef4444",
+        "stroke": "#dc2626"
+      },
+      "event": {
+        "name": "swipe-feed.save-api.error",
+        "attributes": {
+          "itemId": {
+            "type": "string",
+            "description": "Card item ID",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "stack-exhausted",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 800,
+      "width": 200,
+      "height": 100,
+      "color": "#4b5563",
+      "label": "Stack Exhausted",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/SwipeFeedScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#6b7280",
+        "stroke": "#4b5563"
+      },
+      "event": {
+        "name": "swipe-feed.stack.exhausted",
+        "attributes": {
+          "totalSwiped": {
+            "type": "integer",
+            "description": "Total cards swiped in session",
+            "required": true
+          },
+          "savedCount": {
+            "type": "integer",
+            "description": "Number of cards saved",
+            "required": true
+          },
+          "passedCount": {
+            "type": "integer",
+            "description": "Number of cards passed",
+            "required": true
+          },
+          "mode": {
+            "type": "string",
+            "description": "Feed mode: 'guest' or 'authenticated'",
+            "required": true
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "load-to-success",
+      "fromNode": "feed-load-started",
+      "fromSide": "bottom",
+      "toNode": "feed-load-success",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "load-to-error",
+      "fromNode": "feed-load-started",
+      "fromSide": "right",
+      "toNode": "feed-load-error",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "error"
+      }
+    },
+    {
+      "id": "load-to-empty",
+      "fromNode": "feed-load-success",
+      "fromSide": "right",
+      "toNode": "feed-empty",
+      "toSide": "left",
+      "label": "no cards",
+      "pv": {
+        "edgeType": "conditional"
+      }
+    },
+    {
+      "id": "success-to-view",
+      "fromNode": "feed-load-success",
+      "fromSide": "bottom",
+      "toNode": "card-view",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "view-to-pass",
+      "fromNode": "card-view",
+      "fromSide": "left",
+      "toNode": "card-pass",
+      "toSide": "top",
+      "label": "swipe left/up",
+      "pv": {
+        "edgeType": "user-action"
+      }
+    },
+    {
+      "id": "view-to-save",
+      "fromNode": "card-view",
+      "fromSide": "right",
+      "toNode": "card-save",
+      "toSide": "top",
+      "label": "swipe right",
+      "pv": {
+        "edgeType": "user-action"
+      }
+    },
+    {
+      "id": "view-to-undo",
+      "fromNode": "card-view",
+      "fromSide": "bottom",
+      "toNode": "card-undo",
+      "toSide": "top",
+      "label": "swipe down",
+      "pv": {
+        "edgeType": "user-action"
+      }
+    },
+    {
+      "id": "view-to-tap",
+      "fromNode": "card-view",
+      "fromSide": "bottom",
+      "toNode": "card-tap",
+      "toSide": "top",
+      "label": "tap",
+      "pv": {
+        "edgeType": "user-action"
+      }
+    },
+    {
+      "id": "pass-to-api-success",
+      "fromNode": "card-pass",
+      "fromSide": "bottom",
+      "toNode": "pass-api-success",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "data-flow"
+      }
+    },
+    {
+      "id": "pass-to-api-error",
+      "fromNode": "card-pass",
+      "fromSide": "left",
+      "toNode": "pass-api-error",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "error"
+      }
+    },
+    {
+      "id": "save-to-api-success",
+      "fromNode": "card-save",
+      "fromSide": "bottom",
+      "toNode": "save-api-success",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "data-flow"
+      }
+    },
+    {
+      "id": "save-to-api-error",
+      "fromNode": "card-save",
+      "fromSide": "right",
+      "toNode": "save-api-error",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "error"
+      }
+    },
+    {
+      "id": "pass-to-next",
+      "fromNode": "card-pass",
+      "fromSide": "right",
+      "toNode": "card-view",
+      "toSide": "left",
+      "label": "next card",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "save-to-next",
+      "fromNode": "card-save",
+      "fromSide": "left",
+      "toNode": "card-view",
+      "toSide": "right",
+      "label": "next card",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "undo-to-view",
+      "fromNode": "card-undo",
+      "fromSide": "top",
+      "toNode": "card-view",
+      "toSide": "bottom",
+      "label": "restore",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "view-to-exhausted",
+      "fromNode": "card-view",
+      "fromSide": "bottom",
+      "toNode": "stack-exhausted",
+      "toSide": "top",
+      "label": "no more cards",
+      "pv": {
+        "edgeType": "conditional"
+      }
+    }
+  ]
+}

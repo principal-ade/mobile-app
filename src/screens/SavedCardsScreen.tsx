@@ -143,16 +143,24 @@ export function SavedCardsScreen() {
   const handleCardPress = useCallback(
     (card: SavedCard) => {
       navigation.navigate('CardDetail', {
-        owner: card.repo.owner,
-        repo: card.repo.name,
-        commits: card.commits.map((c) => ({
-          sha: c.sha,
-          message: c.message,
-          author: c.author.login,
-          authorLogin: c.author.login,
-          authorAvatarUrl: c.author.avatarUrl || null,
-          date: c.committedAt,
-        })),
+        summary: {
+          owner: card.repo.owner,
+          repo: card.repo.name,
+          fullName: `${card.repo.owner}/${card.repo.name}`,
+          commits: card.commits.map((c) => ({
+            repoOwner: card.repo.owner,
+            repoName: card.repo.name,
+            sha: c.sha,
+            message: c.message,
+            author: c.author.login,
+            authorLogin: c.author.login,
+            authorEmail: '',
+            authorAvatarUrl: c.author.avatarUrl || null,
+            date: c.committedAt,
+          })),
+          latestCommitAt: card.latestCommitAt,
+          commitCount: card.commitCount,
+        },
       });
     },
     [navigation]
