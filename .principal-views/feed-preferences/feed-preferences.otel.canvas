@@ -1,0 +1,765 @@
+{
+  "name": "Feed Preferences Context",
+  "markdown": ".principal-views/feed-preferences/feed-preferences.md",
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
+    },
+    "error": {
+      "label": "Error Path"
+    },
+    "user-action": {
+      "label": "User Action"
+    },
+    "data-flow": {
+      "label": "Data Flow"
+    },
+    "conditional": {
+      "label": "Conditional"
+    },
+    "triggers": {
+      "label": "Triggers"
+    }
+  },
+  "nodes": [
+    {
+      "id": "context-bootstrap-started",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Bootstrap Started",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "feed-preferences.bootstrap.started",
+        "attributes": {}
+      }
+    },
+    {
+      "id": "context-bootstrap-load-storage",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#6d28d9",
+      "label": "Load From Storage",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/utils/feedStorage.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#8b5cf6",
+        "stroke": "#6d28d9"
+      },
+      "event": {
+        "name": "feed-preferences.bootstrap.load-storage",
+        "attributes": {
+          "storageType": {
+            "type": "string",
+            "description": "Storage used: 'secure-store' or 'local-storage'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "context-bootstrap-success",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 350,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Bootstrap Success",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "feed-preferences.bootstrap.success",
+        "attributes": {
+          "followedUsersCount": {
+            "type": "integer",
+            "description": "Number of users loaded from storage",
+            "required": true
+          },
+          "followedReposCount": {
+            "type": "integer",
+            "description": "Number of repos loaded from storage",
+            "required": true
+          },
+          "usedDefaults": {
+            "type": "boolean",
+            "description": "Whether default repos were used",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "context-bootstrap-error",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "label": "Bootstrap Error",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#ef4444",
+        "stroke": "#dc2626"
+      },
+      "event": {
+        "name": "feed-preferences.bootstrap.error",
+        "attributes": {
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "add-user",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -200,
+      "y": 500,
+      "width": 200,
+      "height": 100,
+      "color": "#1d4ed8",
+      "label": "Add User",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/screens/AddUserScreen.tsx",
+          "src/screens/FeedOnboardingScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "stroke": "#1d4ed8"
+      },
+      "event": {
+        "name": "feed-preferences.user.add",
+        "attributes": {
+          "login": {
+            "type": "string",
+            "description": "GitHub username being added",
+            "required": true
+          },
+          "previousVersion": {
+            "type": "integer",
+            "description": "Version before mutation",
+            "required": true
+          },
+          "newVersion": {
+            "type": "integer",
+            "description": "Version after mutation",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "remove-user",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -200,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#f59e0b",
+      "label": "Remove User",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/screens/FeedCustomizationScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#fbbf24",
+        "stroke": "#f59e0b"
+      },
+      "event": {
+        "name": "feed-preferences.user.remove",
+        "attributes": {
+          "login": {
+            "type": "string",
+            "description": "GitHub username being removed",
+            "required": true
+          },
+          "previousVersion": {
+            "type": "integer",
+            "description": "Version before mutation",
+            "required": true
+          },
+          "newVersion": {
+            "type": "integer",
+            "description": "Version after mutation",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "add-repo",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 500,
+      "width": 200,
+      "height": 100,
+      "color": "#1d4ed8",
+      "label": "Add Repo",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/screens/AddRepoScreen.tsx",
+          "src/screens/FeedOnboardingScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "stroke": "#1d4ed8"
+      },
+      "event": {
+        "name": "feed-preferences.repo.add",
+        "attributes": {
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name (owner/repo)",
+            "required": true
+          },
+          "previousVersion": {
+            "type": "integer",
+            "description": "Version before mutation",
+            "required": true
+          },
+          "newVersion": {
+            "type": "integer",
+            "description": "Version after mutation",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "remove-repo",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#f59e0b",
+      "label": "Remove Repo",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/screens/FeedCustomizationScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#fbbf24",
+        "stroke": "#f59e0b"
+      },
+      "event": {
+        "name": "feed-preferences.repo.remove",
+        "attributes": {
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name being removed",
+            "required": true
+          },
+          "previousVersion": {
+            "type": "integer",
+            "description": "Version before mutation",
+            "required": true
+          },
+          "newVersion": {
+            "type": "integer",
+            "description": "Version after mutation",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "reset-to-defaults",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -50,
+      "y": 800,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "label": "Reset to Defaults",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/screens/FeedCustomizationScreen.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#ef4444",
+        "stroke": "#dc2626"
+      },
+      "event": {
+        "name": "feed-preferences.reset",
+        "attributes": {
+          "previousUsersCount": {
+            "type": "integer",
+            "description": "Number of users before reset",
+            "required": true
+          },
+          "previousReposCount": {
+            "type": "integer",
+            "description": "Number of repos before reset",
+            "required": true
+          },
+          "previousVersion": {
+            "type": "integer",
+            "description": "Version before reset",
+            "required": true
+          },
+          "newVersion": {
+            "type": "integer",
+            "description": "Version after reset",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "persist-to-storage",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 575,
+      "width": 200,
+      "height": 100,
+      "color": "#6d28d9",
+      "label": "Persist to Storage",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx",
+          "src/utils/feedStorage.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#8b5cf6",
+        "stroke": "#6d28d9"
+      },
+      "event": {
+        "name": "feed-preferences.persist",
+        "attributes": {
+          "dataType": {
+            "type": "string",
+            "description": "What was persisted: 'users', 'repos', 'both'",
+            "required": true
+          },
+          "itemCount": {
+            "type": "integer",
+            "description": "Number of items persisted",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "persist-error",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 650,
+      "y": 575,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "label": "Persist Error",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#ef4444",
+        "stroke": "#dc2626"
+      },
+      "event": {
+        "name": "feed-preferences.persist.error",
+        "attributes": {
+          "dataType": {
+            "type": "string",
+            "description": "What failed to persist: 'users', 'repos'",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "version-changed",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 800,
+      "width": 200,
+      "height": 100,
+      "color": "#0891b2",
+      "label": "Version Changed",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/context/FeedPreferencesContext.tsx"
+        ],
+        "shape": "rectangle",
+        "fill": "#06b6d4",
+        "stroke": "#0891b2"
+      },
+      "event": {
+        "name": "feed-preferences.version.changed",
+        "attributes": {
+          "previousVersion": {
+            "type": "integer",
+            "description": "Previous version number",
+            "required": true
+          },
+          "newVersion": {
+            "type": "integer",
+            "description": "New version number",
+            "required": true
+          },
+          "trigger": {
+            "type": "string",
+            "description": "What caused the version change: 'add-user', 'remove-user', 'add-repo', 'remove-repo', 'reset'",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "activity-screen-refetch",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 400,
+      "y": 950,
+      "width": 200,
+      "height": 100,
+      "color": "#16a34a",
+      "label": "Activity Screen Refetch",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/ActivityTabScreen.tsx",
+          "src/hooks/useActivityFeed.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#22c55e",
+        "stroke": "#16a34a"
+      },
+      "event": {
+        "name": "feed-preferences.consumer.refetch",
+        "attributes": {
+          "consumer": {
+            "type": "string",
+            "description": "Which consumer triggered refetch: 'ActivityTabScreen', 'useActivityFeed'",
+            "required": true
+          },
+          "versionAtLastFetch": {
+            "type": "integer",
+            "description": "Version when last fetched",
+            "required": true
+          },
+          "currentVersion": {
+            "type": "integer",
+            "description": "Current version triggering refetch",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "api-sync-user",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": -200,
+      "y": 800,
+      "width": 200,
+      "height": 100,
+      "color": "#4b5563",
+      "label": "API Sync User",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/FeedCustomizationScreen.tsx",
+          "src/screens/AddUserScreen.tsx",
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#6b7280",
+        "stroke": "#4b5563"
+      },
+      "event": {
+        "name": "feed-preferences.api-sync.user",
+        "attributes": {
+          "action": {
+            "type": "string",
+            "description": "API action: 'follow', 'unfollow'",
+            "required": true
+          },
+          "login": {
+            "type": "string",
+            "description": "GitHub username",
+            "required": true
+          },
+          "success": {
+            "type": "boolean",
+            "description": "Whether API call succeeded",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "id": "api-sync-repo",
+      "type": "otel-event",
+      "otel": {
+        "status": "draft"
+      },
+      "x": 100,
+      "y": 950,
+      "width": 200,
+      "height": 100,
+      "color": "#4b5563",
+      "label": "API Sync Repo",
+      "pv": {
+        "status": "draft",
+        "references": [
+          "src/screens/FeedCustomizationScreen.tsx",
+          "src/screens/AddRepoScreen.tsx",
+          "src/services/FeedApiService.ts"
+        ],
+        "shape": "rectangle",
+        "fill": "#6b7280",
+        "stroke": "#4b5563"
+      },
+      "event": {
+        "name": "feed-preferences.api-sync.repo",
+        "attributes": {
+          "action": {
+            "type": "string",
+            "description": "API action: 'follow', 'unfollow'",
+            "required": true
+          },
+          "repoFullName": {
+            "type": "string",
+            "description": "Repository full name",
+            "required": true
+          },
+          "success": {
+            "type": "boolean",
+            "description": "Whether API call succeeded",
+            "required": true
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "bootstrap-1",
+      "fromNode": "context-bootstrap-started",
+      "fromSide": "bottom",
+      "toNode": "context-bootstrap-load-storage",
+      "toSide": "top",
+      "edgeType": "flow"
+    },
+    {
+      "id": "bootstrap-2",
+      "fromNode": "context-bootstrap-load-storage",
+      "fromSide": "bottom",
+      "toNode": "context-bootstrap-success",
+      "toSide": "top",
+      "edgeType": "flow"
+    },
+    {
+      "id": "bootstrap-3",
+      "fromNode": "context-bootstrap-load-storage",
+      "fromSide": "right",
+      "toNode": "context-bootstrap-error",
+      "toSide": "left",
+      "edgeType": "error"
+    },
+    {
+      "id": "bootstrap-4",
+      "fromNode": "context-bootstrap-error",
+      "fromSide": "bottom",
+      "toNode": "context-bootstrap-success",
+      "toSide": "right",
+      "label": "use defaults",
+      "edgeType": "conditional"
+    },
+    {
+      "id": "add-user-persist",
+      "fromNode": "add-user",
+      "fromSide": "right",
+      "toNode": "persist-to-storage",
+      "toSide": "left",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "remove-user-persist",
+      "fromNode": "remove-user",
+      "fromSide": "right",
+      "toNode": "persist-to-storage",
+      "toSide": "left",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "add-repo-persist",
+      "fromNode": "add-repo",
+      "fromSide": "right",
+      "toNode": "persist-to-storage",
+      "toSide": "left",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "remove-repo-persist",
+      "fromNode": "remove-repo",
+      "fromSide": "right",
+      "toNode": "persist-to-storage",
+      "toSide": "left",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "reset-persist",
+      "fromNode": "reset-to-defaults",
+      "fromSide": "right",
+      "toNode": "persist-to-storage",
+      "toSide": "bottom",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "persist-error-edge",
+      "fromNode": "persist-to-storage",
+      "fromSide": "right",
+      "toNode": "persist-error",
+      "toSide": "left",
+      "edgeType": "error"
+    },
+    {
+      "id": "persist-version",
+      "fromNode": "persist-to-storage",
+      "fromSide": "bottom",
+      "toNode": "version-changed",
+      "toSide": "top",
+      "edgeType": "flow"
+    },
+    {
+      "id": "version-activity",
+      "fromNode": "version-changed",
+      "fromSide": "bottom",
+      "toNode": "activity-screen-refetch",
+      "toSide": "top",
+      "label": "triggers",
+      "edgeType": "triggers"
+    },
+    {
+      "id": "add-user-api",
+      "fromNode": "add-user",
+      "fromSide": "bottom",
+      "toNode": "api-sync-user",
+      "toSide": "top",
+      "label": "async",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "remove-user-api",
+      "fromNode": "remove-user",
+      "fromSide": "bottom",
+      "toNode": "api-sync-user",
+      "toSide": "top",
+      "label": "async",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "add-repo-api",
+      "fromNode": "add-repo",
+      "fromSide": "bottom",
+      "toNode": "api-sync-repo",
+      "toSide": "top",
+      "label": "async",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "remove-repo-api",
+      "fromNode": "remove-repo",
+      "fromSide": "bottom",
+      "toNode": "api-sync-repo",
+      "toSide": "top",
+      "label": "async",
+      "edgeType": "data-flow"
+    }
+  ]
+}

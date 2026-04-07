@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,8 @@ import {
   type SuggestedUser,
 } from '../services/GitHubSearchService';
 import { followUser } from '../services/FeedApiService';
-import { getToken } from '../utils/authStorage';
-import { saveFollowedUsers, getFollowedUsers, type FollowedUser } from '../utils/feedStorage';
+import { useAuthContext } from '../context/AuthContext';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -37,6 +37,8 @@ export function AddUserScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const { token } = useAuthContext();
+  const { followedUsers, addUser } = useFeedPreferences();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GitHubUser[]>([]);
@@ -46,24 +48,21 @@ export function AddUserScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Track users added in this session and already-followed users
+  // Track users added in this session
   const [addedUsers, setAddedUsers] = useState<Set<string>>(new Set());
-  const [alreadyFollowing, setAlreadyFollowing] = useState<Set<string>>(new Set());
-  const tokenRef = useRef<string | null>(null);
+  const tokenRef = useRef<string | null>(token);
+  tokenRef.current = token;
 
-  // Load suggestions and already-followed users on mount
+  // Derive already-following from context
+  const alreadyFollowing = useMemo(
+    () => new Set(followedUsers.map((u) => u.login.toLowerCase())),
+    [followedUsers]
+  );
+
+  // Load suggestions on mount
   useEffect(() => {
-    async function loadData() {
+    async function loadSuggestions() {
       try {
-        const token = await getToken();
-        tokenRef.current = token;
-
-        // Load already-followed users
-        const followedUsers = await getFollowedUsers();
-        if (followedUsers) {
-          setAlreadyFollowing(new Set(followedUsers.map((u) => u.login.toLowerCase())));
-        }
-
         // Load suggestions
         const { users } = await getSuggestedUsers(token);
 
@@ -80,13 +79,13 @@ export function AddUserScreen() {
         }
         setSuggestions(sections);
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Failed to load suggestions:', err);
       } finally {
         setIsLoadingSuggestions(false);
       }
     }
-    loadData();
-  }, []);
+    loadSuggestions();
+  }, [token]);
 
   // Debounced search
   useEffect(() => {
@@ -127,23 +126,19 @@ export function AddUserScreen() {
       // Add to local state immediately for UI feedback
       setAddedUsers((prev) => new Set(prev).add(loginLower));
 
-      // Sync to API and local storage
-      try {
-        // Add to local storage
-        const currentUsers = (await getFollowedUsers()) ?? [];
-        const newUser: FollowedUser = { login, avatarUrl };
-        await saveFollowedUsers([...currentUsers, newUser]);
+      // Add to context (persists to storage automatically)
+      addUser({ login, avatarUrl });
 
-        // Sync to API if authenticated
-        if (tokenRef.current) {
+      // Sync to API if authenticated
+      if (tokenRef.current) {
+        try {
           await followUser(tokenRef.current, login);
+        } catch (err) {
+          console.warn('Failed to sync follow to API:', err);
         }
-      } catch (err) {
-        console.warn('Failed to sync follow:', err);
-        // Still keep in addedUsers for UI - will sync later
       }
     },
-    [alreadyFollowing, addedUsers]
+    [alreadyFollowing, addedUsers, addUser]
   );
 
   const renderSearchResult = useCallback(

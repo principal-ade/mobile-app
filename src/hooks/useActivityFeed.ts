@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { RepoActivitySummary } from '../types/activity';
 import { fetchActivityFeed, FEATURED_REPOS } from '../services/ActivityFeedService';
-import { getFollowedRepos } from '../utils/feedStorage';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 
 interface UseActivityFeedOptions {
   /** Repos to fetch (overrides saved preferences if provided) */
   repos?: string[];
   /** Auto-refresh interval in ms (0 to disable) */
   refreshInterval?: number;
-  /** Skip loading from storage and use provided/default repos */
+  /** Skip loading from context and use provided/default repos */
   skipStorage?: boolean;
 }
 
@@ -24,32 +24,23 @@ export function useActivityFeed(
 ): UseActivityFeedResult {
   const { repos: overrideRepos, refreshInterval = 0, skipStorage = false } = options;
 
+  // Get repos from context (always called to follow hook rules)
+  const { followedRepos, version, isLoading: contextLoading } = useFeedPreferences();
+
   const [summaries, setSummaries] = useState<RepoActivitySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resolvedRepos, setResolvedRepos] = useState<string[] | null>(overrideRepos ?? null);
 
-  // Load repos from storage on mount (unless overridden or skipped)
-  useEffect(() => {
-    if (overrideRepos || skipStorage) {
-      setResolvedRepos(overrideRepos ?? FEATURED_REPOS);
-      return;
+  // Derive resolved repos from context or overrides
+  const resolvedRepos = useMemo(() => {
+    if (overrideRepos) return overrideRepos;
+    if (skipStorage) return FEATURED_REPOS;
+    if (contextLoading) return null; // Wait for context to load
+    if (followedRepos.length > 0) {
+      return followedRepos.map((r) => `${r.owner}/${r.repo}`);
     }
-
-    async function loadRepos() {
-      try {
-        const savedRepos = await getFollowedRepos();
-        if (savedRepos && savedRepos.length > 0) {
-          setResolvedRepos(savedRepos.map((r) => `${r.owner}/${r.repo}`));
-        } else {
-          setResolvedRepos(FEATURED_REPOS);
-        }
-      } catch {
-        setResolvedRepos(FEATURED_REPOS);
-      }
-    }
-    loadRepos();
-  }, [overrideRepos, skipStorage]);
+    return FEATURED_REPOS;
+  }, [overrideRepos, skipStorage, contextLoading, followedRepos]);
 
   const fetchData = useCallback(async () => {
     if (!resolvedRepos) return; // Wait for repos to be loaded
@@ -70,12 +61,13 @@ export function useActivityFeed(
     await fetchData();
   }, [fetchData]);
 
-  // Initial fetch when repos are resolved
+  // Initial fetch when repos are resolved, and refetch when version changes
   useEffect(() => {
     if (resolvedRepos) {
       fetchData();
     }
-  }, [resolvedRepos, fetchData]);
+    // Include version to refetch when preferences change (only matters when using context)
+  }, [resolvedRepos, fetchData, version]);
 
   // Auto-refresh interval
   useEffect(() => {

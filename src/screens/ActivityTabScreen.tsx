@@ -5,7 +5,7 @@
  * with commit activity from followed users and repos.
  */
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import {
   HourlyActivityHeatmap,
   CommitTimestamp,
@@ -37,6 +38,7 @@ export function ActivityTabScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, token, user } = useAuth();
+  const { version } = useFeedPreferences();
 
   const [commits, setCommits] = useState<CommitTimestamp[]>([]);
   const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
@@ -58,9 +60,10 @@ export function ActivityTabScreen() {
   // Filter panel state
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
-  // Track if we've done initial fetch
+  // Track if we've done initial fetch and version at last fetch
   const hasFetched = useRef(false);
   const lastFetchTime = useRef<number>(0);
+  const versionAtLastFetch = useRef(version);
 
   const fetchActivity = useCallback(async (force = false) => {
     if (!token) {
@@ -96,12 +99,13 @@ export function ActivityTabScreen() {
       setRepos(response.repos);
       hasFetched.current = true;
       lastFetchTime.current = now;
+      versionAtLastFetch.current = version;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load activity');
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, version]);
 
   // Only fetch on initial mount
   useFocusEffect(
@@ -111,6 +115,14 @@ export function ActivityTabScreen() {
       }
     }, [fetchActivity])
   );
+
+  // Refetch when feed preferences change (version increments)
+  useEffect(() => {
+    if (hasFetched.current && versionAtLastFetch.current !== version) {
+      fetchActivity(true);
+      versionAtLastFetch.current = version;
+    }
+  }, [version, fetchActivity]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,8 @@ import {
   type SuggestedRepo,
 } from '../services/GitHubSearchService';
 import { followRepo } from '../services/FeedApiService';
-import { getToken } from '../utils/authStorage';
-import { saveFollowedRepos, getFollowedRepos, type FollowedRepo } from '../utils/feedStorage';
+import { useAuthContext } from '../context/AuthContext';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -37,6 +37,8 @@ export function AddRepoScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const { token } = useAuthContext();
+  const { followedRepos, addRepo } = useFeedPreferences();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GitHubRepo[]>([]);
@@ -46,26 +48,21 @@ export function AddRepoScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Track repos added in this session and already-followed repos
+  // Track repos added in this session
   const [addedRepos, setAddedRepos] = useState<Set<string>>(new Set());
-  const [alreadyFollowing, setAlreadyFollowing] = useState<Set<string>>(new Set());
-  const tokenRef = useRef<string | null>(null);
+  const tokenRef = useRef<string | null>(token);
+  tokenRef.current = token;
 
-  // Load suggestions and already-followed repos on mount
+  // Derive already-following from context
+  const alreadyFollowing = useMemo(
+    () => new Set(followedRepos.map((r) => `${r.owner}/${r.repo}`.toLowerCase())),
+    [followedRepos]
+  );
+
+  // Load suggestions on mount
   useEffect(() => {
-    async function loadData() {
+    async function loadSuggestions() {
       try {
-        const token = await getToken();
-        tokenRef.current = token;
-
-        // Load already-followed repos
-        const followedRepos = await getFollowedRepos();
-        if (followedRepos) {
-          setAlreadyFollowing(
-            new Set(followedRepos.map((r) => `${r.owner}/${r.repo}`.toLowerCase()))
-          );
-        }
-
         // Load suggestions
         const { repos } = await getSuggestedRepos(token);
 
@@ -82,13 +79,13 @@ export function AddRepoScreen() {
         }
         setSuggestions(sections);
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Failed to load suggestions:', err);
       } finally {
         setIsLoadingSuggestions(false);
       }
     }
-    loadData();
-  }, []);
+    loadSuggestions();
+  }, [token]);
 
   // Debounced search
   useEffect(() => {
@@ -129,23 +126,19 @@ export function AddRepoScreen() {
       // Add to local state immediately for UI feedback
       setAddedRepos((prev) => new Set(prev).add(repoKey));
 
-      // Sync to API and local storage
-      try {
-        // Add to local storage
-        const currentRepos = (await getFollowedRepos()) ?? [];
-        const newRepo: FollowedRepo = { owner, repo: name };
-        await saveFollowedRepos([...currentRepos, newRepo]);
+      // Add to context (persists to storage automatically)
+      addRepo({ owner, repo: name });
 
-        // Sync to API if authenticated
-        if (tokenRef.current) {
+      // Sync to API if authenticated
+      if (tokenRef.current) {
+        try {
           await followRepo(tokenRef.current, owner, name);
+        } catch (err) {
+          console.warn('Failed to sync follow to API:', err);
         }
-      } catch (err) {
-        console.warn('Failed to sync follow:', err);
-        // Still keep in addedRepos for UI - will sync later
       }
     },
-    [alreadyFollowing, addedRepos]
+    [alreadyFollowing, addedRepos, addRepo]
   );
 
   const renderSearchResult = useCallback(

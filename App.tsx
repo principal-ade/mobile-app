@@ -4,6 +4,7 @@ import { ThemeProvider } from '@principal-ade/industry-theme';
 import { iceTangerineDarkTheme } from './src/themes/iceTangerineDark';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { FeedPreferencesProvider } from './src/context/FeedPreferencesContext';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 export default function App() {
@@ -11,7 +12,9 @@ export default function App() {
     <ErrorBoundary>
       <ThemeProvider theme={iceTangerineDarkTheme}>
         <AuthProvider>
-          <AppNavigator />
+          <FeedPreferencesProvider>
+            <AppNavigator />
+          </FeedPreferencesProvider>
         </AuthProvider>
         <StatusBar style="light" />
       </ThemeProvider>

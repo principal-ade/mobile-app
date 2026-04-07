@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,86 +10,42 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
-import { FEATURED_REPOS } from '../services/ActivityFeedService';
 import {
-  type FollowedUser,
-  type FollowedRepo,
-  getFollowedUsers,
-  getFollowedRepos,
-  saveFollowedUsers,
-  saveFollowedRepos,
-} from '../utils/feedStorage';
+  useFeedPreferences,
+  DEFAULT_REPOS,
+} from '../context/FeedPreferencesContext';
 import {
   unfollowUser as apiUnfollowUser,
   unfollowRepo as apiUnfollowRepo,
 } from '../services/FeedApiService';
-import { getToken } from '../utils/authStorage';
+import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'FeedCustomization'>;
-
-// Parse featured repos into structured format
-const DEFAULT_REPOS: FollowedRepo[] = FEATURED_REPOS.map((fullName) => {
-  const [owner, repo] = fullName.split('/') as [string, string];
-  return { owner, repo, isFeatured: true };
-});
 
 export function FeedCustomizationScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const { token } = useAuthContext();
+  const {
+    followedUsers,
+    followedRepos,
+    isLoading,
+    removeUser,
+    removeRepo,
+    resetToDefaults,
+  } = useFeedPreferences();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [followedUsers, setFollowedUsers] = useState<FollowedUser[]>([]);
-  const [followedRepos, setFollowedRepos] = useState<FollowedRepo[]>([]);
-  const tokenRef = useRef<string | null>(null);
-
-  // Load data from local storage (reloads on focus to pick up changes from Add screens)
-  useFocusEffect(
-    useCallback(() => {
-      async function loadData() {
-        try {
-          const token = await getToken();
-          tokenRef.current = token;
-
-          // Load from local storage (Add screens save here directly)
-          const [savedUsers, savedRepos] = await Promise.all([
-            getFollowedUsers(),
-            getFollowedRepos(),
-          ]);
-          setFollowedUsers(savedUsers ?? []);
-          setFollowedRepos(savedRepos ?? DEFAULT_REPOS);
-        } catch (error) {
-          console.error('Failed to load feed settings:', error);
-          setFollowedRepos(DEFAULT_REPOS);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-      loadData();
-    }, [])
-  );
-
-  // Save users when they change
-  useEffect(() => {
-    if (!isLoading) {
-      saveFollowedUsers(followedUsers).catch(console.error);
-    }
-  }, [followedUsers, isLoading]);
-
-  // Save repos when they change
-  useEffect(() => {
-    if (!isLoading) {
-      saveFollowedRepos(followedRepos).catch(console.error);
-    }
-  }, [followedRepos, isLoading]);
+  const tokenRef = useRef<string | null>(token);
+  tokenRef.current = token;
 
   const handleRemoveUser = useCallback((login: string) => {
-    setFollowedUsers((prev) => prev.filter((u) => u.login !== login));
+    removeUser(login);
 
     // Sync to API
     if (tokenRef.current) {
@@ -98,10 +54,10 @@ export function FeedCustomizationScreen() {
         .catch((err) => console.warn('Failed to sync unfollow user:', err))
         .finally(() => setIsSyncing(false));
     }
-  }, []);
+  }, [removeUser]);
 
   const handleRemoveRepo = useCallback((owner: string, repo: string) => {
-    setFollowedRepos((prev) => prev.filter((r) => !(r.owner === owner && r.repo === repo)));
+    removeRepo(owner, repo);
 
     // Sync to API
     if (tokenRef.current) {
@@ -110,7 +66,7 @@ export function FeedCustomizationScreen() {
         .catch((err) => console.warn('Failed to sync unfollow repo:', err))
         .finally(() => setIsSyncing(false));
     }
-  }, []);
+  }, [removeRepo]);
 
   const handleResetToDefaults = useCallback(() => {
     Alert.alert(
@@ -122,13 +78,12 @@ export function FeedCustomizationScreen() {
           text: 'Reset',
           style: 'destructive',
           onPress: () => {
-            setFollowedUsers([]);
-            setFollowedRepos(DEFAULT_REPOS);
+            resetToDefaults();
           },
         },
       ]
     );
-  }, []);
+  }, [resetToDefaults]);
 
   const hasCustomizations =
     followedUsers.length > 0 ||
