@@ -383,7 +383,8 @@ export const HourlyActivityHeatmap: React.FC<HourlyActivityHeatmapProps> = memo(
                     // Current block: render 3x3 mini-grid
                     if (block.isCurrent) {
                       const miniGap = 1;
-                      const miniCellSize = (cellSize - miniGap * 2) / 3;
+                      // 3 cells per row, each with margin on all sides = 3 * miniGap total
+                      const miniCellSize = (cellSize - miniGap * 3) / 3;
 
                       const commitMinutes = new Set<number>();
                       filteredCommits.forEach(({ timestamp }) => {

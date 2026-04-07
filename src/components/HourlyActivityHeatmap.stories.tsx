@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, ScrollView as RNScrollView } from 'react-native';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
 import { HourlyActivityHeatmap, CommitTimestamp } from './HourlyActivityHeatmap';
 
 // Mock authors with GitHub avatar URLs
@@ -77,21 +78,23 @@ const Frame: React.FC<{ children: React.ReactNode; height?: number }> = ({
   children,
   height = 500,
 }) => (
-  <SafeAreaProvider>
-    <View
-      style={{
-        width: 320,
-        height,
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 8,
-        overflow: 'hidden',
-        padding: 16,
-      }}
-    >
-      {children}
-    </View>
-  </SafeAreaProvider>
+  <NavigationContainer>
+    <SafeAreaProvider>
+      <View
+        style={{
+          width: 320,
+          height,
+          borderWidth: 1,
+          borderColor: '#ccc',
+          borderRadius: 8,
+          overflow: 'hidden',
+          padding: 16,
+        }}
+      >
+        {children}
+      </View>
+    </SafeAreaProvider>
+  </NavigationContainer>
 );
 
 const meta: Meta<typeof HourlyActivityHeatmap> = {
