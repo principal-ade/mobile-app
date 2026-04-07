@@ -1,13 +1,10 @@
 {
-  "pv": {
-    "version": "1.0",
-    "name": "Activity Feed Spans",
-    "description": "Span conventions for the activity feed",
-    "markdown": ".principal-views/architecture-spans.md",
-    "edgeTypes": {
-      "flow": {
-        "label": "Flow"
-      }
+  "name": "Activity Feed Spans",
+  "description": "Span conventions for the activity feed",
+  "markdown": ".principal-views/architecture-spans.md",
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
     }
   },
   "nodes": [
@@ -65,9 +62,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "triggers",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     }
   ]
 }

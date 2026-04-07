@@ -1,4 +1,52 @@
 {
+  "name": "App Navigation",
+  "description": "Current screen structure and navigation flow",
+  "markdown": ".principal-views/app-navigation.md",
+  "display": {
+    "layout": "manual"
+  },
+  "nodeTypes": {
+    "component": {
+      "label": "Component",
+      "shape": "rectangle"
+    },
+    "decision": {
+      "label": "Decision",
+      "shape": "diamond"
+    },
+    "screen": {
+      "label": "Screen",
+      "shape": "rectangle"
+    },
+    "external": {
+      "label": "External Service",
+      "shape": "rectangle"
+    },
+    "storage": {
+      "label": "Storage",
+      "shape": "rectangle"
+    }
+  },
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
+    },
+    "conditional": {
+      "label": "Conditional"
+    },
+    "data-flow": {
+      "label": "Data Flow"
+    },
+    "navigation": {
+      "label": "Navigation"
+    },
+    "api-call": {
+      "label": "API Call"
+    },
+    "planned": {
+      "label": "Planned"
+    }
+  },
   "nodes": [
     {
       "id": "app-root",
@@ -132,9 +180,7 @@
       "toNode": "auth-check",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "auth-to-login",
@@ -143,9 +189,7 @@
       "fromSide": "left",
       "toSide": "top",
       "label": "not authenticated",
-      "pv": {
-        "edgeType": "conditional"
-      }
+      "edgeType": "conditional"
     },
     {
       "id": "auth-to-repos",
@@ -154,9 +198,7 @@
       "fromSide": "right",
       "toSide": "top",
       "label": "authenticated",
-      "pv": {
-        "edgeType": "conditional"
-      }
+      "edgeType": "conditional"
     },
     {
       "id": "login-to-store",
@@ -165,9 +207,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "label": "save token",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "repos-to-document",
@@ -176,9 +216,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "label": "select file",
-      "pv": {
-        "edgeType": "navigation"
-      }
+      "edgeType": "navigation"
     },
     {
       "id": "repos-to-api",
@@ -187,9 +225,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "fetch repos/contents",
-      "pv": {
-        "edgeType": "api-call"
-      }
+      "edgeType": "api-call"
     },
     {
       "id": "document-to-api",
@@ -198,9 +234,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "fetch file",
-      "pv": {
-        "edgeType": "api-call"
-      }
+      "edgeType": "api-call"
     },
     {
       "id": "login-success",
@@ -210,10 +244,7 @@
       "toSide": "left",
       "label": "OAuth success",
       "color": "#22c55e",
-      "pv": {
-        "edgeType": "navigation",
-        "style": "dashed"
-      }
+      "edgeType": "navigation"
     },
     {
       "id": "future-replaces",
@@ -223,61 +254,7 @@
       "toSide": "bottom",
       "label": "will replace",
       "color": "#f97316",
-      "pv": {
-        "edgeType": "planned",
-        "style": "dotted"
-      }
+      "edgeType": "planned"
     }
-  ],
-  "pv": {
-    "version": "1.0",
-    "name": "App Navigation",
-    "description": "Current screen structure and navigation flow",
-    "markdown": ".principal-views/app-navigation.md",
-    "display": {
-      "layout": "manual"
-    },
-    "nodeTypes": {
-      "component": {
-        "label": "Component",
-        "shape": "rectangle"
-      },
-      "decision": {
-        "label": "Decision",
-        "shape": "diamond"
-      },
-      "screen": {
-        "label": "Screen",
-        "shape": "rectangle"
-      },
-      "external": {
-        "label": "External Service",
-        "shape": "rectangle"
-      },
-      "storage": {
-        "label": "Storage",
-        "shape": "rectangle"
-      }
-    },
-    "edgeTypes": {
-      "flow": {
-        "label": "Flow"
-      },
-      "conditional": {
-        "label": "Conditional"
-      },
-      "data-flow": {
-        "label": "Data Flow"
-      },
-      "navigation": {
-        "label": "Navigation"
-      },
-      "api-call": {
-        "label": "API Call"
-      },
-      "planned": {
-        "label": "Planned"
-      }
-    }
-  }
+  ]
 }

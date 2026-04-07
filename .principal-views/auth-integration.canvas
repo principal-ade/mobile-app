@@ -1,4 +1,39 @@
 {
+  "name": "Mobile Auth Flow",
+  "description": "Mobile app authentication via centralized auth server with WorkOS",
+  "markdown": ".principal-views/auth-integration.md",
+  "display": {
+    "layout": "manual",
+    "theme": {
+      "primary": "#22c55e",
+      "danger": "#ef4444"
+    }
+  },
+  "nodeTypes": {
+    "client": {
+      "label": "Client",
+      "shape": "rectangle"
+    },
+    "service": {
+      "label": "Service",
+      "shape": "rectangle"
+    },
+    "data": {
+      "label": "Data",
+      "shape": "rectangle"
+    }
+  },
+  "edgeTypes": {
+    "auth-flow": {
+      "label": "Auth Flow"
+    },
+    "data-flow": {
+      "label": "Data Flow"
+    },
+    "api-call": {
+      "label": "API Call"
+    }
+  },
   "nodes": [
     {
       "id": "impl-label",
@@ -119,15 +154,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "1. /start + PKCE",
-      "pv": {
-        "style": "solid",
-        "edgeType": "auth-flow",
-        "animation": {
-          "type": "flow",
-          "duration": 2000,
-          "color": "#22c55e"
-        }
-      }
+      "edgeType": "auth-flow"
     },
     {
       "id": "flow-2",
@@ -136,15 +163,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "2. WorkOS OAuth",
-      "pv": {
-        "style": "solid",
-        "edgeType": "auth-flow",
-        "animation": {
-          "type": "flow",
-          "duration": 2000,
-          "color": "#8b5cf6"
-        }
-      }
+      "edgeType": "auth-flow"
     },
     {
       "id": "flow-3",
@@ -153,15 +172,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "3. GitHub OAuth",
-      "pv": {
-        "style": "solid",
-        "edgeType": "auth-flow",
-        "animation": {
-          "type": "flow",
-          "duration": 2000,
-          "color": "#8b5cf6"
-        }
-      }
+      "edgeType": "auth-flow"
     },
     {
       "id": "flow-4",
@@ -170,15 +181,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "label": "4. /token + verify",
-      "pv": {
-        "style": "solid",
-        "edgeType": "data-flow",
-        "animation": {
-          "type": "flow",
-          "duration": 2000,
-          "color": "#22c55e"
-        }
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "flow-5",
@@ -187,10 +190,7 @@
       "fromSide": "left",
       "toSide": "bottom",
       "label": "5. Store tokens",
-      "pv": {
-        "style": "solid",
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "flow-6",
@@ -199,15 +199,7 @@
       "fromSide": "bottom",
       "toSide": "left",
       "label": "6. Call APIs",
-      "pv": {
-        "style": "solid",
-        "edgeType": "api-call",
-        "animation": {
-          "type": "flow",
-          "duration": 2000,
-          "color": "#06b6d4"
-        }
-      }
+      "edgeType": "api-call"
     },
     {
       "id": "benefit-link",
@@ -215,48 +207,7 @@
       "toNode": "tokens",
       "fromSide": "right",
       "toSide": "left",
-      "pv": {
-        "style": "dotted",
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     }
-  ],
-  "pv": {
-    "version": "1.0",
-    "name": "Mobile Auth Flow",
-    "description": "Mobile app authentication via centralized auth server with WorkOS",
-    "markdown": ".principal-views/auth-integration.md",
-    "display": {
-      "layout": "manual",
-      "theme": {
-        "primary": "#22c55e",
-        "danger": "#ef4444"
-      }
-    },
-    "nodeTypes": {
-      "client": {
-        "label": "Client",
-        "shape": "rectangle"
-      },
-      "service": {
-        "label": "Service",
-        "shape": "rectangle"
-      },
-      "data": {
-        "label": "Data",
-        "shape": "rectangle"
-      }
-    },
-    "edgeTypes": {
-      "auth-flow": {
-        "label": "Auth Flow"
-      },
-      "data-flow": {
-        "label": "Data Flow"
-      },
-      "api-call": {
-        "label": "API Call"
-      }
-    }
-  }
+  ]
 }

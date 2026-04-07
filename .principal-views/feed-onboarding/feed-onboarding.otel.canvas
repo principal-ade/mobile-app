@@ -1,24 +1,21 @@
 {
-  "pv": {
-    "name": "Feed Onboarding",
-    "version": "1.0.0",
-    "markdown": ".principal-views/feed-onboarding/feed-onboarding.md",
-    "edgeTypes": {
-      "flow": {
-        "label": "Flow"
-      },
-      "error": {
-        "label": "Error Path"
-      },
-      "user-action": {
-        "label": "User Action"
-      },
-      "data-flow": {
-        "label": "Data Flow"
-      },
-      "conditional": {
-        "label": "Conditional"
-      }
+  "name": "Feed Onboarding",
+  "markdown": ".principal-views/feed-onboarding/feed-onboarding.md",
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
+    },
+    "error": {
+      "label": "Error Path"
+    },
+    "user-action": {
+      "label": "User Action"
+    },
+    "data-flow": {
+      "label": "Data Flow"
+    },
+    "conditional": {
+      "label": "Conditional"
     }
   },
   "nodes": [
@@ -590,9 +587,7 @@
       "toNode": "onboarding-started",
       "toSide": "top",
       "label": "needs onboarding",
-      "pv": {
-        "edgeType": "conditional"
-      }
+      "edgeType": "conditional"
     },
     {
       "id": "start-to-step1",
@@ -600,9 +595,7 @@
       "fromSide": "bottom",
       "toNode": "step1-users",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "step1-search",
@@ -610,9 +603,7 @@
       "fromSide": "right",
       "toNode": "user-search",
       "toSide": "left",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "step1-select",
@@ -620,9 +611,7 @@
       "fromSide": "right",
       "toNode": "user-selected",
       "toSide": "left",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "search-to-select",
@@ -630,9 +619,7 @@
       "fromSide": "bottom",
       "toNode": "user-selected",
       "toSide": "top",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "step1-to-complete",
@@ -641,9 +628,7 @@
       "toNode": "step1-complete",
       "toSide": "top",
       "label": "next/skip",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "step1-to-step2",
@@ -651,9 +636,7 @@
       "fromSide": "bottom",
       "toNode": "step2-repos",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "step2-search",
@@ -661,9 +644,7 @@
       "fromSide": "right",
       "toNode": "repo-search",
       "toSide": "left",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "step2-select",
@@ -671,9 +652,7 @@
       "fromSide": "right",
       "toNode": "repo-selected",
       "toSide": "left",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "repo-search-to-select",
@@ -681,9 +660,7 @@
       "fromSide": "bottom",
       "toNode": "repo-selected",
       "toSide": "top",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "step2-to-complete",
@@ -692,9 +669,7 @@
       "toNode": "onboarding-complete",
       "toSide": "top",
       "label": "done/skip",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "complete-to-follow-user",
@@ -703,9 +678,7 @@
       "toNode": "follow-user-success",
       "toSide": "right",
       "label": "per user",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "follow-user-error-edge",
@@ -713,9 +686,7 @@
       "fromSide": "top",
       "toNode": "follow-user-error",
       "toSide": "bottom",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "complete-to-follow-repo",
@@ -724,9 +695,7 @@
       "toNode": "follow-repo-success",
       "toSide": "right",
       "label": "per repo",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "follow-repo-error-edge",
@@ -734,9 +703,7 @@
       "fromSide": "top",
       "toNode": "follow-repo-error",
       "toSide": "bottom",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "step2-to-skipped",
@@ -745,9 +712,7 @@
       "toNode": "onboarding-skipped",
       "toSide": "left",
       "label": "skip all",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     }
   ]
 }

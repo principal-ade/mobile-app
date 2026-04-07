@@ -1,24 +1,21 @@
 {
-  "pv": {
-    "name": "Swipe Feed",
-    "version": "1.0.0",
-    "markdown": ".principal-views/swipe-feed/swipe-feed.md",
-    "edgeTypes": {
-      "flow": {
-        "label": "Flow"
-      },
-      "error": {
-        "label": "Error Path"
-      },
-      "user-action": {
-        "label": "User Action"
-      },
-      "data-flow": {
-        "label": "Data Flow"
-      },
-      "conditional": {
-        "label": "Conditional"
-      }
+  "name": "Swipe Feed",
+  "markdown": ".principal-views/swipe-feed/swipe-feed.md",
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
+    },
+    "error": {
+      "label": "Error Path"
+    },
+    "user-action": {
+      "label": "User Action"
+    },
+    "data-flow": {
+      "label": "Data Flow"
+    },
+    "conditional": {
+      "label": "Conditional"
     }
   },
   "nodes": [
@@ -597,9 +594,7 @@
       "fromSide": "bottom",
       "toNode": "feed-load-success",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "load-to-error",
@@ -607,9 +602,7 @@
       "fromSide": "right",
       "toNode": "feed-load-error",
       "toSide": "left",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "load-to-empty",
@@ -618,9 +611,7 @@
       "toNode": "feed-empty",
       "toSide": "left",
       "label": "no cards",
-      "pv": {
-        "edgeType": "conditional"
-      }
+      "edgeType": "conditional"
     },
     {
       "id": "success-to-view",
@@ -628,9 +619,7 @@
       "fromSide": "bottom",
       "toNode": "card-view",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "view-to-pass",
@@ -639,9 +628,7 @@
       "toNode": "card-pass",
       "toSide": "top",
       "label": "swipe left/up",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "view-to-save",
@@ -650,9 +637,7 @@
       "toNode": "card-save",
       "toSide": "top",
       "label": "swipe right",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "view-to-undo",
@@ -661,9 +646,7 @@
       "toNode": "card-undo",
       "toSide": "top",
       "label": "swipe down",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "view-to-tap",
@@ -672,9 +655,7 @@
       "toNode": "card-tap",
       "toSide": "top",
       "label": "tap",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "pass-to-api-success",
@@ -682,9 +663,7 @@
       "fromSide": "bottom",
       "toNode": "pass-api-success",
       "toSide": "top",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "pass-to-api-error",
@@ -692,9 +671,7 @@
       "fromSide": "left",
       "toNode": "pass-api-error",
       "toSide": "top",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "save-to-api-success",
@@ -702,9 +679,7 @@
       "fromSide": "bottom",
       "toNode": "save-api-success",
       "toSide": "top",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "save-to-api-error",
@@ -712,9 +687,7 @@
       "fromSide": "right",
       "toNode": "save-api-error",
       "toSide": "top",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "pass-to-next",
@@ -723,9 +696,7 @@
       "toNode": "card-view",
       "toSide": "left",
       "label": "next card",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "save-to-next",
@@ -734,9 +705,7 @@
       "toNode": "card-view",
       "toSide": "right",
       "label": "next card",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "undo-to-view",
@@ -745,9 +714,7 @@
       "toNode": "card-view",
       "toSide": "bottom",
       "label": "restore",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "view-to-exhausted",
@@ -756,9 +723,7 @@
       "toNode": "stack-exhausted",
       "toSide": "top",
       "label": "no more cards",
-      "pv": {
-        "edgeType": "conditional"
-      }
+      "edgeType": "conditional"
     }
   ]
 }

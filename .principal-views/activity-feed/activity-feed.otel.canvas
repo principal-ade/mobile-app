@@ -1,24 +1,21 @@
 {
-  "pv": {
-    "name": "Mobile Activity Feed",
-    "version": "1.0.0",
-    "markdown": ".principal-views/activity-feed/activity-feed.md",
-    "edgeTypes": {
-      "flow": {
-        "label": "Flow"
-      },
-      "error": {
-        "label": "Error Path"
-      },
-      "user-action": {
-        "label": "User Action"
-      },
-      "data-flow": {
-        "label": "Data Flow"
-      },
-      "conditional": {
-        "label": "Conditional"
-      }
+  "name": "Mobile Activity Feed",
+  "markdown": ".principal-views/activity-feed/activity-feed.md",
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
+    },
+    "error": {
+      "label": "Error Path"
+    },
+    "user-action": {
+      "label": "User Action"
+    },
+    "data-flow": {
+      "label": "Data Flow"
+    },
+    "conditional": {
+      "label": "Conditional"
     }
   },
   "nodes": [
@@ -655,9 +652,7 @@
       "fromSide": "bottom",
       "toNode": "feed-fetch-batch",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "init-2",
@@ -666,9 +661,7 @@
       "toNode": "feed-fetch-repo-item",
       "toSide": "top",
       "label": "per repo",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "init-3",
@@ -676,9 +669,7 @@
       "fromSide": "right",
       "toNode": "feed-fetch-repo-error",
       "toSide": "left",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "init-4",
@@ -686,9 +677,7 @@
       "fromSide": "right",
       "toNode": "feed-init-error",
       "toSide": "left",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "init-5",
@@ -697,9 +686,7 @@
       "toNode": "feed-init-success",
       "toSide": "top",
       "label": "all loaded",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "init-6",
@@ -708,9 +695,7 @@
       "toNode": "feed-init-empty",
       "toSide": "left",
       "label": "no commits",
-      "pv": {
-        "edgeType": "conditional"
-      }
+      "edgeType": "conditional"
     },
     {
       "id": "refresh-1",
@@ -719,9 +704,7 @@
       "toNode": "feed-refresh-started",
       "toSide": "top",
       "label": "active",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "refresh-2",
@@ -729,9 +712,7 @@
       "fromSide": "bottom",
       "toNode": "feed-refresh-complete",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "refresh-3",
@@ -740,9 +721,7 @@
       "toNode": "feed-fetch-batch",
       "toSide": "left",
       "label": "triggers",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "ui-1",
@@ -751,9 +730,7 @@
       "toNode": "card-swipe",
       "toSide": "top",
       "label": "user interaction",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "ui-2",
@@ -761,9 +738,7 @@
       "fromSide": "bottom",
       "toNode": "commit-swipe",
       "toSide": "top",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "ui-3",
@@ -772,9 +747,7 @@
       "toNode": "filecity-load",
       "toSide": "top",
       "label": "triggers",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "ui-4",
@@ -782,9 +755,7 @@
       "fromSide": "right",
       "toNode": "filecity-error",
       "toSide": "left",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "ui-5",
@@ -792,9 +763,7 @@
       "fromSide": "right",
       "toNode": "author-tap",
       "toSide": "left",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     },
     {
       "id": "ui-6",
@@ -802,9 +771,7 @@
       "fromSide": "right",
       "toNode": "commit-tap",
       "toSide": "left",
-      "pv": {
-        "edgeType": "user-action"
-      }
+      "edgeType": "user-action"
     }
   ]
 }
