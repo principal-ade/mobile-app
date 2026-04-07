@@ -18,7 +18,6 @@ import FeedTabScreen from '../screens/FeedTabScreen';
 import ActivityTabScreen from '../screens/ActivityTabScreen';
 import SavedTabScreen from '../screens/SavedTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
-import FileCityDemoScreen from '../screens/FileCityDemoScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import RepoFileCityScreen from '../screens/RepoFileCityScreen';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -268,11 +267,6 @@ export default function AppNavigator() {
                 headerShown: false,
                 presentation: 'modal',
               }}
-            />
-            <Stack.Screen
-              name="FileCityDemo"
-              component={FileCityDemoScreen}
-              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="RepoFileCity"

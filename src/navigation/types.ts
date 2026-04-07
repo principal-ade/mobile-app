@@ -52,7 +52,6 @@ export type RootStackParamList = {
     };
   };
   SavedCards: undefined;
-  FileCityDemo: undefined;
   RepoFileCity: {
     owner: string;
     name: string;

@@ -48,7 +48,7 @@ export const SimpleProject: Story = {
     return (
       <View style={styles.fullHeight}>
         <View style={styles.header}>
-          <Text style={styles.title}>Simple Project</Text>
+                    <Text style={styles.title}>Simple Project</Text>
           <Text style={styles.subtitle}>
             {simpleCityData.metadata.totalFiles} files, {simpleCityData.metadata.totalDirectories} directories
           </Text>
@@ -91,7 +91,7 @@ export const MediumProject: Story = {
     return (
       <View style={styles.fullHeight}>
         <View style={styles.header}>
-          <Text style={styles.title}>Medium Project</Text>
+                    <Text style={styles.title}>Medium Project</Text>
           <Text style={styles.subtitle}>
             {mediumCityData.metadata.totalFiles} files, {mediumCityData.metadata.totalDirectories} directories
           </Text>
@@ -128,7 +128,7 @@ export const ComplexProject: Story = {
     return (
       <View style={styles.fullHeight}>
         <View style={styles.header}>
-          <Text style={styles.title}>Complex Project</Text>
+                    <Text style={styles.title}>Complex Project</Text>
           <Text style={styles.subtitle}>
             {complexCityData.metadata.totalFiles} files, {complexCityData.metadata.totalDirectories} directories
           </Text>
@@ -162,7 +162,7 @@ export const WithHighlightLayers: Story = {
     return (
       <View style={styles.fullHeight}>
         <View style={styles.header}>
-          <Text style={styles.title}>With Highlight Layers</Text>
+                    <Text style={styles.title}>With Highlight Layers</Text>
           <Text style={styles.subtitle}>
             TypeScript files (blue border) and Test files (green border) are highlighted
           </Text>
@@ -190,76 +190,8 @@ export const DarkTheme: Story = {
   render: (args) => (
     <View style={styles.fullHeight}>
       <View style={[styles.header, { backgroundColor: '#000' }]}>
-        <Text style={styles.title}>Dark Theme</Text>
+                <Text style={styles.title}>Dark Theme</Text>
         <Text style={styles.subtitle}>Sleek dark appearance with rounded corners</Text>
-      </View>
-      <View style={styles.canvasContainer}>
-        <FileCityCanvas {...args} />
-      </View>
-    </View>
-  ),
-};
-
-export const LightTheme: Story = {
-  args: {
-    cityData: mediumCityData,
-    backgroundColor: '#f8fafc',
-    defaultBuildingColor: '#94a3b8',
-    defaultDistrictColor: '#e2e8f0',
-    buildingBorderRadius: 2,
-    showDirectoryLabels: true,
-    enableZoom: true,
-    enablePan: true,
-  },
-  render: (args) => (
-    <View style={styles.fullHeight}>
-      <View style={[styles.header, { backgroundColor: '#f8fafc' }]}>
-        <Text style={[styles.title, { color: '#1e293b' }]}>Light Theme</Text>
-        <Text style={[styles.subtitle, { color: '#64748b' }]}>
-          Light mode for daytime use
-        </Text>
-      </View>
-      <View style={styles.canvasContainer}>
-        <FileCityCanvas {...args} />
-      </View>
-    </View>
-  ),
-};
-
-export const ZoomDisabled: Story = {
-  args: {
-    cityData: simpleCityData,
-    backgroundColor: '#1a1a2e',
-    enableZoom: false,
-    enablePan: true,
-    showDirectoryLabels: true,
-  },
-  render: (args) => (
-    <View style={styles.fullHeight}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Zoom Disabled</Text>
-        <Text style={styles.subtitle}>Pinch to zoom is disabled, but panning works</Text>
-      </View>
-      <View style={styles.canvasContainer}>
-        <FileCityCanvas {...args} />
-      </View>
-    </View>
-  ),
-};
-
-export const PanDisabled: Story = {
-  args: {
-    cityData: simpleCityData,
-    backgroundColor: '#1a1a2e',
-    enableZoom: true,
-    enablePan: false,
-    showDirectoryLabels: true,
-  },
-  render: (args) => (
-    <View style={styles.fullHeight}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Pan Disabled</Text>
-        <Text style={styles.subtitle}>Panning is disabled, but pinch to zoom works</Text>
       </View>
       <View style={styles.canvasContainer}>
         <FileCityCanvas {...args} />
@@ -285,6 +217,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a3e',
+  },
+  badge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10b981',
+    backgroundColor: '#10b98120',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 18,

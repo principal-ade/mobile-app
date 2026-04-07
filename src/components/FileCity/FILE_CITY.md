@@ -8,15 +8,15 @@ File City is a 2D visualization that represents a codebase as a city layout, whe
 
 This is a port of the web-based `ArchitectureMapHighlightLayers` component from `web-ade`.
 
-## Current Implementation (SVG)
+## Implementation (Skia)
 
-The mobile implementation uses `react-native-svg` for rendering and `react-native-gesture-handler` for interactions.
+The mobile implementation uses `@shopify/react-native-skia` for GPU-accelerated rendering and `react-native-reanimated` + `react-native-gesture-handler` for interactions.
 
 ### Components
 
 ```
 src/components/FileCity/
-├── FileCityCanvas.tsx      # Main SVG canvas component
+├── FileCityCanvas.tsx      # Main Skia canvas component
 ├── drawingUtils.ts         # Coordinate transforms, hit testing, color utils
 ├── types.ts                # Re-exports from @principal-ai/file-city-builder
 ├── mockData.ts             # Mock data generator for stories/demos
@@ -26,113 +26,41 @@ src/components/FileCity/
 ### Key Dependencies
 
 - `@principal-ai/file-city-builder` - Official package for building city data from file trees
-- `react-native-svg` - SVG rendering
+- `@shopify/react-native-skia` - GPU-accelerated 2D rendering
+- `react-native-reanimated` - Worklet-based animations
 - `react-native-gesture-handler` - Pan, pinch, tap gestures
 
 ### Features
 
+- GPU-accelerated rendering (handles 1000+ buildings)
 - Pan and pinch-to-zoom navigation
 - Tap to select buildings/districts
 - File type coloring via `getFileColor()` from the builder
 - Highlight layers for emphasizing specific files/directories
 - Directory border rendering (no fill)
 
+### Usage
+
+```tsx
+import { FileCityCanvas } from '@/components/FileCity';
+
+<FileCityCanvas
+  cityData={cityData}
+  highlightLayers={highlightLayers}
+  onBuildingPress={(building) => console.log(building.path)}
+  onDistrictPress={(district) => console.log(district.path)}
+/>
+```
+
+**Note:** FileCityCanvas requires native code (Skia) and won't work in web Storybook. Test on device/simulator.
+
 ### Screens
 
-- `FileCityDemoScreen` - Demo with mock data and complexity selector
 - `RepoFileCityScreen` - Real repository visualization via GitHub API
 
 ### Services
 
 - `FileCityService.ts` - Fetches file trees from API and builds city data
-
-## Why SVG (Not Skia)
-
-We initially attempted to use `@shopify/react-native-skia` with `react-native-reanimated` for better performance, but encountered significant issues:
-
-1. **Babel plugin conflicts** - The Reanimated babel plugin caused build failures
-2. **Complex setup** - Required extensive metro/babel configuration
-3. **Debugging difficulty** - Errors were cryptic and hard to trace
-
-SVG was chosen as a pragmatic alternative because:
-- Works out of the box with React Native
-- Familiar declarative API
-- Adequate performance for moderate-sized repositories
-- No additional build configuration needed
-
-## Future: Migration to Skia
-
-For larger repositories and smoother interactions, migrating to Skia would provide:
-
-### Benefits
-
-- **GPU-accelerated rendering** - Significantly faster for 1000+ buildings
-- **60fps animations** - Smooth zoom/pan via Reanimated worklets
-- **Lower memory usage** - No DOM-like overhead
-- **Advanced effects** - Shadows, gradients, blur effects
-
-### Migration Plan
-
-1. **Resolve Reanimated setup**
-   - Ensure babel plugin is properly configured
-   - Test with a minimal Skia component first
-   - Consider using Skia without Reanimated if issues persist
-
-2. **Create SkiaFileCityCanvas**
-   - Port drawing logic to Skia Canvas API
-   - Use `drawRect()`, `drawRRect()` for buildings/districts
-   - Implement text rendering with Skia fonts
-
-3. **Gesture handling**
-   - Use Reanimated's `useSharedValue` for transform state
-   - Implement gestures with `useAnimatedGestureHandler`
-   - Run all transforms on UI thread for 60fps
-
-4. **Performance optimizations**
-   - Implement level-of-detail (LOD) - hide small buildings when zoomed out
-   - Use spatial indexing for hit testing
-   - Consider offscreen rendering for static layers
-
-5. **Feature parity checklist**
-   - [ ] Building rendering with file type colors
-   - [ ] District border rendering
-   - [ ] Pan gesture
-   - [ ] Pinch-to-zoom gesture
-   - [ ] Tap to select
-   - [ ] Highlight layers
-   - [ ] Directory labels (optional)
-
-### Skia Code Structure (Proposed)
-
-```tsx
-// SkiaFileCityCanvas.tsx
-import { Canvas, Rect, RoundedRect, Group } from '@shopify/react-native-skia';
-import { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
-
-function SkiaFileCityCanvas({ cityData, ... }) {
-  const scale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-
-  // Gesture handlers update shared values on UI thread
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      translateX.value += e.changeX;
-      translateY.value += e.changeY;
-    });
-
-  return (
-    <GestureDetector gesture={panGesture}>
-      <Canvas style={{ flex: 1 }}>
-        <Group transform={[{ scale }, { translateX }, { translateY }]}>
-          {/* Districts */}
-          {/* Buildings */}
-        </Group>
-      </Canvas>
-    </GestureDetector>
-  );
-}
-```
 
 ## API Integration
 
@@ -147,12 +75,14 @@ Response is processed using:
 2. `buildFileSystemTreeFromFileInfoList()` - Builds FileTree structure
 3. `CodeCityBuilderWithGrid.buildCityFromFileSystem()` - Generates CityData
 
-## Performance Considerations
+## Performance
 
-Current SVG implementation works well for:
+Skia implementation handles:
 - Small repos: < 100 files - Excellent
-- Medium repos: 100-500 files - Good
-- Large repos: 500-1000 files - Acceptable
-- Very large repos: > 1000 files - Consider Skia migration
+- Medium repos: 100-500 files - Excellent
+- Large repos: 500-1000 files - Good
+- Very large repos: > 1000 files - Good (API may truncate)
 
-The API truncates very large repos to prevent performance issues.
+## Historical Note
+
+The original implementation used `react-native-svg` for rendering. It was replaced with Skia for better performance with large repositories. If you need to reference the SVG implementation, see the git history before this commit.
