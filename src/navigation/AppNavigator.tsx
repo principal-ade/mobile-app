@@ -18,6 +18,9 @@ import FeedTabScreen from '../screens/FeedTabScreen';
 import ActivityTabScreen from '../screens/ActivityTabScreen';
 import SavedTabScreen from '../screens/SavedTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
+import FileCityDemoScreen from '../screens/FileCityDemoScreen';
+import SearchTabScreen from '../screens/SearchTabScreen';
+import RepoFileCityScreen from '../screens/RepoFileCityScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 
@@ -38,6 +41,7 @@ const linking: LinkingOptions<RootStackParamList> = {
         screens: {
           Feed: 'feed',
           Activity: 'activity',
+          Search: 'search',
           Saved: 'saved',
           About: 'about',
         },
@@ -117,6 +121,20 @@ function ActivityIcon({ color }: { color: string }) {
   );
 }
 
+function SearchIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.iconContainer}>
+      <View style={[styles.searchIconCircle, { borderColor: color }]} />
+      <View
+        style={[
+          styles.searchIconHandle,
+          { backgroundColor: color },
+        ]}
+      />
+    </View>
+  );
+}
+
 function UserAvatarIcon({ avatarUrl, color }: { avatarUrl: string; color: string }) {
   return (
     <View style={styles.iconContainer}>
@@ -164,6 +182,13 @@ function MainTabs() {
         component={ActivityTabScreen}
         options={{
           tabBarIcon: ({ color }) => <ActivityIcon color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={SearchTabScreen}
+        options={{
+          tabBarIcon: ({ color }) => <SearchIcon color={color} />,
         }}
       />
       <Tab.Screen
@@ -243,6 +268,16 @@ export default function AppNavigator() {
                 headerShown: false,
                 presentation: 'modal',
               }}
+            />
+            <Stack.Screen
+              name="FileCityDemo"
+              component={FileCityDemoScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="RepoFileCity"
+              component={RepoFileCityScreen}
+              options={{ headerShown: false }}
             />
             {isAuthenticated && (
               <>
@@ -370,5 +405,23 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 1,
+  },
+  searchIconCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    position: 'absolute',
+    top: 2,
+    left: 2,
+  },
+  searchIconHandle: {
+    width: 2,
+    height: 8,
+    borderRadius: 1,
+    position: 'absolute',
+    bottom: 2,
+    right: 4,
+    transform: [{ rotate: '45deg' }],
   },
 });

@@ -296,6 +296,31 @@ export function AboutScreen() {
           />
         </View>
 
+        {/* Developer Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+            DEVELOPER
+          </Text>
+        </View>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('FileCityDemo')}
+          >
+            <View style={styles.linkContent}>
+              <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
+                File City Demo
+              </Text>
+              <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
+                Test the Skia-based codebase visualization
+              </Text>
+            </View>
+            <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
+              ›
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>

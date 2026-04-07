@@ -12,7 +12,7 @@ import {
   SectionList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import {
   searchUsers,

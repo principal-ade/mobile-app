@@ -3,6 +3,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 export type MainTabParamList = {
   Feed: undefined;
   Activity: undefined;
+  Search: undefined;
   Saved: undefined;
   About: undefined;
 };
@@ -51,4 +52,10 @@ export type RootStackParamList = {
     };
   };
   SavedCards: undefined;
+  FileCityDemo: undefined;
+  RepoFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
 };
