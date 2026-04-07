@@ -64,6 +64,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const [currentIndex, setCurrentIndex] = useState(0);
   const [token, setToken] = useState<string | null>(null);
   const [lastSwipedCard, setLastSwipedCard] = useState<{ card: CommitActivityCard; action: 'seen' | 'saved' } | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
   // Update cards when initialCards changes (for guest mode)
   useEffect(() => {
@@ -96,6 +97,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
       setCards(result.cards);
       setCurrentIndex(0);
       setLastSwipedCard(null);
+      setLastFetchedAt(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feed');
     } finally {
@@ -198,9 +200,21 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     });
   }, [currentCard, navigation]);
 
-  const handleGoToSaved = useCallback(() => {
-    navigation.navigate('MainTabs', { screen: 'Saved' });
-  }, [navigation]);
+  // Format relative time for "last updated" display
+  const formatLastFetched = useCallback(() => {
+    if (!lastFetchedAt) return null;
+    const now = new Date();
+    const diffMs = now.getTime() - lastFetchedAt.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Updated just now';
+    if (diffMins === 1) return 'Updated 1m ago';
+    if (diffMins < 60) return `Updated ${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return 'Updated 1h ago';
+    return `Updated ${diffHours}h ago`;
+  }, [lastFetchedAt]);
 
   const handleGoToCustomize = useCallback(() => {
     navigation.navigate('FeedCustomization', {});
@@ -252,6 +266,11 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
             ? 'Sign in to customize your feed and save cards.'
             : 'No more activity cards to review right now.'}
         </Text>
+        {lastFetchedAt && (
+          <Text style={[styles.lastUpdatedText, { color: theme.colors.textMuted, marginBottom: 16 }]}>
+            {formatLastFetched()}
+          </Text>
+        )}
         <View style={styles.emptyButtonsContainer}>
           {isGuest ? (
             <>
@@ -271,20 +290,12 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
               )}
             </>
           ) : (
-            <>
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
-                onPress={handleGoToCustomize}
-              >
-                <Text style={styles.primaryButtonText}>Edit Feed</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
-                onPress={handleGoToSaved}
-              >
-                <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>View Saved</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleGoToCustomize}
+            >
+              <Text style={styles.primaryButtonText}>Edit Feed</Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -411,6 +422,9 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  lastUpdatedText: {
+    fontSize: 12,
   },
   cardContainer: {
     flex: 1,

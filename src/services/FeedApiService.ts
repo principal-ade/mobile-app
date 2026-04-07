@@ -396,6 +396,89 @@ export async function unsaveCard(
 }
 
 // ============================================================================
+// Activity Heatmap
+// ============================================================================
+
+export interface HeatmapCommit {
+  timestamp: string; // ISO date string
+  repoId: string; // "owner/repo"
+  authorLogin: string;
+  authorAvatarUrl?: string;
+}
+
+export interface HeatmapAuthor {
+  login: string;
+  avatarUrl?: string;
+  commitCount: number;
+}
+
+export interface HeatmapRepo {
+  id: string; // "owner/repo"
+  owner: string;
+  name: string;
+  commitCount: number;
+}
+
+export interface ActivityHeatmapResponse {
+  commits: HeatmapCommit[];
+  /** Authors with activity in this time range */
+  authors: HeatmapAuthor[];
+  /** Repos with activity in this time range */
+  repos: HeatmapRepo[];
+  /** Time range covered */
+  timeRange: {
+    start: string; // ISO date
+    end: string; // ISO date
+  };
+}
+
+/**
+ * Get commit activity for heatmap visualization
+ * Returns commits from followed users/repos for the specified time range
+ * Requires authentication
+ *
+ * @param hoursBack - Number of hours to look back (default: 24, max: 168/1 week)
+ * @param authorLogins - Optional filter to specific authors
+ * @param repoIds - Optional filter to specific repos ("owner/repo" format)
+ */
+export async function getActivityHeatmap(
+  githubToken: string,
+  options?: {
+    hoursBack?: number;
+    authorLogins?: string[];
+    repoIds?: string[];
+  }
+): Promise<ActivityHeatmapResponse> {
+  const { hoursBack = 24, authorLogins, repoIds } = options || {};
+
+  const input = {
+    json: {
+      hoursBack: Math.min(hoursBack, 168), // Cap at 1 week
+      ...(authorLogins?.length && { authorLogins }),
+      ...(repoIds?.length && { repoIds }),
+    },
+  };
+
+  const url = `${API_BASE}/trpc/feed.getActivityHeatmap?input=${encodeURIComponent(JSON.stringify(input))}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${githubToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Authentication required');
+    }
+    throw new Error(`Failed to fetch activity heatmap: ${response.status}`);
+  }
+
+  const data: TRPCResponse<ActivityHeatmapResponse> = await response.json();
+  return data.result.data;
+}
+
+// ============================================================================
 // AI Commit Summary
 // ============================================================================
 

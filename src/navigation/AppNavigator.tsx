@@ -15,6 +15,7 @@ import AddUserScreen from '../screens/AddUserScreen';
 import AddRepoScreen from '../screens/AddRepoScreen';
 import SwipeFeedScreen from '../screens/SwipeFeedScreen';
 import FeedTabScreen from '../screens/FeedTabScreen';
+import ActivityTabScreen from '../screens/ActivityTabScreen';
 import SavedTabScreen from '../screens/SavedTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -36,6 +37,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       MainTabs: {
         screens: {
           Feed: 'feed',
+          Activity: 'activity',
           Saved: 'saved',
           About: 'about',
         },
@@ -89,6 +91,32 @@ function AboutIcon({ color }: { color: string }) {
   );
 }
 
+function ActivityIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.iconContainer}>
+      <View style={styles.activityIcon}>
+        {/* 3x3 grid representing the heatmap */}
+        {[0, 1, 2].map((row) => (
+          <View key={row} style={styles.activityRow}>
+            {[0, 1, 2].map((col) => (
+              <View
+                key={col}
+                style={[
+                  styles.activityCell,
+                  {
+                    backgroundColor: color,
+                    opacity: (row * 3 + col) % 3 === 0 ? 0.3 : (row + col) % 2 === 0 ? 0.6 : 1,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function UserAvatarIcon({ avatarUrl, color }: { avatarUrl: string; color: string }) {
   return (
     <View style={styles.iconContainer}>
@@ -129,6 +157,13 @@ function MainTabs() {
         component={FeedTabScreen}
         options={{
           tabBarIcon: ({ color }) => <FeedIcon color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Activity"
+        component={ActivityTabScreen}
+        options={{
+          tabBarIcon: ({ color }) => <ActivityIcon color={color} />,
         }}
       />
       <Tab.Screen
@@ -321,5 +356,19 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
+  },
+  activityIcon: {
+    width: 18,
+    height: 18,
+    justifyContent: 'space-between',
+  },
+  activityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  activityCell: {
+    width: 5,
+    height: 5,
+    borderRadius: 1,
   },
 });

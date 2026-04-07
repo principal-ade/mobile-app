@@ -61,19 +61,34 @@ function OrbitingParticle({
     return () => animation.stop();
   }, [progress, duration, delay]);
 
-  // Calculate position along ellipse
+  // Calculate position along ellipse using parametric equations
+  // x = cx + rx * cos(θ), y = cy + ry * sin(θ)
+  // Use 16 points for smooth ellipse tracing
+  const steps = 16;
+  const inputRange = Array.from({ length: steps + 1 }, (_, i) => i / steps);
+
+  const xOutputRange = inputRange.map((t) => {
+    const angle = t * 2 * Math.PI;
+    return isHorizontal
+      ? cx + rx * Math.cos(angle)
+      : cx + rx * Math.sin(angle);
+  });
+
+  const yOutputRange = inputRange.map((t) => {
+    const angle = t * 2 * Math.PI;
+    return isHorizontal
+      ? cy - ry * Math.sin(angle)
+      : cy - ry * Math.cos(angle);
+  });
+
   const x = progress.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: isHorizontal
-      ? [cx + rx, cx, cx - rx, cx, cx + rx]
-      : [cx, cx + rx, cx, cx - rx, cx],
+    inputRange,
+    outputRange: xOutputRange,
   });
 
   const y = progress.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: isHorizontal
-      ? [cy, cy - ry, cy, cy + ry, cy]
-      : [cy - ry, cy, cy + ry, cy, cy - ry],
+    inputRange,
+    outputRange: yOutputRange,
   });
 
   // Opacity: fade when on back side of sphere
@@ -156,7 +171,7 @@ export function Logo({
             cx={100}
             cy={100}
             rx={67}
-            ry={27}
+            ry={32}
             color={dotColor}
             duration={8000}
             delay={1000}
@@ -166,7 +181,7 @@ export function Logo({
             cx={100}
             cy={100}
             rx={67}
-            ry={40}
+            ry={45}
             color={dotColor}
             duration={8000}
             delay={2000}
@@ -176,7 +191,7 @@ export function Logo({
             cx={100}
             cy={100}
             rx={67}
-            ry={53}
+            ry={56}
             color={dotColor}
             duration={8000}
             delay={3000}
@@ -187,7 +202,7 @@ export function Logo({
           <OrbitingParticle
             cx={100}
             cy={100}
-            rx={27}
+            rx={32}
             ry={67}
             color={dotColor}
             duration={8000}
@@ -197,7 +212,7 @@ export function Logo({
           <OrbitingParticle
             cx={100}
             cy={100}
-            rx={40}
+            rx={45}
             ry={67}
             color={dotColor}
             duration={8000}
@@ -207,7 +222,7 @@ export function Logo({
           <OrbitingParticle
             cx={100}
             cy={100}
-            rx={53}
+            rx={56}
             ry={67}
             color={dotColor}
             duration={8000}
@@ -218,25 +233,25 @@ export function Logo({
       )}
 
       {/* "P" made of dots at center - vertical stem */}
-      <Circle cx={93} cy={85} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={93} cy={90} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={93} cy={95} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={93} cy={100} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={93} cy={105} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={93} cy={110} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={93} cy={115} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={79} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={86} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={93} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={100} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={107} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={114} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={91} cy={121} r={2.5} fill={dotColor} opacity={0.9} />
 
       {/* "P" top horizontal */}
-      <Circle cx={98} cy={85} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={103} cy={85} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={98} cy={79} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={105} cy={79} r={2.5} fill={dotColor} opacity={0.9} />
 
       {/* "P" bowl - right side */}
-      <Circle cx={108} cy={90} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={108} cy={95} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={112} cy={86} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={112} cy={93} r={2.5} fill={dotColor} opacity={0.9} />
 
       {/* "P" bowl - middle horizontal */}
-      <Circle cx={103} cy={100} r={2} fill={dotColor} opacity={0.9} />
-      <Circle cx={98} cy={100} r={2} fill={dotColor} opacity={0.9} />
+      <Circle cx={105} cy={100} r={2.5} fill={dotColor} opacity={0.9} />
+      <Circle cx={98} cy={100} r={2.5} fill={dotColor} opacity={0.9} />
 
       {/* Main sphere outline */}
       <Circle
@@ -251,28 +266,28 @@ export function Logo({
 
       {/* Horizontal latitude lines */}
       <Path
-        d="M 33,100 A 67,13 0 0,1 73,88.1"
+        d="M 33,100 A 67,13 0 0,1 68,87.5"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
-        d="M 127,88.1 A 67,13 0 0,1 167,100"
+        d="M 132,87.5 A 67,13 0 0,1 167,100"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
-        d="M 33,100 A 67,13 0 0,0 73,111.9"
+        d="M 33,100 A 67,13 0 0,0 68,112.5"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
-        d="M 127,111.9 A 67,13 0 0,0 167,100"
+        d="M 132,112.5 A 67,13 0 0,0 167,100"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
@@ -284,7 +299,7 @@ export function Logo({
         cx={100}
         cy={100}
         rx={67}
-        ry={27}
+        ry={32}
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
@@ -294,7 +309,7 @@ export function Logo({
         cx={100}
         cy={100}
         rx={67}
-        ry={40}
+        ry={45}
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
@@ -304,7 +319,7 @@ export function Logo({
         cx={100}
         cy={100}
         rx={67}
-        ry={53}
+        ry={56}
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
@@ -313,28 +328,28 @@ export function Logo({
 
       {/* Vertical longitude lines */}
       <Path
-        d="M 100,33 A 13,67 0 0,0 87,73"
+        d="M 100,33 A 13,67 0 0,0 87.5,68"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
-        d="M 113,73 A 13,67 0 0,0 100,33"
+        d="M 112.5,68 A 13,67 0 0,0 100,33"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
-        d="M 100,167 A 13,67 0 0,1 87,127"
+        d="M 100,167 A 13,67 0 0,1 87.5,132"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
         opacity={0.7}
       />
       <Path
-        d="M 113,127 A 13,67 0 0,1 100,167"
+        d="M 112.5,132 A 13,67 0 0,1 100,167"
         fill="none"
         stroke={lineColor}
         strokeWidth={1}
@@ -345,7 +360,7 @@ export function Logo({
       <Ellipse
         cx={100}
         cy={100}
-        rx={27}
+        rx={32}
         ry={67}
         fill="none"
         stroke={lineColor}
@@ -355,7 +370,7 @@ export function Logo({
       <Ellipse
         cx={100}
         cy={100}
-        rx={40}
+        rx={45}
         ry={67}
         fill="none"
         stroke={lineColor}
@@ -365,7 +380,7 @@ export function Logo({
       <Ellipse
         cx={100}
         cy={100}
-        rx={53}
+        rx={56}
         ry={67}
         fill="none"
         stroke={lineColor}
@@ -427,14 +442,14 @@ export function Logo({
       <Line
         x1={33}
         y1={100}
-        x2={73}
+        x2={68}
         y2={100}
         stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.8}
       />
       <Line
-        x1={127}
+        x1={132}
         y1={100}
         x2={167}
         y2={100}
@@ -448,14 +463,14 @@ export function Logo({
         x1={100}
         y1={33}
         x2={100}
-        y2={73}
+        y2={68}
         stroke={lineColor}
         strokeWidth={1.5}
         opacity={0.8}
       />
       <Line
         x1={100}
-        y1={127}
+        y1={132}
         x2={100}
         y2={167}
         stroke={lineColor}
