@@ -15,4 +15,8 @@ export { generateMockCityData, generateMockHighlightLayers } from './mockData';
 export {
   CodeCityBuilderWithGrid,
   buildFileSystemTreeFromFileInfoList,
+  createFileHighlightLayers,
+  extractFileIconMap,
 } from '@principal-ai/file-city-builder';
+
+export type { FileHighlightLayersResult } from '@principal-ai/file-city-builder';
