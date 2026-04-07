@@ -23,9 +23,9 @@ import {
 } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
-import type { CityBuilding, CityDistrict } from '@principal-ai/file-city-builder';
+import type { CityBuilding, CityDistrict, LayerRenderStrategy } from '@principal-ai/file-city-builder';
 import { getFileColor } from '@principal-ai/file-city-builder';
-import { FileCityCanvasProps, TransformState } from './types';
+import { FileCityCanvasProps, TransformState, FileTypeIconConfig } from './types';
 import {
   calculateScaleAndOffset,
   LayerIndex,
@@ -58,6 +58,39 @@ function adjustColorBrightness(hex: string, amount: number): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+// Get file type icon for a given path
+function getFileTypeIcon(
+  filePath: string,
+  iconMap: Map<string, FileTypeIconConfig> | undefined,
+): FileTypeIconConfig | null {
+  if (!iconMap) return null;
+
+  const lastSlash = filePath.lastIndexOf('/');
+  const fileName = lastSlash === -1 ? filePath : filePath.substring(lastSlash + 1);
+
+  // Check exact filename match first (e.g., "package.json")
+  if (iconMap.has(fileName)) {
+    return iconMap.get(fileName) || null;
+  }
+
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot === -1 || lastDot === fileName.length - 1) {
+    return null;
+  }
+
+  // Check compound extensions (longest first)
+  const sortedExtensions = Array.from(iconMap.keys()).sort((a, b) => b.length - a.length);
+  const lowerFileName = fileName.toLowerCase();
+
+  for (const ext of sortedExtensions) {
+    if (ext.startsWith('.') && lowerFileName.endsWith(ext)) {
+      return iconMap.get(ext) || null;
+    }
+  }
+
+  return null;
+}
+
 export function FileCityCanvas({
   cityData,
   highlightLayers = [],
@@ -66,6 +99,8 @@ export function FileCityCanvas({
   buildingBorderRadius = 2,
   districtBorderRadius = 0,
   showDirectoryLabels = true,
+  showFileTypeIcons = false,
+  iconMap,
   enableZoom = true,
   enablePan = true,
   onBuildingPress,
@@ -76,8 +111,9 @@ export function FileCityCanvas({
 }: FileCityCanvasProps) {
   const [canvasSize, setCanvasSize] = useState({ width: 300, height: 300 });
 
-  // Load font for labels (using system default)
+  // Load fonts for labels and icons
   const font = useFont(null, 10);
+  const iconFont = useFont(null, 16);
 
   // Transform state using regular React state
   const [transformState, setTransformState] = useState<TransformState>({
@@ -266,16 +302,27 @@ export function FileCityCanvas({
           .getItemsForPath(building.path)
           .filter((match) => match.item.type === 'file');
         const hasHighlight = layerMatches.length > 0;
-        const highlightColor = hasHighlight ? layerMatches[0].layer.color : undefined;
+
+        // Get highlight info from first matching layer
+        const firstMatch = hasHighlight ? layerMatches[0] : null;
+        const highlightColor = firstMatch?.layer.color;
+        const renderStrategy: LayerRenderStrategy = firstMatch?.item.renderStrategy || 'border';
+        const layerOpacity = firstMatch?.layer.opacity;
 
         const color = building.color || getFileColor(building.path);
         const opacity = hasHighlight ? 1 : 0.6;
         const actualRadius = Math.min(buildingBorderRadius, Math.min(width, height) / 6);
 
+        // Get icon config if enabled
+        const icon = showFileTypeIcons ? getFileTypeIcon(building.path, iconMap) : null;
+
         return {
           key: `building-${building.path}`,
+          path: building.path,
           x,
           y,
+          centerX: pos.x,
+          centerY: pos.y,
           width,
           height,
           color,
@@ -283,10 +330,13 @@ export function FileCityCanvas({
           radius: actualRadius,
           hasHighlight,
           highlightColor,
+          renderStrategy,
+          layerOpacity,
+          icon,
         };
       })
       .filter(Boolean);
-  }, [cityData.buildings, worldToCanvas, scaleAndOffset, transformState.scale, layerIndex, buildingBorderRadius]);
+  }, [cityData.buildings, worldToCanvas, scaleAndOffset, transformState.scale, layerIndex, buildingBorderRadius, showFileTypeIcons, iconMap]);
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -345,8 +395,19 @@ export function FileCityCanvas({
                     r={b.radius}
                     color={hexToSkiaColor(b.color, b.opacity)}
                   />
-                  {/* Highlight border */}
-                  {b.hasHighlight && b.highlightColor && (
+                  {/* Highlight - fill strategy */}
+                  {b.hasHighlight && b.highlightColor && b.renderStrategy === 'fill' && (
+                    <RoundedRect
+                      x={b.x}
+                      y={b.y}
+                      width={b.width}
+                      height={b.height}
+                      r={b.radius}
+                      color={hexToSkiaColor(b.highlightColor, b.layerOpacity ?? 0.3)}
+                    />
+                  )}
+                  {/* Highlight - border strategy (default) */}
+                  {b.hasHighlight && b.highlightColor && b.renderStrategy !== 'fill' && (
                     <RoundedRect
                       x={b.x}
                       y={b.y}
@@ -359,6 +420,16 @@ export function FileCityCanvas({
                     >
                       <Paint color={Skia.Color(b.highlightColor)} style="stroke" strokeWidth={2} />
                     </RoundedRect>
+                  )}
+                  {/* File type icon (emoji) */}
+                  {b.icon && b.icon.type === 'emoji' && iconFont && b.width > 8 && b.height > 8 && (
+                    <Text
+                      x={b.centerX - (b.icon.size || 0.75) * Math.min(b.width, b.height) * 0.3}
+                      y={b.centerY + (b.icon.size || 0.75) * Math.min(b.width, b.height) * 0.3}
+                      text={b.icon.name}
+                      font={iconFont}
+                      color={Skia.Color(b.icon.color || '#ffffff')}
+                    />
                   )}
                 </Group>
               ) : null

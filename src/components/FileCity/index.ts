@@ -7,6 +7,7 @@ export type {
   HighlightLayer,
   LayerItem,
   FileCityCanvasProps,
+  FileTypeIconConfig,
 } from './types';
 export { generateMockCityData, generateMockHighlightLayers } from './mockData';
 

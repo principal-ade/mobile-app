@@ -16,6 +16,15 @@ export type {
 
 // React Native specific types
 
+export interface FileTypeIconConfig {
+  type: 'emoji' | 'lucide';
+  name: string; // emoji character or Lucide icon name
+  color?: string;
+  backgroundColor?: string;
+  glow?: boolean;
+  size?: number; // Scale factor (0-1) relative to building size
+}
+
 export interface FileCityCanvasProps {
   cityData: import('@principal-ai/file-city-builder').CityData;
   highlightLayers?: import('@principal-ai/file-city-builder').HighlightLayer[];
@@ -27,6 +36,8 @@ export interface FileCityCanvasProps {
   buildingBorderRadius?: number;
   districtBorderRadius?: number;
   showDirectoryLabels?: boolean;
+  showFileTypeIcons?: boolean;
+  iconMap?: Map<string, FileTypeIconConfig>;
 
   // Interaction
   enableZoom?: boolean;
