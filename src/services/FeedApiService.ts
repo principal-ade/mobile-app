@@ -479,6 +479,58 @@ export async function getActivityHeatmap(
 }
 
 // ============================================================================
+// Repo Activity
+// ============================================================================
+
+export interface RepoActivityResponse {
+  commits: Array<{
+    timestamp: string;
+    repoId: string;
+    authorLogin: string;
+    authorAvatarUrl?: string;
+  }>;
+  timeRange: {
+    start: string;
+    end: string;
+  };
+}
+
+/**
+ * Get commit activity for a specific repository
+ * Fetches commits directly from GitHub for the given repo
+ */
+export async function getRepoActivity(
+  githubToken: string,
+  owner: string,
+  repo: string,
+  hoursBack: number = 168
+): Promise<RepoActivityResponse> {
+  const input = {
+    owner,
+    repo,
+    hoursBack: Math.min(hoursBack, 168),
+  };
+
+  const url = `${API_BASE}/trpc/feed.getRepoActivity?input=${encodeURIComponent(JSON.stringify(input))}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${githubToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Authentication required');
+    }
+    throw new Error(`Failed to fetch repo activity: ${response.status}`);
+  }
+
+  const data: TRPCResponse<RepoActivityResponse> = await response.json();
+  return data.result.data;
+}
+
+// ============================================================================
 // AI Commit Summary
 // ============================================================================
 

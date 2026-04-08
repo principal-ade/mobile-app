@@ -28,12 +28,61 @@ interface GitHubTreeResponse {
   truncated: boolean;
 }
 
+interface GitHubRepoInfoResponse {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+  description: string | null;
+  stargazers_count: number;
+  forks_count: number;
+  language: string | null;
+  default_branch: string;
+}
+
+export interface RepoInfo {
+  ownerAvatarUrl: string;
+  description: string | null;
+  stargazersCount: number;
+  forksCount: number;
+  language: string | null;
+}
+
 export interface FileCityResult {
   cityData: CityData;
   highlightLayers: HighlightLayer[];
   iconMap: Map<string, FileTypeIconConfig>;
   treeSha: string;
   truncated: boolean;
+  repoInfo: RepoInfo;
+}
+
+/**
+ * Fetch repository info from the API
+ */
+async function fetchRepoInfo(
+  owner: string,
+  repo: string
+): Promise<GitHubRepoInfoResponse> {
+  const url = `${apiConfig.baseUrl}/github/repo/${owner}/${repo}?action=info`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to fetch repo info: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data as GitHubRepoInfoResponse;
 }
 
 /**
@@ -98,8 +147,11 @@ export async function getFileCityForRepo(
   repo: string,
   ref: string = 'HEAD'
 ): Promise<FileCityResult> {
-  // Fetch the file tree from the API
-  const treeResponse = await fetchFileTree(owner, repo, ref);
+  // Fetch repo info and file tree in parallel
+  const [repoInfoResponse, treeResponse] = await Promise.all([
+    fetchRepoInfo(owner, repo),
+    fetchFileTree(owner, repo, ref),
+  ]);
 
   // Build the city data
   const cityData = buildCityFromTree(treeResponse);
@@ -107,12 +159,22 @@ export async function getFileCityForRepo(
   // Generate highlight layers and icon map using file config
   const { highlightLayers, iconMap } = generateHighlightLayersAndIcons(cityData);
 
+  // Extract repo info
+  const repoInfo: RepoInfo = {
+    ownerAvatarUrl: repoInfoResponse.owner.avatar_url,
+    description: repoInfoResponse.description,
+    stargazersCount: repoInfoResponse.stargazers_count,
+    forksCount: repoInfoResponse.forks_count,
+    language: repoInfoResponse.language,
+  };
+
   return {
     cityData,
     highlightLayers,
     iconMap,
     treeSha: treeResponse.sha,
     truncated: treeResponse.truncated,
+    repoInfo,
   };
 }
 
