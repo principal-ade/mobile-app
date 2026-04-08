@@ -15,7 +15,9 @@ import {
   useFont,
   Skia,
   Paint,
+  ImageSVG,
 } from '@shopify/react-native-skia';
+import { getLucideIconSvg } from './lucideIcons';
 import {
   Gesture,
   GestureDetector,
@@ -34,6 +36,7 @@ import {
 
 const DEFAULT_BACKGROUND_COLOR = '#1a1a2e';
 const DEFAULT_DISTRICT_COLOR = '#4B5155';
+
 
 // Parse hex color to Skia color
 function hexToSkiaColor(hex: string, alpha: number = 1) {
@@ -386,26 +389,23 @@ export function FileCityCanvas({
             {buildingData.map((b) =>
               b ? (
                 <Group key={b.key}>
-                  {/* Building fill */}
+                  {/* Building fill - use highlight color for fill strategy, otherwise base color */}
                   <RoundedRect
                     x={b.x}
                     y={b.y}
                     width={b.width}
                     height={b.height}
                     r={b.radius}
-                    color={hexToSkiaColor(b.color, b.opacity)}
+                    style="fill"
+                    color={hexToSkiaColor(
+                      b.hasHighlight && b.highlightColor && b.renderStrategy === 'fill'
+                        ? b.highlightColor
+                        : b.color,
+                      b.hasHighlight && b.renderStrategy === 'fill'
+                        ? (b.layerOpacity ?? 1)
+                        : b.opacity
+                    )}
                   />
-                  {/* Highlight - fill strategy */}
-                  {b.hasHighlight && b.highlightColor && b.renderStrategy === 'fill' && (
-                    <RoundedRect
-                      x={b.x}
-                      y={b.y}
-                      width={b.width}
-                      height={b.height}
-                      r={b.radius}
-                      color={hexToSkiaColor(b.highlightColor, b.layerOpacity ?? 0.3)}
-                    />
-                  )}
                   {/* Highlight - border strategy (default) */}
                   {b.hasHighlight && b.highlightColor && b.renderStrategy !== 'fill' && (
                     <RoundedRect
@@ -421,16 +421,50 @@ export function FileCityCanvas({
                       <Paint color={Skia.Color(b.highlightColor)} style="stroke" strokeWidth={2} />
                     </RoundedRect>
                   )}
-                  {/* File type icon (emoji) */}
-                  {b.icon && b.icon.type === 'emoji' && iconFont && b.width > 8 && b.height > 8 && (
-                    <Text
-                      x={b.centerX - (b.icon.size || 0.75) * Math.min(b.width, b.height) * 0.3}
-                      y={b.centerY + (b.icon.size || 0.75) * Math.min(b.width, b.height) * 0.3}
-                      text={b.icon.name}
-                      font={iconFont}
-                      color={Skia.Color(b.icon.color || '#ffffff')}
-                    />
-                  )}
+                  {/* File type icon (Lucide SVG or emoji) */}
+                  {(() => {
+                    // Only show icons on buildings large enough to display them
+                    const minSize = Math.min(b.width, b.height);
+                    if (!b.icon || minSize < 6) return null;
+
+                    // Scale icon to fit within building (use 80% of min dimension)
+                    const size = minSize * 0.8;
+
+                    if (b.icon.type === 'lucide') {
+                      const svgString = getLucideIconSvg(b.icon.name, b.icon.color || '#ffffff');
+                      if (!svgString) return null;
+                      const svg = Skia.SVG.MakeFromString(svgString);
+                      if (!svg) return null;
+                      // SVG is 24x24, scale to fit
+                      const scale = size / 24;
+                      return (
+                        <Group
+                          transform={[
+                            { translateX: b.centerX - size / 2 },
+                            { translateY: b.centerY - size / 2 },
+                            { scale: scale },
+                          ]}
+                        >
+                          <ImageSVG svg={svg} x={0} y={0} width={24} height={24} />
+                        </Group>
+                      );
+                    }
+
+                    // Emoji fallback
+                    if (b.icon.type === 'emoji' && iconFont) {
+                      return (
+                        <Text
+                          x={b.centerX - size * 0.3}
+                          y={b.centerY + size * 0.3}
+                          text={b.icon.name}
+                          font={iconFont}
+                          color={Skia.Color(b.icon.color || '#ffffff')}
+                        />
+                      );
+                    }
+
+                    return null;
+                  })()}
                 </Group>
               ) : null
             )}

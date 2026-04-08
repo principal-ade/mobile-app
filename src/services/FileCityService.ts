@@ -6,8 +6,9 @@ import {
   CodeCityBuilderWithGrid,
   getFilesFromGitHubTree,
   buildFileSystemTreeFromFileInfoList,
+  createFileHighlightLayers,
 } from '@principal-ai/file-city-builder';
-import type { CityData, HighlightLayer } from '@principal-ai/file-city-builder';
+import type { CityData, HighlightLayer, FileTypeIconConfig } from '@principal-ai/file-city-builder';
 import { apiConfig } from '../utils/config';
 
 // Types matching the web-ade API response
@@ -30,6 +31,7 @@ interface GitHubTreeResponse {
 export interface FileCityResult {
   cityData: CityData;
   highlightLayers: HighlightLayer[];
+  iconMap: Map<string, FileTypeIconConfig>;
   treeSha: string;
   truncated: boolean;
 }
@@ -78,90 +80,14 @@ function buildCityFromTree(treeResponse: GitHubTreeResponse): CityData {
 }
 
 /**
- * Generate highlight layers based on file types in the city
+ * Generate highlight layers and icon map from city buildings using file config
  */
-function generateHighlightLayers(cityData: CityData): HighlightLayer[] {
-  const layers: HighlightLayer[] = [];
-
-  // TypeScript/JavaScript files
-  const tsFiles = cityData.buildings.filter(
-    (b) =>
-      b.path.endsWith('.ts') ||
-      b.path.endsWith('.tsx') ||
-      b.path.endsWith('.js') ||
-      b.path.endsWith('.jsx')
-  );
-
-  if (tsFiles.length > 0) {
-    layers.push({
-      id: 'typescript-js',
-      name: 'TypeScript/JavaScript',
-      enabled: true,
-      color: '#3178c6',
-      opacity: 1,
-      borderWidth: 2,
-      priority: 10,
-      items: tsFiles.slice(0, 50).map((b) => ({
-        path: b.path,
-        type: 'file' as const,
-        renderStrategy: 'border' as const,
-      })),
-    });
-  }
-
-  // Test files
-  const testFiles = cityData.buildings.filter(
-    (b) =>
-      b.path.includes('.test.') ||
-      b.path.includes('.spec.') ||
-      b.path.includes('__tests__')
-  );
-
-  if (testFiles.length > 0) {
-    layers.push({
-      id: 'tests',
-      name: 'Test Files',
-      enabled: true,
-      color: '#22c55e',
-      opacity: 1,
-      borderWidth: 2,
-      priority: 20,
-      items: testFiles.slice(0, 30).map((b) => ({
-        path: b.path,
-        type: 'file' as const,
-        renderStrategy: 'border' as const,
-      })),
-    });
-  }
-
-  // Config files
-  const configFiles = cityData.buildings.filter(
-    (b) =>
-      b.path.endsWith('.json') ||
-      b.path.endsWith('.yaml') ||
-      b.path.endsWith('.yml') ||
-      b.path.endsWith('.toml') ||
-      b.path.includes('config')
-  );
-
-  if (configFiles.length > 0) {
-    layers.push({
-      id: 'config',
-      name: 'Config Files',
-      enabled: false, // Disabled by default
-      color: '#f59e0b',
-      opacity: 1,
-      borderWidth: 2,
-      priority: 5,
-      items: configFiles.slice(0, 30).map((b) => ({
-        path: b.path,
-        type: 'file' as const,
-        renderStrategy: 'border' as const,
-      })),
-    });
-  }
-
-  return layers;
+function generateHighlightLayersAndIcons(cityData: CityData): {
+  highlightLayers: HighlightLayer[];
+  iconMap: Map<string, FileTypeIconConfig>;
+} {
+  const files = cityData.buildings.map((b) => ({ path: b.path }));
+  return createFileHighlightLayers(files);
 }
 
 /**
@@ -178,12 +104,13 @@ export async function getFileCityForRepo(
   // Build the city data
   const cityData = buildCityFromTree(treeResponse);
 
-  // Generate highlight layers
-  const highlightLayers = generateHighlightLayers(cityData);
+  // Generate highlight layers and icon map using file config
+  const { highlightLayers, iconMap } = generateHighlightLayersAndIcons(cityData);
 
   return {
     cityData,
     highlightLayers,
+    iconMap,
     treeSha: treeResponse.sha,
     truncated: treeResponse.truncated,
   };

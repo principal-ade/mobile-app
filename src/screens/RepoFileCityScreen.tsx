@@ -73,7 +73,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { FileCityCanvas } from '../components/FileCity';
-import type { CityBuilding, CityDistrict, CityData, HighlightLayer } from '../components/FileCity';
+import type { CityBuilding, CityDistrict, CityData, HighlightLayer, FileTypeIconConfig } from '../components/FileCity';
 import { getFileCityForRepo } from '../services/FileCityService';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -91,6 +91,7 @@ export function RepoFileCityScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cityData, setCityData] = useState<CityData | null>(null);
   const [highlightLayers, setHighlightLayers] = useState<HighlightLayer[]>([]);
+  const [iconMap, setIconMap] = useState<Map<string, FileTypeIconConfig>>(new Map());
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -108,6 +109,7 @@ export function RepoFileCityScreen() {
 
         setCityData(result.cityData);
         setHighlightLayers(result.highlightLayers);
+        setIconMap(result.iconMap);
         setIsTruncated(result.truncated);
       } catch (err) {
         if (cancelled) return;
@@ -150,6 +152,7 @@ export function RepoFileCityScreen() {
       .then((result) => {
         setCityData(result.cityData);
         setHighlightLayers(result.highlightLayers);
+        setIconMap(result.iconMap);
         setIsTruncated(result.truncated);
         setIsLoading(false);
       })
@@ -240,6 +243,8 @@ export function RepoFileCityScreen() {
             <FileCityCanvas
               cityData={cityData}
               highlightLayers={highlightLayers}
+              iconMap={iconMap}
+              showFileTypeIcons={true}
               backgroundColor={theme.colors.background}
               defaultDistrictColor="#4B5155"
               buildingBorderRadius={0}
