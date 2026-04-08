@@ -84,7 +84,7 @@ import { getContributors, type Contributor } from '../services/ContributorsServi
 import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../components/DailyActivityHeatmap';
-import { getRepoActivity } from '../services/FeedApiService';
+import { getRepoActivity, checkTourAvailability, getFollows, followRepo, unfollowRepo } from '../services/FeedApiService';
 
 type RouteProps = RouteProp<RootStackParamList, 'RepoFileCity'>;
 
@@ -299,9 +299,7 @@ export function RepoFileCityScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarred, setIsStarred] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [starToggling, setStarToggling] = useState(false);
-  const [followToggling, setFollowToggling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cityData, setCityData] = useState<CityData | null>(null);
   const [highlightLayers, setHighlightLayers] = useState<HighlightLayer[]>([]);
@@ -320,6 +318,10 @@ export function RepoFileCityScreen() {
   const [contributorsLoading, setContributorsLoading] = useState(false);
   const [contributorsFetched, setContributorsFetched] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
+
+  const [isTourAvailable, setIsTourAvailable] = useState(false);
+  const [isRepoFollowed, setIsRepoFollowed] = useState(false);
+  const [repoFollowToggling, setRepoFollowToggling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,42 +402,20 @@ export function RepoFileCityScreen() {
     let cancelled = false;
 
     async function fetchContributorsData() {
-      console.log('[RepoFileCityScreen] Starting to fetch contributors data for', owner, name);
       setContributorsLoading(true);
       try {
         // Always fetch contributors
         const contribs = await getContributors(owner, name, 30);
 
-        // Only fetch activity if authenticated and on heatmap tab
-        let commits: CommitTimestamp[] = [];
-        if (activeViz === 'heatmap' && isAuthenticated && token) {
-          const activityResponse = await getRepoActivity(token, owner, name, 168);
-          commits = activityResponse.commits.map((c) => ({
-            timestamp: new Date(c.timestamp),
-            repoId: c.repoId,
-            authorLogin: c.authorLogin,
-            authorAvatarUrl: c.authorAvatarUrl,
-          }));
-          console.log('[RepoFileCityScreen] Fetched commits:', commits.length);
-          console.log('[RepoFileCityScreen] API timeRange:', activityResponse.timeRange);
-        }
-
-        console.log('[RepoFileCityScreen] Fetched contributors:', contribs.length);
-
         if (!cancelled) {
           setContributors(contribs);
-          if (commits.length > 0) {
-            setRecentCommits(commits);
-          }
           setContributorsFetched(true);
-          console.log('[RepoFileCityScreen] State updated, contributorsFetched = true');
         }
       } catch (err) {
         console.error('[RepoFileCityScreen] Error fetching contributors data:', err);
       } finally {
         if (!cancelled) {
           setContributorsLoading(false);
-          console.log('[RepoFileCityScreen] Loading complete');
         }
       }
     }
@@ -445,7 +425,39 @@ export function RepoFileCityScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeViz, owner, name, contributorsFetched, isAuthenticated, token]);
+  }, [activeViz, owner, name, contributorsFetched]);
+
+  // Fetch activity when Heatmap tab is selected
+  useEffect(() => {
+    if (activeViz !== 'heatmap' || !isAuthenticated || !token || !owner || !name) return;
+
+    let cancelled = false;
+
+    async function fetchActivityData() {
+      if (!token) return; // Type guard for async context
+      try {
+        const activityResponse = await getRepoActivity(token, owner, name, 168);
+        const commits: CommitTimestamp[] = activityResponse.commits.map((c) => ({
+          timestamp: new Date(c.timestamp),
+          repoId: c.repoId,
+          authorLogin: c.authorLogin,
+          authorAvatarUrl: c.authorAvatarUrl,
+        }));
+
+        if (!cancelled) {
+          setRecentCommits(commits);
+        }
+      } catch (err) {
+        console.error('[RepoFileCityScreen] Error fetching activity data:', err);
+      }
+    }
+
+    fetchActivityData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeViz, owner, name, isAuthenticated, token]);
 
   // Check if user has starred/followed when authenticated
   useEffect(() => {
@@ -462,20 +474,54 @@ export function RepoFileCityScreen() {
         if (!cancelled) {
           setIsStarred(starRes.status === 204);
         }
-
-        // Check if following owner
-        const followRes = await fetch(`https://api.github.com/user/following/${owner}`, {
-          headers: { Authorization: `token ${token}` },
-        });
-        if (!cancelled) {
-          setIsFollowing(followRes.status === 204);
-        }
       } catch (err) {
         console.error('Error checking user status:', err);
       }
     }
 
     checkUserStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, token, owner, name]);
+
+  // Fetch tour availability and repo follow status
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTourAndFollowStatus() {
+      try {
+        // Fetch tour availability (works for all users)
+        const tourPromise = checkTourAvailability(owner, name);
+
+        // Fetch repo follow status (requires authentication)
+        const followsPromise = isAuthenticated && token
+          ? getFollows(token)
+          : Promise.resolve(null);
+
+        const [tourResult, followsResult] = await Promise.all([
+          tourPromise,
+          followsPromise,
+        ]);
+
+        if (!cancelled) {
+          setIsTourAvailable(tourResult.hasTour);
+
+          if (followsResult) {
+            const repoKey = `${owner}/${name}`.toLowerCase();
+            const isFollowed = followsResult.followedRepos.some(
+              (r) => `${r.owner}/${r.repo}`.toLowerCase() === repoKey
+            );
+            setIsRepoFollowed(isFollowed);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching tour/follow status:', err);
+      }
+    }
+
+    fetchTourAndFollowStatus();
 
     return () => {
       cancelled = true;
@@ -502,24 +548,28 @@ export function RepoFileCityScreen() {
     }
   };
 
-  const handleToggleFollow = async () => {
-    if (!token || followToggling) return;
+  const handleToggleRepoFollow = async () => {
+    if (!token || repoFollowToggling) return;
 
-    setFollowToggling(true);
+    setRepoFollowToggling(true);
     try {
-      const method = isFollowing ? 'DELETE' : 'PUT';
-      const res = await fetch(`https://api.github.com/user/following/${owner}`, {
-        method,
-        headers: { Authorization: `token ${token}` },
-      });
-      if (res.ok || res.status === 204) {
-        setIsFollowing(!isFollowing);
+      if (isRepoFollowed) {
+        await unfollowRepo(token, owner, name);
+        setIsRepoFollowed(false);
+      } else {
+        await followRepo(token, owner, name);
+        setIsRepoFollowed(true);
       }
     } catch (err) {
-      console.error('Error toggling follow:', err);
+      console.error('Error toggling repo follow:', err);
     } finally {
-      setFollowToggling(false);
+      setRepoFollowToggling(false);
     }
+  };
+
+  const handleTourPress = () => {
+    // TODO: Navigate to tour view or show tour
+    console.log('Tour button pressed');
   };
 
   const handleBuildingPress = (building: CityBuilding) => {
@@ -585,14 +635,26 @@ export function RepoFileCityScreen() {
             {fullName}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={[styles.closeIcon, { color: theme.colors.textSecondary }]}>
-            ✕
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {isTourAvailable && (
+            <TouchableOpacity
+              style={styles.tourButton}
+              onPress={handleTourPress}
+            >
+              <Text style={[styles.tourButtonText, { color: theme.colors.primary }]}>
+                Tour
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={[styles.closeIcon, { color: theme.colors.textSecondary }]}>
+              ✕
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Content */}
@@ -766,7 +828,7 @@ export function RepoFileCityScreen() {
                     </View>
                   </View>
 
-                  {/* Star & Follow toggles (when signed in) */}
+                  {/* Star & Track toggles (when signed in) */}
                   {isAuthenticated && (
                     <View style={styles.actionButtons}>
                       <TouchableOpacity
@@ -796,16 +858,16 @@ export function RepoFileCityScreen() {
                         style={[
                           styles.actionButton,
                           { borderColor: theme.colors.primary },
-                          isFollowing && { backgroundColor: theme.colors.primary },
+                          isRepoFollowed && { backgroundColor: theme.colors.primary },
                         ]}
-                        onPress={handleToggleFollow}
-                        disabled={followToggling}
+                        onPress={handleToggleRepoFollow}
+                        disabled={repoFollowToggling}
                       >
                         <Text style={[
                           styles.actionButtonText,
-                          { color: isFollowing ? '#fff' : theme.colors.primary },
+                          { color: isRepoFollowed ? '#fff' : theme.colors.primary },
                         ]}>
-                          {followToggling ? '...' : isFollowing ? 'Following' : 'Follow'}
+                          {repoFollowToggling ? '...' : isRepoFollowed ? 'Tracking' : 'Track'}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1007,6 +1069,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitial: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tourButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  tourButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
