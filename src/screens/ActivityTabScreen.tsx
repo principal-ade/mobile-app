@@ -1,11 +1,11 @@
 /**
  * Activity Tab Screen
  *
- * Shows the hourly activity heatmap visualization
- * with commit activity from followed users and repos.
+ * Shows repository and user activity cards sorted by most recent activity.
+ * Features tabs to switch between viewing repos and users.
  */
 
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,51 +14,61 @@ import {
   RefreshControl,
   ScrollView,
   Pressable,
-  Image,
+  FlatList,
 } from 'react-native';
-import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
-import {
-  HourlyActivityHeatmap,
-  CommitTimestamp,
-} from '../components/HourlyActivityHeatmap';
-import { BlockCommitsSheet } from '../components/BlockCommitsSheet';
+import { ActivityRepoCard } from '../components/ActivityFeed/ActivityRepoCard';
+import { UserCard } from '../components/ActivityFeed/UserCard';
 import {
   getActivityHeatmap,
+  getFollows,
   HeatmapCommit,
   HeatmapAuthor,
   HeatmapRepo,
+  FeedFollows,
 } from '../services/FeedApiService';
+
+type Tab = 'repos' | 'users';
+
+interface RepoActivityData {
+  repoId: string;
+  owner: string;
+  name: string;
+  commitCount: number;
+  latestCommitTime: string;
+  latestCommitAuthor?: {
+    login: string;
+    avatarUrl?: string;
+  };
+  latestCommitMessage?: string;
+}
+
+interface UserActivityData {
+  login: string;
+  avatarUrl?: string;
+  commitCount: number;
+  latestCommitTime: string;
+  reposContributedTo: string[];
+}
 
 export function ActivityTabScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, token, user } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const { version } = useFeedPreferences();
 
-  const [commits, setCommits] = useState<CommitTimestamp[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('repos');
+  const [commits, setCommits] = useState<HeatmapCommit[]>([]);
   const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
   const [repos, setRepos] = useState<HeatmapRepo[]>([]);
+  const [follows, setFollows] = useState<FeedFollows | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // UI filter state for heatmap display
-  const [selectedAuthorLogins, setSelectedAuthorLogins] = useState<string[] | null>(null);
-  const [selectedRepoIds, setSelectedRepoIds] = useState<string[] | null>(null);
-
-  // Block commits sheet state
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const [selectedBlockStart, setSelectedBlockStart] = useState<Date | null>(null);
-  const [selectedBlockEnd, setSelectedBlockEnd] = useState<Date | null>(null);
-  const [selectedBlockCount, setSelectedBlockCount] = useState(0);
-
-  // Filter panel state
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   // Track if we've done initial fetch and version at last fetch
   const hasFetched = useRef(false);
@@ -80,23 +90,17 @@ export function ActivityTabScreen() {
 
     try {
       setError(null);
-      const response = await getActivityHeatmap(token, {
-        hoursBack: 24,
-      });
 
-      // Transform API commits to CommitTimestamp format
-      const transformedCommits: CommitTimestamp[] = response.commits.map(
-        (commit: HeatmapCommit) => ({
-          timestamp: new Date(commit.timestamp),
-          repoId: commit.repoId,
-          authorLogin: commit.authorLogin,
-          authorAvatarUrl: commit.authorAvatarUrl,
-        })
-      );
+      // Fetch both activity and follows in parallel
+      const [activityResponse, followsResponse] = await Promise.all([
+        getActivityHeatmap(token, { hoursBack: 24 }),
+        getFollows(token),
+      ]);
 
-      setCommits(transformedCommits);
-      setAuthors(response.authors);
-      setRepos(response.repos);
+      setCommits(activityResponse.commits);
+      setAuthors(activityResponse.authors);
+      setRepos(activityResponse.repos);
+      setFollows(followsResponse);
       hasFetched.current = true;
       lastFetchTime.current = now;
       versionAtLastFetch.current = version;
@@ -130,86 +134,105 @@ export function ActivityTabScreen() {
     setRefreshing(false);
   }, [fetchActivity]);
 
-  const handleBlockClick = useCallback(
-    (startTime: Date, endTime: Date, count: number) => {
-      if (count === 0) return; // Don't open sheet for empty blocks
+  // Process repos data for display
+  const repoActivityData: RepoActivityData[] = React.useMemo(() => {
+    if (!follows) return [];
 
-      setSelectedBlockStart(startTime);
-      setSelectedBlockEnd(endTime);
-      setSelectedBlockCount(count);
-      setSheetVisible(true);
-    },
-    []
-  );
+    // Create a set of followed repo IDs for fast lookup
+    const followedRepoIds = new Set(
+      follows.followedRepos.map(fr => `${fr.owner}/${fr.repo}`)
+    );
 
-  const handleSheetClose = useCallback(() => {
-    setSheetVisible(false);
-  }, []);
-
-  // Toggle author filter selection
-  const toggleAuthorFilter = useCallback((login: string) => {
-    setSelectedAuthorLogins((prev) => {
-      if (!prev) return [login];
-      if (prev.includes(login)) {
-        const next = prev.filter((l) => l !== login);
-        return next.length === 0 ? null : next;
-      }
-      return [...prev, login];
+    // Group commits by repo
+    const repoCommitsMap = new Map<string, HeatmapCommit[]>();
+    commits.forEach(commit => {
+      const existing = repoCommitsMap.get(commit.repoId) || [];
+      repoCommitsMap.set(commit.repoId, [...existing, commit]);
     });
-  }, []);
 
-  // Toggle repo filter selection
-  const toggleRepoFilter = useCallback((repoId: string) => {
-    setSelectedRepoIds((prev) => {
-      if (!prev) return [repoId];
-      if (prev.includes(repoId)) {
-        const next = prev.filter((r) => r !== repoId);
-        return next.length === 0 ? null : next;
-      }
-      return [...prev, repoId];
+    // Create repo activity data - only for followed repos
+    const repoData: RepoActivityData[] = [];
+    repos.forEach(repo => {
+      // Skip repos that are not followed
+      if (!followedRepoIds.has(repo.id)) return;
+
+      const repoCommits = repoCommitsMap.get(repo.id) || [];
+      if (repoCommits.length === 0) return;
+
+      // Sort commits by timestamp (most recent first)
+      const sortedCommits = [...repoCommits].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      const latestCommit = sortedCommits[0];
+
+      repoData.push({
+        repoId: repo.id,
+        owner: repo.owner,
+        name: repo.name,
+        commitCount: repoCommits.length,
+        latestCommitTime: latestCommit.timestamp,
+        latestCommitAuthor: latestCommit.authorLogin ? {
+          login: latestCommit.authorLogin,
+          avatarUrl: latestCommit.authorAvatarUrl,
+        } : undefined,
+        latestCommitMessage: undefined,
+      });
     });
-  }, []);
 
-  // Select only current user's commits
-  const selectMe = useCallback(() => {
-    if (user?.login) {
-      setSelectedAuthorLogins([user.login]);
-      setSelectedRepoIds(null);
-    }
-  }, [user?.login]);
+    // Sort by most recent activity
+    return repoData.sort(
+      (a, b) => new Date(b.latestCommitTime).getTime() - new Date(a.latestCommitTime).getTime()
+    );
+  }, [commits, repos, follows]);
 
-  // Clear all filters
-  const clearFilters = useCallback(() => {
-    setSelectedAuthorLogins(null);
-    setSelectedRepoIds(null);
-    setFilterPanelOpen(false);
-  }, []);
+  // Process users data for display
+  const userActivityData: UserActivityData[] = React.useMemo(() => {
+    if (!follows) return [];
 
-  // Get filter label for the button
-  const getFilterLabel = useMemo(() => {
-    const authorCount = selectedAuthorLogins?.length ?? 0;
-    const repoCount = selectedRepoIds?.length ?? 0;
+    // Create a set of followed user logins for fast lookup
+    const followedUserLogins = new Set(
+      follows.followedUsers.map(fu => fu.login)
+    );
 
-    if (authorCount === 0 && repoCount === 0) {
-      return 'All';
-    }
+    // Group commits by author
+    const authorCommitsMap = new Map<string, HeatmapCommit[]>();
+    commits.forEach(commit => {
+      const existing = authorCommitsMap.get(commit.authorLogin) || [];
+      authorCommitsMap.set(commit.authorLogin, [...existing, commit]);
+    });
 
-    // Check if only "me" is selected
-    if (authorCount === 1 && repoCount === 0 && selectedAuthorLogins?.[0] === user?.login) {
-      return 'Me';
-    }
+    // Create user activity data - only for followed users
+    const userData: UserActivityData[] = [];
+    authors.forEach(author => {
+      // Skip users that are not followed
+      if (!followedUserLogins.has(author.login)) return;
 
-    const parts: string[] = [];
-    if (authorCount > 0) {
-      parts.push(`${authorCount} author${authorCount > 1 ? 's' : ''}`);
-    }
-    if (repoCount > 0) {
-      parts.push(`${repoCount} repo${repoCount > 1 ? 's' : ''}`);
-    }
-    return parts.join(', ');
-  }, [selectedAuthorLogins, selectedRepoIds, user?.login]);
+      const authorCommits = authorCommitsMap.get(author.login) || [];
+      if (authorCommits.length === 0) return;
 
-  const hasActiveFilter = selectedAuthorLogins !== null || selectedRepoIds !== null;
+      // Sort commits by timestamp (most recent first)
+      const sortedCommits = [...authorCommits].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      const latestCommit = sortedCommits[0];
+
+      // Get unique repos this user contributed to
+      const uniqueRepos = Array.from(new Set(authorCommits.map(c => c.repoId)));
+
+      userData.push({
+        login: author.login,
+        avatarUrl: author.avatarUrl,
+        commitCount: authorCommits.length,
+        latestCommitTime: latestCommit.timestamp,
+        reposContributedTo: uniqueRepos,
+      });
+    });
+
+    // Sort by most recent activity
+    return userData.sort(
+      (a, b) => new Date(b.latestCommitTime).getTime() - new Date(a.latestCommitTime).getTime()
+    );
+  }, [commits, authors, follows]);
 
   // Not authenticated state
   if (!isAuthenticated) {
@@ -320,201 +343,142 @@ export function ActivityTabScreen() {
         </Text>
       </View>
 
-      {/* Heatmap */}
-      <ScrollView
-        style={styles.scrollContainer}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 80 },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.heatmapContainer}>
-          <HourlyActivityHeatmap
-            commits={commits}
-            loading={loading}
-            onBlockClick={handleBlockClick}
-            selectedAuthorLogins={selectedAuthorLogins}
-            selectedRepoIds={selectedRepoIds}
-          />
-        </View>
-      </ScrollView>
-
-      {/* Floating filter panel (expanded) */}
-      {filterPanelOpen && (
-        <View
+      {/* Tabs */}
+      <View style={[styles.tabsContainer, { borderBottomColor: theme.colors.border }]}>
+        <Pressable
           style={[
-            styles.filterPanel,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-              bottom: insets.bottom + 60,
-            },
+            styles.tab,
+            activeTab === 'repos' && [
+              styles.activeTab,
+              { borderBottomColor: theme.colors.primary },
+            ],
           ]}
+          onPress={() => setActiveTab('repos')}
         >
-          {/* Me button */}
-          {user?.login && (
-            <Pressable
-              style={[
-                styles.filterOption,
-                selectedAuthorLogins?.length === 1 &&
-                  selectedAuthorLogins[0] === user.login &&
-                  selectedRepoIds === null && {
-                    backgroundColor: theme.colors.primary + '20',
-                  },
-              ]}
-              onPress={selectMe}
-            >
-              {user.avatar_url && (
-                <Image
-                  source={{ uri: user.avatar_url }}
-                  style={styles.filterAvatar}
-                />
-              )}
-              <Text style={[styles.filterOptionText, { color: theme.colors.text }]}>
-                Me
-              </Text>
-            </Pressable>
-          )}
-
-          {/* Separator */}
-          <View style={[styles.filterSeparator, { backgroundColor: theme.colors.border }]} />
-
-          {/* Authors section */}
-          <Text style={[styles.filterSectionTitle, { color: theme.colors.textMuted }]}>
-            Authors
-          </Text>
-          <GHScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterChipsScroll}
-            contentContainerStyle={styles.filterChipsContent}
+          <Text
+            style={[
+              styles.tabText,
+              { color: theme.colors.textSecondary },
+              activeTab === 'repos' && [
+                styles.activeTabText,
+                { color: theme.colors.primary },
+              ],
+            ]}
           >
-            {authors
-              .filter((a) => a.login !== user?.login)
-              .map((author) => (
-                <Pressable
-                  key={author.login}
-                  style={[
-                    styles.filterChip,
-                    { borderColor: theme.colors.border },
-                    selectedAuthorLogins?.includes(author.login) && {
-                      backgroundColor: theme.colors.primary + '20',
-                      borderColor: theme.colors.primary,
-                    },
-                  ]}
-                  onPress={() => toggleAuthorFilter(author.login)}
-                >
-                  {author.avatarUrl && (
-                    <Image
-                      source={{ uri: author.avatarUrl }}
-                      style={styles.filterChipAvatar}
-                    />
-                  )}
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      { color: theme.colors.text },
-                      selectedAuthorLogins?.includes(author.login) && {
-                        color: theme.colors.primary,
-                      },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {author.login}
-                  </Text>
-                </Pressable>
-              ))}
-          </GHScrollView>
-
-          {/* Repos section */}
-          <Text style={[styles.filterSectionTitle, { color: theme.colors.textMuted }]}>
             Repositories
           </Text>
-          <GHScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterChipsScroll}
-            contentContainerStyle={styles.filterChipsContent}
+          <View
+            style={[
+              styles.countBadge,
+              { backgroundColor: activeTab === 'repos' ? theme.colors.primary : theme.colors.border },
+            ]}
           >
-            {repos.map((repo) => (
-              <Pressable
-                key={repo.id}
-                style={[
-                  styles.filterChip,
-                  { borderColor: theme.colors.border },
-                  selectedRepoIds?.includes(repo.id) && {
-                    backgroundColor: theme.colors.primary + '20',
-                    borderColor: theme.colors.primary,
-                  },
-                ]}
-                onPress={() => toggleRepoFilter(repo.id)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    { color: theme.colors.text },
-                    selectedRepoIds?.includes(repo.id) && {
-                      color: theme.colors.primary,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {repo.name}
-                </Text>
-              </Pressable>
-            ))}
-          </GHScrollView>
+            <Text
+              style={[
+                styles.countText,
+                { color: activeTab === 'repos' ? '#fff' : theme.colors.textSecondary },
+              ]}
+            >
+              {repoActivityData.length}
+            </Text>
+          </View>
+        </Pressable>
 
-          {/* Clear filters */}
-          {hasActiveFilter && (
-            <Pressable style={styles.clearButton} onPress={clearFilters}>
-              <Text style={[styles.clearButtonText, { color: theme.colors.error }]}>
-                Clear filters
+        <Pressable
+          style={[
+            styles.tab,
+            activeTab === 'users' && [
+              styles.activeTab,
+              { borderBottomColor: theme.colors.primary },
+            ],
+          ]}
+          onPress={() => setActiveTab('users')}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              { color: theme.colors.textSecondary },
+              activeTab === 'users' && [
+                styles.activeTabText,
+                { color: theme.colors.primary },
+              ],
+            ]}
+          >
+            Users
+          </Text>
+          <View
+            style={[
+              styles.countBadge,
+              { backgroundColor: activeTab === 'users' ? theme.colors.primary : theme.colors.border },
+            ]}
+          >
+            <Text
+              style={[
+                styles.countText,
+                { color: activeTab === 'users' ? '#fff' : theme.colors.textSecondary },
+              ]}
+            >
+              {userActivityData.length}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
+
+      {/* Content - Repos Tab */}
+      {activeTab === 'repos' && (
+        <FlatList
+          data={repoActivityData}
+          keyExtractor={(item) => item.repoId}
+          renderItem={({ item }) => <ActivityRepoCard {...item} />}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 24 },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                No repository activity in the last 24 hours
               </Text>
-            </Pressable>
-          )}
-        </View>
+            </View>
+          }
+        />
       )}
 
-      {/* Floating filter button */}
-      <Pressable
-        style={[
-          styles.filterButton,
-          {
-            backgroundColor: hasActiveFilter ? theme.colors.primary : theme.colors.surface,
-            borderColor: theme.colors.border,
-            bottom: insets.bottom + 16,
-          },
-        ]}
-        onPress={() => setFilterPanelOpen(!filterPanelOpen)}
-      >
-        <Text
-          style={[
-            styles.filterButtonText,
-            { color: hasActiveFilter ? '#fff' : theme.colors.text },
+      {/* Content - Users Tab */}
+      {activeTab === 'users' && (
+        <FlatList
+          data={userActivityData}
+          keyExtractor={(item) => item.login}
+          renderItem={({ item }) => <UserCard {...item} />}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 24 },
           ]}
-        >
-          {getFilterLabel}
-        </Text>
-      </Pressable>
-
-      {/* Block commits sheet */}
-      <BlockCommitsSheet
-        visible={sheetVisible}
-        onClose={handleSheetClose}
-        startTime={selectedBlockStart}
-        endTime={selectedBlockEnd}
-        githubToken={token}
-        expectedCount={selectedBlockCount}
-      />
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                No user activity in the last 24 hours
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -531,7 +495,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   headerTitle: {
     fontSize: 28,
@@ -541,16 +505,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 2,
   },
-  scrollContainer: {
-    flex: 1,
-  },
-  scrollContent: {
+  tabsContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingTop: 8,
+    borderBottomWidth: 1,
   },
-  heatmapContainer: {
-    flex: 1,
-    minHeight: 500,
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    marginRight: 24,
+    gap: 8,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    fontWeight: '600',
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  listContent: {
+    paddingTop: 12,
   },
   loadingText: {
     marginTop: 16,
@@ -571,100 +561,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 280,
   },
-  // Floating filter button
-  filterButton: {
-    position: 'absolute',
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
   },
-  filterButtonText: {
+  emptyText: {
     fontSize: 14,
-    fontWeight: '600',
-  },
-  // Filter panel
-  filterPanel: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    maxHeight: 300,
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  filterAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
-  filterOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  filterSeparator: {
-    height: 1,
-    marginVertical: 8,
-  },
-  filterSectionTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  filterChipsScroll: {
-    marginBottom: 8,
-  },
-  filterChipsContent: {
-    gap: 8,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
-  },
-  filterChipAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    maxWidth: 100,
-  },
-  clearButton: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  clearButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 

@@ -531,6 +531,43 @@ export async function getRepoActivity(
 }
 
 // ============================================================================
+// Tour Availability
+// ============================================================================
+
+export interface TourAvailability {
+  hasTour: boolean;
+  tourPath: string | null;
+  forkOwner: string | null;
+  forkRepo: string | null;
+  cached: boolean;
+}
+
+/**
+ * Check if a repository has a tour available
+ * Checks Redis cache for tour availability from fork repos
+ */
+export async function checkTourAvailability(
+  owner: string,
+  repo: string
+): Promise<TourAvailability> {
+  const input = { owner, repo };
+  const url = `${API_BASE}/trpc/github.checkTourAvailability?input=${encodeURIComponent(JSON.stringify(input))}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to check tour availability: ${response.status}`);
+  }
+
+  const data: TRPCResponse<TourAvailability> = await response.json();
+  return data.result.data;
+}
+
+// ============================================================================
 // AI Commit Summary
 // ============================================================================
 
