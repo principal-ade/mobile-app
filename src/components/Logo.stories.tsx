@@ -255,3 +255,63 @@ export const SizeComparison: Story = {
     </View>
   ),
 };
+
+export const CustomColors: Story = {
+  render: () => (
+    <View style={{ backgroundColor: '#1a1a1a', padding: 20, gap: 20 }}>
+      <View style={{ alignItems: 'center' }}>
+        <Logo
+          width={120}
+          height={120}
+          color="#00ff00"
+          animated={false}
+        />
+        <Text style={{ color: '#fff', marginTop: 8 }}>Green</Text>
+      </View>
+      <View style={{ alignItems: 'center' }}>
+        <Logo
+          width={120}
+          height={120}
+          horizontalColor="#ff0000"
+          verticalColor="#00ff00"
+          diagonalColor="#0000ff"
+          outlineColor="#ffff00"
+          letterColor="#ff00ff"
+          particleColor="#00ffff"
+          animated={true}
+        />
+        <Text style={{ color: '#fff', marginTop: 8 }}>Rainbow</Text>
+      </View>
+    </View>
+  ),
+};
+
+export const WithGlow: Story = {
+  render: () => (
+    <View style={{ backgroundColor: '#1a1a1a', padding: 20 }}>
+      <Logo width={150} height={150} showGlow={true} animated={true} />
+    </View>
+  ),
+};
+
+export const NoOutline: Story = {
+  render: () => (
+    <View style={{ backgroundColor: '#1a1a1a', padding: 20 }}>
+      <Logo width={150} height={150} showOutline={false} animated={false} />
+    </View>
+  ),
+};
+
+export const CustomAccent: Story = {
+  render: () => (
+    <View style={{ backgroundColor: '#1a1a1a', padding: 20 }}>
+      <Logo
+        width={150}
+        height={150}
+        color="#666666"
+        accentColor="#ff6b35"
+        animated={true}
+      />
+    </View>
+  ),
+};
