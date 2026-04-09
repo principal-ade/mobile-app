@@ -52,18 +52,37 @@ interface FeedPreferencesContextValue extends FeedPreferencesState {
   resetToDefaults: () => void;
 }
 
+interface FeedPreferencesProviderProps extends PropsWithChildren {
+  initialUsers?: FollowedUser[];
+  initialRepos?: FollowedRepo[];
+  onUsersChange?: (users: FollowedUser[]) => Promise<void>;
+  onReposChange?: (repos: FollowedRepo[]) => Promise<void>;
+}
+
 const FeedPreferencesContext = createContext<FeedPreferencesContextValue | undefined>(undefined);
 
-export function FeedPreferencesProvider({ children }: PropsWithChildren): React.JSX.Element {
+export function FeedPreferencesProvider({
+  children,
+  initialUsers,
+  initialRepos,
+  onUsersChange,
+  onReposChange,
+}: FeedPreferencesProviderProps): React.JSX.Element {
   const [state, setState] = useState<FeedPreferencesState>({
-    followedUsers: [],
-    followedRepos: [],
+    followedUsers: initialUsers ?? [],
+    followedRepos: initialRepos ?? DEFAULT_REPOS,
     version: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!(initialUsers || initialRepos));
 
-  // Bootstrap: Load from storage on mount
+  // Bootstrap: Load from storage on mount (only if no initial data provided)
   useEffect(() => {
+    // Skip bootstrap if initial data was provided
+    if (initialUsers || initialRepos) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const bootstrap = async () => {
@@ -102,7 +121,7 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialUsers, initialRepos]);
 
   // User mutations
   const addUser = useCallback((user: FollowedUser) => {
@@ -113,7 +132,14 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
       if (exists) return prev;
 
       const updated = [...prev.followedUsers, user];
-      saveFollowedUsers(updated).catch(console.error);
+
+      // Notify parent context (MultiAccountContext)
+      if (onUsersChange) {
+        onUsersChange(updated).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedUsers(updated).catch(console.error);
+      }
 
       return {
         ...prev,
@@ -121,12 +147,19 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onUsersChange]);
 
   const removeUser = useCallback((login: string) => {
     setState((prev) => {
       const updated = prev.followedUsers.filter((u) => u.login !== login);
-      saveFollowedUsers(updated).catch(console.error);
+
+      // Notify parent context (MultiAccountContext)
+      if (onUsersChange) {
+        onUsersChange(updated).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedUsers(updated).catch(console.error);
+      }
 
       return {
         ...prev,
@@ -134,11 +167,17 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onUsersChange]);
 
   const setUsers = useCallback((users: FollowedUser[]) => {
     setState((prev) => {
-      saveFollowedUsers(users).catch(console.error);
+      // Notify parent context (MultiAccountContext)
+      if (onUsersChange) {
+        onUsersChange(users).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedUsers(users).catch(console.error);
+      }
 
       return {
         ...prev,
@@ -146,7 +185,7 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onUsersChange]);
 
   // Repo mutations
   const addRepo = useCallback((repo: FollowedRepo) => {
@@ -159,7 +198,14 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
       if (exists) return prev;
 
       const updated = [...prev.followedRepos, repo];
-      saveFollowedRepos(updated).catch(console.error);
+
+      // Notify parent context (MultiAccountContext)
+      if (onReposChange) {
+        onReposChange(updated).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedRepos(updated).catch(console.error);
+      }
 
       return {
         ...prev,
@@ -167,14 +213,21 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onReposChange]);
 
   const removeRepo = useCallback((owner: string, repo: string) => {
     setState((prev) => {
       const updated = prev.followedRepos.filter(
         (r) => !(r.owner === owner && r.repo === repo)
       );
-      saveFollowedRepos(updated).catch(console.error);
+
+      // Notify parent context (MultiAccountContext)
+      if (onReposChange) {
+        onReposChange(updated).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedRepos(updated).catch(console.error);
+      }
 
       return {
         ...prev,
@@ -182,11 +235,17 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onReposChange]);
 
   const setRepos = useCallback((repos: FollowedRepo[]) => {
     setState((prev) => {
-      saveFollowedRepos(repos).catch(console.error);
+      // Notify parent context (MultiAccountContext)
+      if (onReposChange) {
+        onReposChange(repos).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedRepos(repos).catch(console.error);
+      }
 
       return {
         ...prev,
@@ -194,13 +253,20 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onReposChange]);
 
   // Reset to defaults
   const resetToDefaults = useCallback(() => {
     setState((prev) => {
-      saveFollowedUsers([]).catch(console.error);
-      saveFollowedRepos(DEFAULT_REPOS).catch(console.error);
+      // Notify parent context (MultiAccountContext)
+      if (onUsersChange && onReposChange) {
+        onUsersChange([]).catch(console.error);
+        onReposChange(DEFAULT_REPOS).catch(console.error);
+      } else {
+        // Fallback to direct storage
+        saveFollowedUsers([]).catch(console.error);
+        saveFollowedRepos(DEFAULT_REPOS).catch(console.error);
+      }
 
       return {
         followedUsers: [],
@@ -208,7 +274,7 @@ export function FeedPreferencesProvider({ children }: PropsWithChildren): React.
         version: prev.version + 1,
       };
     });
-  }, []);
+  }, [onUsersChange, onReposChange]);
 
   const value = useMemo<FeedPreferencesContextValue>(
     () => ({

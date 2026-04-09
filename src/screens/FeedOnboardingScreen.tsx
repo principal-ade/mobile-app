@@ -99,6 +99,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
             description: null,
             stargazers_count: 0,
             language: null,
+            owner_avatar_url: `https://github.com/${owner}.png`,
             source: 'starred' as const,
           };
         });
@@ -121,6 +122,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
             description: null,
             stargazers_count: 0,
             language: null,
+            owner_avatar_url: `https://github.com/${owner}.png`,
             source: 'starred' as const,
           };
         });

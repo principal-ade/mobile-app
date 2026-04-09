@@ -31,6 +31,7 @@ export interface GitHubRepo {
   description: string | null;
   stargazers_count: number;
   language: string | null;
+  owner_avatar_url: string;
 }
 
 export interface SuggestedRepo extends GitHubRepo {
@@ -61,6 +62,7 @@ interface SearchReposResponse {
     description: string | null;
     stargazers_count: number;
     language: string | null;
+    owner_avatar_url: string;
   }>;
   total_count: number;
 }

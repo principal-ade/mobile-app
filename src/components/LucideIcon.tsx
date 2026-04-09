@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { SvgProps, Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
+import Svg, { SvgProps, Circle, Line, Path, Polyline, Polygon, Rect } from 'react-native-svg';
 
 /**
  * Lucide icon paths
@@ -13,6 +13,7 @@ const ICON_PATHS: Record<string, string> = {
   Info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
   User: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   Home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  Star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
 };
 
 interface LucideIconProps extends Omit<SvgProps, 'viewBox'> {
@@ -44,8 +45,8 @@ function parseSvgPath(pathString: string, color: string, strokeWidth: number) {
       attrs[attrMatch[1]] = attrMatch[2];
     }
 
+    const key = `${tagName}-${index++}`;
     const commonProps = {
-      key: `${tagName}-${index++}`,
       stroke: color,
       strokeWidth,
       strokeLinecap: 'round' as const,
@@ -57,6 +58,7 @@ function parseSvgPath(pathString: string, color: string, strokeWidth: number) {
       case 'circle':
         elements.push(
           <Circle
+            key={key}
             {...commonProps}
             cx={attrs.cx}
             cy={attrs.cy}
@@ -67,6 +69,7 @@ function parseSvgPath(pathString: string, color: string, strokeWidth: number) {
       case 'line':
         elements.push(
           <Line
+            key={key}
             {...commonProps}
             x1={attrs.x1}
             y1={attrs.y1}
@@ -78,6 +81,7 @@ function parseSvgPath(pathString: string, color: string, strokeWidth: number) {
       case 'path':
         elements.push(
           <Path
+            key={key}
             {...commonProps}
             d={attrs.d}
           />
@@ -86,6 +90,16 @@ function parseSvgPath(pathString: string, color: string, strokeWidth: number) {
       case 'polyline':
         elements.push(
           <Polyline
+            key={key}
+            {...commonProps}
+            points={attrs.points}
+          />
+        );
+        break;
+      case 'polygon':
+        elements.push(
+          <Polygon
+            key={key}
             {...commonProps}
             points={attrs.points}
           />
@@ -94,6 +108,7 @@ function parseSvgPath(pathString: string, color: string, strokeWidth: number) {
       case 'rect':
         elements.push(
           <Rect
+            key={key}
             {...commonProps}
             width={attrs.width}
             height={attrs.height}

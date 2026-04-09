@@ -59,7 +59,7 @@ export function UserCard({
         </Text>
         {reposContributedTo.length > 0 && (
           <View style={styles.reposContainer}>
-            {reposContributedTo.slice(0, 3).map((repo, idx) => (
+            {reposContributedTo.slice(0, 3).map((repo, _idx) => (
               <Text
                 key={repo}
                 style={[styles.repoTag, {

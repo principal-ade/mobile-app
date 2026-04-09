@@ -55,8 +55,10 @@ interface AuthServerTokenResponse {
  * 1. Opens auth URL in secure browser session
  * 2. Auth server redirects back to app via deep link
  * 3. App extracts state and exchanges for tokens
+ *
+ * @param preferEphemeralSession - If true, forces a fresh login (useful for adding additional accounts)
  */
-export async function startAuthFlow(): Promise<AuthResult> {
+export async function startAuthFlow(preferEphemeralSession = false): Promise<AuthResult> {
   // Generate PKCE and state
   const { codeVerifier, codeChallenge } = await generatePKCE();
   const state = await generateState();
@@ -98,6 +100,9 @@ export async function startAuthFlow(): Promise<AuthResult> {
   const result = await WebBrowser.openAuthSessionAsync(
     data.auth_url,
     callbackUrl,
+    {
+      preferEphemeralSession, // Forces fresh login if true
+    }
   );
 
   if (result.type !== 'success' || !result.url) {

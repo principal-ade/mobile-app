@@ -20,6 +20,7 @@ import SavedTabScreen from '../screens/SavedTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import RepoFileCityScreen from '../screens/RepoFileCityScreen';
+import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { LucideIcon } from '../components/LucideIcon';
@@ -189,6 +190,11 @@ export default function AppNavigator() {
             <Stack.Screen
               name="RepoFileCity"
               component={RepoFileCityScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="TourFileCity"
+              component={TourFileCityScreen}
               options={{ headerShown: false }}
             />
             {isAuthenticated && (

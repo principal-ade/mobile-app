@@ -35,7 +35,7 @@ Note: The web also has a 3D version (`FileCity3D` using Three.js) which is out o
 | Pan gesture | ✅ | ✅ | |
 | Zoom (scroll/pinch) | ✅ | ✅ | |
 | Tap/click to select | ✅ | ✅ | |
-| Zoom to path (animated) | ✅ | ❌ | `zoomToPath` prop with animation |
+| Zoom to path (animated) | ✅ | ✅ | `zoomToPath` prop with animation |
 | Hover state | ✅ | N/A | Not applicable for touch |
 | Hover tooltips | ✅ | N/A | `onHover` callback with tooltip data |
 | Click to zoom into directory | ✅ | ❌ | Auto-zoom on directory click |
@@ -45,9 +45,9 @@ Note: The web also has a 3D version (`FileCity3D` using Three.js) which is out o
 
 | Feature | Web | Mobile | Notes |
 |---------|-----|--------|-------|
-| Animated zoom transitions | ✅ | ❌ | `zoomAnimationSpeed` prop |
+| Animated zoom transitions | ✅ | ✅ | `zoomAnimationSpeed` prop, smooth gestures |
 | Smart text wrapping | ✅ | ❌ | `breakTextIntelligently()` for labels |
-| Isolation modes | ✅ | ❌ | 'none', 'transparent', 'collapse', 'hide' |
+| Isolation modes | ✅ | ✅ | 'none', 'transparent', 'hide' (collapse N/A for 2D) |
 | Transform (rotate) | ✅ | ❌ | 0, 90, 180, 270 degree rotation |
 | Transform (flip) | ✅ | ❌ | Horizontal/vertical flip |
 | Focus directory highlight | ✅ | ❌ | `focusDirectory` prop |
@@ -81,13 +81,13 @@ Note: The web also has a 3D version (`FileCity3D` using Three.js) which is out o
 | `initialZoom` | ❌ | ✅ | Mobile-only |
 | `minZoom` | ❌ | ✅ | Mobile-only |
 | `maxZoom` | ❌ | ✅ | Mobile-only |
-| `zoomToPath` | ✅ | ❌ | |
+| `zoomToPath` | ✅ | ✅ | Programmatic navigation to files/directories |
 | `onHover` | ✅ | ❌ | |
 | `showGrid` | ✅ | ❌ | |
 | `showFileNames` | ✅ | ❌ | |
 | `showFileTypeIcons` | ✅ | ✅ | |
 | `focusDirectory` | ✅ | ❌ | |
-| `isolationMode` | ✅ | ❌ | |
+| `isolationMode` | ✅ | ✅ | 'none' \| 'transparent' \| 'hide' |
 | `transform` | ✅ | ❌ | |
 
 ## Priority Features
@@ -95,14 +95,14 @@ Note: The web also has a 3D version (`FileCity3D` using Three.js) which is out o
 ### High Priority
 Features that significantly improve usability:
 
-1. **Zoom to path** - Navigate to specific files/directories programmatically
-2. **Isolation mode (transparent)** - Dim non-highlighted buildings for focus
+1. ✅ **Zoom to path** - Navigate to specific files/directories programmatically
+2. ✅ **Isolation mode (transparent)** - Dim non-highlighted buildings for focus
 3. **Double-tap to zoom** - Standard mobile gesture for zooming in
 
 ### Medium Priority
 Features that enhance the experience:
 
-4. **Animated zoom transitions** - Smooth camera movements
+4. ✅ **Animated zoom transitions** - Smooth camera movements
 5. **Smart text wrapping** - Better directory label readability
 6. **File type icons** - Visual identification of file types
 7. **Spatial grid hit testing** - Performance for large repos (1000+ files)

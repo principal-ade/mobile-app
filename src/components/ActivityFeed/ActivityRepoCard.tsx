@@ -16,7 +16,7 @@ export interface ActivityRepoCardProps {
 }
 
 export function ActivityRepoCard({
-  repoId,
+  repoId: _repoId,
   owner,
   name,
   commitCount,

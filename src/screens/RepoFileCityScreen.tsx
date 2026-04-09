@@ -127,7 +127,6 @@ function StarChart({
   // The oldest fetched star is at position (totalCount - stargazers.length + 1)
   // The newest fetched star is at position totalCount
   const startCount = totalCount - stargazers.length;
-  const endCount = totalCount;
 
   // Create cumulative points with actual star counts
   const points = sorted.map((star, i) => {
@@ -242,8 +241,6 @@ function StarChart({
   );
 }
 
-type VizType = 'city' | 'stars' | 'heatmap';
-
 function formatCount(count: number | undefined): string {
   if (count === undefined) return '—';
   if (count >= 1000) {
@@ -266,24 +263,6 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-interface DayCount {
-  date: string;
-  count: number;
-}
-
-function groupStarsByDay(stargazers: Stargazer[]): DayCount[] {
-  const counts = new Map<string, number>();
-
-  stargazers.forEach((star) => {
-    const date = star.starredAt.split('T')[0];
-    counts.set(date, (counts.get(date) || 0) + 1);
-  });
-
-  return Array.from(counts.entries())
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Canvas is a square, capped at 50% of screen height
 const CANVAS_SIZE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT * 0.4);
@@ -304,8 +283,6 @@ export function RepoFileCityScreen() {
   const [cityData, setCityData] = useState<CityData | null>(null);
   const [highlightLayers, setHighlightLayers] = useState<HighlightLayer[]>([]);
   const [iconMap, setIconMap] = useState<Map<string, FileTypeIconConfig>>(new Map());
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
   const [activeViz, setActiveViz] = useState<'city' | 'stars' | 'heatmap'>('city');
   const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null);
   const [stargazers, setStargazers] = useState<Stargazer[]>([]);
@@ -338,7 +315,6 @@ export function RepoFileCityScreen() {
         setCityData(result.cityData);
         setHighlightLayers(result.highlightLayers);
         setIconMap(result.iconMap);
-        setIsTruncated(result.truncated);
         setRepoInfo(result.repoInfo);
       } catch (err) {
         if (cancelled) return;
@@ -572,12 +548,12 @@ export function RepoFileCityScreen() {
     console.log('Tour button pressed');
   };
 
-  const handleBuildingPress = (building: CityBuilding) => {
-    setSelectedPath(building.path);
+  const handleBuildingPress = (_building: CityBuilding) => {
+    // Currently no action on building press
   };
 
-  const handleDistrictPress = (district: CityDistrict) => {
-    setSelectedPath(district.path);
+  const handleDistrictPress = (_district: CityDistrict) => {
+    // Currently no action on district press
   };
 
   const handleRetry = () => {
@@ -591,7 +567,6 @@ export function RepoFileCityScreen() {
         setCityData(result.cityData);
         setHighlightLayers(result.highlightLayers);
         setIconMap(result.iconMap);
-        setIsTruncated(result.truncated);
         setRepoInfo(result.repoInfo);
         setIsLoading(false);
       })

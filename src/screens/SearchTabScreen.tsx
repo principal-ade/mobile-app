@@ -8,50 +8,22 @@ import {
   FlatList,
   ActivityIndicator,
   Keyboard,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { searchRepos, formatStars } from '../services/GitHubSearchService';
 import type { GitHubRepo } from '../services/GitHubSearchService';
 import type { RootStackParamList } from '../navigation/types';
 import { getReposWithTours, type RepoWithTour } from '../services/FeedApiService';
+import { getCompletedTours } from './TourFileCityScreen';
+import { LucideIcon } from '../components/LucideIcon';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 // Custom icon components (no emojis)
-function SearchIcon({ color, size = 16 }: { color: string; size?: number }) {
-  return (
-    <View style={[styles.iconWrapper, { width: size, height: size }]}>
-      <View
-        style={[
-          styles.searchIconCircle,
-          {
-            borderColor: color,
-            width: size * 0.7,
-            height: size * 0.7,
-            borderRadius: size * 0.35,
-            borderWidth: size * 0.12,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.searchIconHandle,
-          {
-            backgroundColor: color,
-            width: size * 0.12,
-            height: size * 0.35,
-            bottom: 0,
-            right: size * 0.1,
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
 function ClearIcon({ color, size = 14 }: { color: string; size?: number }) {
   return (
     <View style={[styles.iconWrapper, { width: size, height: size }]}>
@@ -133,45 +105,6 @@ function CityIcon({ color, size = 64 }: { color: string; size?: number }) {
             height: size * 0.08,
             bottom: size * 0.1,
             opacity: 0.3,
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
-function StarIcon({ color, size = 12 }: { color: string; size?: number }) {
-  return (
-    <View style={[styles.iconWrapper, { width: size, height: size }]}>
-      <View
-        style={[
-          styles.starBody,
-          {
-            width: 0,
-            height: 0,
-            borderLeftWidth: size * 0.5,
-            borderRightWidth: size * 0.5,
-            borderBottomWidth: size * 0.35,
-            borderLeftColor: 'transparent',
-            borderRightColor: 'transparent',
-            borderBottomColor: color,
-            top: 0,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.starBody,
-          {
-            width: 0,
-            height: 0,
-            borderLeftWidth: size * 0.5,
-            borderRightWidth: size * 0.5,
-            borderTopWidth: size * 0.35,
-            borderLeftColor: 'transparent',
-            borderRightColor: 'transparent',
-            borderTopColor: color,
-            bottom: 0,
           },
         ]}
       />
@@ -262,6 +195,18 @@ export function SearchTabScreen() {
   const [toursRepos, setToursRepos] = useState<RepoWithTour[]>([]);
   const [isLoadingTours, setIsLoadingTours] = useState(false);
   const [toursFilter, setToursFilter] = useState('');
+  const [completedTours, setCompletedTours] = useState<Set<string>>(new Set());
+
+  // Load completed tours when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      async function loadCompletedTours() {
+        const completed = await getCompletedTours();
+        setCompletedTours(completed);
+      }
+      loadCompletedTours();
+    }, [])
+  );
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -298,10 +243,13 @@ export function SearchTabScreen() {
 
   const handleTourRepoPress = useCallback(
     (repo: RepoWithTour) => {
-      navigation.navigate('RepoFileCity', {
+      navigation.navigate('TourFileCity', {
         owner: repo.owner,
         name: repo.name,
         fullName: repo.full_name,
+        forkOwner: repo.forkOwner,
+        forkRepo: repo.forkRepo,
+        tourPath: repo.tourPath,
       });
     },
     [navigation]
@@ -350,12 +298,21 @@ export function SearchTabScreen() {
         onPress={() => handleRepoPress(item)}
         activeOpacity={0.7}
       >
-        <View style={styles.repoHeader}>
-          <Text style={[styles.repoName, { color: theme.colors.primary }]}>
-            {item.full_name}
-          </Text>
+        <View style={styles.repoHeaderWithAvatar}>
+          <Image
+            source={{ uri: item.owner_avatar_url }}
+            style={styles.ownerAvatar}
+          />
+          <View style={styles.repoInfo}>
+            <Text style={[styles.repoName, { color: theme.colors.primary }]}>
+              {item.name}
+            </Text>
+            <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
+              {item.owner}
+            </Text>
+          </View>
           <View style={styles.repoStats}>
-            <StarIcon color={theme.colors.textSecondary} size={10} />
+            <LucideIcon name="Star" color={theme.colors.textSecondary} size={12} />
             <Text style={[styles.starCount, { color: theme.colors.textSecondary }]}>
               {formatStars(item.stargazers_count)}
             </Text>
@@ -388,28 +345,36 @@ export function SearchTabScreen() {
   );
 
   const renderTourRepoItem = useCallback(
-    ({ item }: { item: RepoWithTour }) => (
-      <TouchableOpacity
-        style={[styles.repoItem, { backgroundColor: theme.colors.surface }]}
-        onPress={() => handleTourRepoPress(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.tourBadgeContainer}>
-          <Text style={[styles.tourBadge, { color: theme.colors.primary, borderColor: theme.colors.primary }]}>
-            Tour Available
-          </Text>
-        </View>
-        <View style={styles.repoHeader}>
-          <Text style={[styles.repoName, { color: theme.colors.primary }]}>
-            {item.full_name}
-          </Text>
-          <View style={styles.repoStats}>
-            <StarIcon color={theme.colors.textSecondary} size={10} />
-            <Text style={[styles.starCount, { color: theme.colors.textSecondary }]}>
-              {formatStars(item.stargazers_count)}
-            </Text>
+    ({ item }: { item: RepoWithTour }) => {
+      const tourId = `${item.owner}/${item.name}/${item.tourPath}`;
+      const isCompleted = completedTours.has(tourId);
+
+      return (
+        <TouchableOpacity
+          style={[styles.repoItem, { backgroundColor: theme.colors.surface }]}
+          onPress={() => handleTourRepoPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.repoHeaderWithAvatar}>
+            <Image
+              source={{ uri: item.owner_avatar_url }}
+              style={styles.ownerAvatar}
+            />
+            <View style={styles.repoInfo}>
+              <Text style={[styles.repoName, { color: theme.colors.primary }]}>
+                {item.name}
+              </Text>
+              <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
+                {item.owner}
+              </Text>
+            </View>
+            <View style={styles.repoStats}>
+              <LucideIcon name="Star" color={theme.colors.textSecondary} size={12} />
+              <Text style={[styles.starCount, { color: theme.colors.textSecondary }]}>
+                {formatStars(item.stargazers_count)}
+              </Text>
+            </View>
           </View>
-        </View>
         {item.description && (
           <Text
             style={[styles.repoDescription, { color: theme.colors.textSecondary }]}
@@ -418,22 +383,35 @@ export function SearchTabScreen() {
             {item.description}
           </Text>
         )}
-        {item.language && (
-          <View style={styles.languageContainer}>
-            <View
-              style={[
-                styles.languageDot,
-                { backgroundColor: getLanguageColor(item.language) },
-              ]}
-            />
-            <Text style={[styles.languageText, { color: theme.colors.textSecondary }]}>
-              {item.language}
-            </Text>
-          </View>
-        )}
+        <View style={styles.languageContainer}>
+          {item.language && (
+            <>
+              <View
+                style={[
+                  styles.languageDot,
+                  { backgroundColor: getLanguageColor(item.language) },
+                ]}
+              />
+              <Text style={[styles.languageText, { color: theme.colors.textSecondary }]}>
+                {item.language}
+              </Text>
+            </>
+          )}
+          <Text style={[
+            styles.tourBadgeInline,
+            {
+              color: isCompleted ? theme.colors.success : theme.colors.primary,
+              borderColor: isCompleted ? theme.colors.success : theme.colors.primary,
+              marginLeft: item.language ? 8 : 0,
+            }
+          ]}>
+            {isCompleted ? 'Tour Completed' : 'Tour Available'}
+          </Text>
+        </View>
       </TouchableOpacity>
-    ),
-    [theme, handleTourRepoPress]
+      );
+    },
+    [theme, handleTourRepoPress, completedTours]
   );
 
   return (
@@ -471,7 +449,7 @@ export function SearchTabScreen() {
             ]}
           >
             <View style={styles.searchIconWrapper}>
-              <SearchIcon color={theme.colors.textSecondary} size={16} />
+              <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
             </View>
             <TextInput
               style={[styles.searchInput, { color: theme.colors.text }]}
@@ -528,7 +506,7 @@ export function SearchTabScreen() {
             ]}
           >
             <View style={styles.searchIconWrapper}>
-              <SearchIcon color={theme.colors.textSecondary} size={16} />
+              <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
             </View>
             <TextInput
               style={[styles.searchInput, { color: theme.colors.text }]}
@@ -785,27 +763,39 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  tourBadgeContainer: {
-    marginBottom: 8,
-  },
-  tourBadge: {
+  tourBadgeInline: {
     fontSize: 11,
     fontWeight: '600',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 4,
     borderWidth: 1,
-    alignSelf: 'flex-start',
   },
   repoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  repoHeaderWithAvatar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  ownerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  repoInfo: {
+    flex: 1,
+  },
   repoName: {
     fontSize: 16,
     fontWeight: '600',
-    flex: 1,
+  },
+  ownerName: {
+    fontSize: 13,
+    marginTop: 2,
   },
   repoStats: {
     flexDirection: 'row',
@@ -865,16 +855,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  searchIconCircle: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  searchIconHandle: {
-    position: 'absolute',
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
-  },
   clearLine: {
     position: 'absolute',
     borderRadius: 2,
@@ -891,10 +871,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     borderRadius: 1,
-  },
-  starBody: {
-    position: 'absolute',
-    left: 0,
   },
   warningTriangle: {
     width: 0,

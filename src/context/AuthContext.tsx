@@ -31,11 +31,19 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   isLoading: boolean;
   token: string | null; // Convenience accessor for GitHub token
-  signIn: () => Promise<void>;
+  signIn: (preferEphemeralSession?: boolean) => Promise<void>;
   demoSignIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   completeVerification: (result: AuthResult) => void;
   cancelVerification: () => void;
+  updateTokens: (tokens: AuthTokens) => void;
+}
+
+interface AuthProviderProps extends PropsWithChildren {
+  initialTokens?: AuthTokens | null;
+  initialUser?: GitHubUser | null;
+  onSignIn?: (tokens: AuthTokens, user: GitHubUser) => Promise<void>;
+  onSignOut?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -55,17 +63,29 @@ async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> {
   return (await response.json()) as GitHubUser;
 }
 
-export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element {
+export function AuthProvider({
+  children,
+  initialTokens = null,
+  initialUser = null,
+  onSignIn,
+  onSignOut,
+}: AuthProviderProps): React.JSX.Element {
   const [state, setState] = useState<AuthState>({
-    isAuthenticated: false,
-    tokens: null,
-    user: null,
+    isAuthenticated: !!initialTokens,
+    tokens: initialTokens,
+    user: initialUser,
     pendingVerification: null,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialTokens);
 
-  // Bootstrap: restore session from stored tokens
+  // Bootstrap: restore session from stored tokens (only if no initial data provided)
   useEffect(() => {
+    // Skip bootstrap if initial data was provided
+    if (initialTokens && initialUser) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const bootstrap = async () => {
@@ -102,12 +122,18 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialTokens, initialUser]);
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (preferEphemeralSession = false) => {
     try {
       // startAuthFlow opens browser, waits for completion, returns tokens
-      const result = await startAuthFlow();
+      const result = await startAuthFlow(preferEphemeralSession);
+
+      // Notify parent context (MultiAccountContext)
+      if (onSignIn) {
+        await onSignIn(result.tokens, result.user);
+      }
+
       setState({
         isAuthenticated: true,
         tokens: result.tokens,
@@ -133,11 +159,17 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
         error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
       );
     }
-  }, []);
+  }, [onSignIn]);
 
   const demoSignIn = useCallback(async (email: string, password: string) => {
     try {
       const result = await demoLogin(email, password);
+
+      // Notify parent context (MultiAccountContext)
+      if (onSignIn) {
+        await onSignIn(result.tokens, result.user);
+      }
+
       setState({
         isAuthenticated: true,
         tokens: result.tokens,
@@ -151,26 +183,46 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
         error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
       );
     }
-  }, []);
+  }, [onSignIn]);
 
   const signOut = useCallback(async () => {
-    await deleteTokens();
-    await clearPendingAuth();
+    // Notify parent context (MultiAccountContext)
+    if (onSignOut) {
+      await onSignOut();
+    } else {
+      // Fallback to direct storage deletion if no parent context
+      await deleteTokens();
+      await clearPendingAuth();
+    }
+
     setState({
       isAuthenticated: false,
       tokens: null,
       user: null,
       pendingVerification: null,
     });
-  }, []);
+  }, [onSignOut]);
 
   const completeVerification = useCallback((result: AuthResult) => {
+    // Notify parent context (MultiAccountContext)
+    if (onSignIn) {
+      onSignIn(result.tokens, result.user).catch(console.error);
+    }
+
     setState({
       isAuthenticated: true,
       tokens: result.tokens,
       user: result.user,
       pendingVerification: null,
     });
+  }, [onSignIn]);
+
+  const updateTokens = useCallback((tokens: AuthTokens) => {
+    setState(prev => ({
+      ...prev,
+      tokens,
+      isAuthenticated: true,
+    }));
   }, []);
 
   const cancelVerification = useCallback(async () => {
@@ -191,8 +243,9 @@ export function AuthProvider({ children }: PropsWithChildren): React.JSX.Element
       signOut,
       completeVerification,
       cancelVerification,
+      updateTokens,
     }),
-    [cancelVerification, completeVerification, demoSignIn, isLoading, signIn, signOut, state],
+    [cancelVerification, completeVerification, demoSignIn, isLoading, signIn, signOut, updateTokens, state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

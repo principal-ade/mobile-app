@@ -8,6 +8,7 @@
  */
 
 import { apiConfig } from '../utils/config';
+import type { IntroductionTour } from '@principal-ai/file-city-builder';
 
 const API_BASE = apiConfig.baseUrl;
 
@@ -578,6 +579,7 @@ export interface RepoWithTour {
   description?: string | null;
   stargazers_count: number;
   language?: string | null;
+  owner_avatar_url: string;
   forkOwner: string; // The tour org that has the fork
   forkRepo: string; // The fork repo name
   tourPath: string; // Path to tour file
@@ -602,6 +604,33 @@ export async function getReposWithTours(): Promise<{ repos: RepoWithTour[]; cach
   }
 
   const data: TRPCResponse<{ repos: RepoWithTour[]; cached: boolean }> = await response.json();
+  return data.result.data;
+}
+
+/**
+ * Get tour JSON for a repository
+ * Fetches and parses the tour file from GitHub
+ */
+export async function getTour(
+  owner: string,
+  repo: string,
+  tourPath: string,
+  branch: string = 'main'
+): Promise<{ tour: IntroductionTour; cached: boolean }> {
+  const input = { owner, repo, tourPath, branch };
+  const url = `${API_BASE}/trpc/github.getTour?input=${encodeURIComponent(JSON.stringify(input))}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tour: ${response.status}`);
+  }
+
+  const data: TRPCResponse<{ tour: IntroductionTour; cached: boolean }> = await response.json();
   return data.result.data;
 }
 

@@ -57,4 +57,12 @@ export type RootStackParamList = {
     name: string;
     fullName: string;
   };
+  TourFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+    forkOwner: string;
+    forkRepo: string;
+    tourPath: string;
+  };
 };

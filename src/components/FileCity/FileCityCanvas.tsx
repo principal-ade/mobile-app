@@ -5,8 +5,8 @@
  * Uses react-native-reanimated for gesture handling.
  */
 
-import React, { useMemo, useCallback, useState, useRef } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, { useMemo, useCallback, useState, useRef, useEffect, useReducer } from 'react';
+import { View, StyleSheet, LayoutChangeEvent, Animated, Easing } from 'react-native';
 import {
   Canvas,
   RoundedRect,
@@ -25,7 +25,7 @@ import {
 } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
-import type { CityBuilding, CityDistrict, LayerRenderStrategy } from '@principal-ai/file-city-builder';
+import type { LayerRenderStrategy } from '@principal-ai/file-city-builder';
 import { getFileColor } from '@principal-ai/file-city-builder';
 import { FileCityCanvasProps, TransformState, FileTypeIconConfig } from './types';
 import {
@@ -33,6 +33,12 @@ import {
   LayerIndex,
   findHitTarget,
 } from './drawingUtils';
+import {
+  findTargetBounds,
+  calculateZoomTarget,
+  calculateAnimationDuration,
+  type ZoomTarget,
+} from './animationUtils';
 
 const DEFAULT_BACKGROUND_COLOR = '#1a1a2e';
 const DEFAULT_DISTRICT_COLOR = '#4B5155';
@@ -111,6 +117,13 @@ export function FileCityCanvas({
   initialZoom = 1,
   minZoom = 0.5,
   maxZoom = 5,
+  animateZoom = true,
+  animatePan = true,
+  zoomAnimationSpeed: _zoomAnimationSpeed = 0.12,
+  zoomToPath,
+  onZoomComplete,
+  zoomPadding = 0.8,
+  isolationMode = 'none',
 }: FileCityCanvasProps) {
   const [canvasSize, setCanvasSize] = useState({ width: 300, height: 300 });
 
@@ -118,15 +131,29 @@ export function FileCityCanvas({
   const font = useFont(null, 10);
   const iconFont = useFont(null, 16);
 
-  // Transform state using regular React state
+  // Animated values for smooth zoom/pan transitions
+  const scaleAnim = useRef(new Animated.Value(initialZoom)).current;
+  const translateXAnim = useRef(new Animated.Value(0)).current;
+  const translateYAnim = useRef(new Animated.Value(0)).current;
+
+  // Transform state (synced from animated values for Skia rendering)
   const [transformState, setTransformState] = useState<TransformState>({
     scale: initialZoom,
     translateX: 0,
     translateY: 0,
   });
 
+  // Animation tracking
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+
   // Refs for gesture tracking
   const savedTransform = useRef({ scale: initialZoom, translateX: 0, translateY: 0 });
+
+  // Opacity tracking for isolation modes
+  const buildingOpacityRef = useRef<Map<string, number>>(new Map());
+  const districtOpacityRef = useRef<Map<string, number>>(new Map());
+  const opacityAnimationFrameRef = useRef<number | null>(null);
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
 
   // Build layer index for O(1) lookups
   const layerIndex = useMemo(
@@ -134,11 +161,123 @@ export function FileCityCanvas({
     [highlightLayers]
   );
 
+  // Detect if highlights are active (for isolation mode)
+  const hasActiveHighlights = useMemo(() => {
+    return highlightLayers.some(layer => layer.enabled && layer.items.length > 0);
+  }, [highlightLayers]);
+
+  // Determine if isolation should be active
+  const shouldIsolate = hasActiveHighlights && isolationMode !== 'none';
+
+  // Opacity configuration for isolation modes
+  const OPACITY_CONFIGS = {
+    none: {
+      building: { highlighted: 1.0, normal: 0.6 },
+      district: { highlighted: 0.8, normal: 0.6 },
+    },
+    transparent: {
+      building: { highlighted: 1.0, normal: 0.3 },
+      district: { highlighted: 0.8, normal: 0.3 },
+    },
+    hide: {
+      building: { highlighted: 1.0, normal: 0 },
+      district: { highlighted: 0.8, normal: 0.3 },
+    },
+  };
+
+  // Get target opacity for a building or district
+  const getTargetOpacity = useCallback(
+    (hasHighlight: boolean, type: 'building' | 'district'): number => {
+      if (!shouldIsolate) {
+        // No isolation - show all normally
+        return OPACITY_CONFIGS.none[type].normal;
+      }
+
+      const config = OPACITY_CONFIGS[isolationMode][type];
+      return hasHighlight ? config.highlighted : config.normal;
+    },
+    [shouldIsolate, isolationMode]
+  );
+
+  // Sync animated values to React state for Skia rendering
+  useEffect(() => {
+    const scaleListener = scaleAnim.addListener(({ value }) => {
+      setTransformState(prev => ({ ...prev, scale: value }));
+    });
+    const translateXListener = translateXAnim.addListener(({ value }) => {
+      setTransformState(prev => ({ ...prev, translateX: value }));
+    });
+    const translateYListener = translateYAnim.addListener(({ value }) => {
+      setTransformState(prev => ({ ...prev, translateY: value }));
+    });
+
+    return () => {
+      scaleAnim.removeListener(scaleListener);
+      translateXAnim.removeListener(translateXListener);
+      translateYAnim.removeListener(translateYListener);
+    };
+  }, [scaleAnim, translateXAnim, translateYAnim]);
+
   // Calculate scale and offset
   const scaleAndOffset = useMemo(
     () => calculateScaleAndOffset(cityData, canvasSize.width, canvasSize.height),
     [cityData, canvasSize]
   );
+
+  // Opacity animation loop for isolation modes
+  useEffect(() => {
+    const EASING_FACTOR = 0.08; // Match web 3D
+    const THRESHOLD = 0.01;
+
+    const animate = () => {
+      let hasChanges = false;
+
+      // Animate building opacities
+      cityData.buildings.forEach((building) => {
+        const layerMatches = layerIndex
+          .getItemsForPath(building.path)
+          .filter((match) => match.item.type === 'file');
+        const hasHighlight = layerMatches.length > 0;
+        const target = getTargetOpacity(hasHighlight, 'building');
+        const current = buildingOpacityRef.current.get(building.path) ?? target;
+        const diff = target - current;
+
+        if (Math.abs(diff) > THRESHOLD) {
+          const newOpacity = current + diff * EASING_FACTOR;
+          buildingOpacityRef.current.set(building.path, newOpacity);
+          hasChanges = true;
+        }
+      });
+
+      // Animate district opacities
+      cityData.districts.forEach((district) => {
+        const layerMatches = layerIndex.getItemsForPath(district.path, 'exact');
+        const hasHighlight = layerMatches.length > 0;
+        const target = getTargetOpacity(hasHighlight, 'district');
+        const current = districtOpacityRef.current.get(district.path) ?? target;
+        const diff = target - current;
+
+        if (Math.abs(diff) > THRESHOLD) {
+          const newOpacity = current + diff * EASING_FACTOR;
+          districtOpacityRef.current.set(district.path, newOpacity);
+          hasChanges = true;
+        }
+      });
+
+      if (hasChanges) {
+        forceUpdate();
+        opacityAnimationFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    opacityAnimationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (opacityAnimationFrameRef.current) {
+        cancelAnimationFrame(opacityAnimationFrameRef.current);
+      }
+    };
+  }, [isolationMode, cityData, layerIndex, getTargetOpacity]);
 
   // Handle canvas layout
   const onLayout = useCallback((event: LayoutChangeEvent) => {
@@ -166,37 +305,205 @@ export function FileCityCanvas({
     [cityData, scaleAndOffset, transformState, onBuildingPress, onDistrictPress]
   );
 
+  // Animation helper - animate to target zoom/pan position
+  const animateToTarget = useCallback(
+    (target: ZoomTarget, type: 'spring' | 'timing') => {
+      // Stop any ongoing animation
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+
+
+      if (type === 'spring') {
+        // Spring animation for gesture-initiated zooms
+        animationRef.current = Animated.parallel([
+          Animated.spring(scaleAnim, {
+            toValue: target.scale,
+            tension: 100,
+            friction: 10,
+            useNativeDriver: false,
+          }),
+          Animated.spring(translateXAnim, {
+            toValue: target.translateX,
+            tension: 100,
+            friction: 10,
+            useNativeDriver: false,
+          }),
+          Animated.spring(translateYAnim, {
+            toValue: target.translateY,
+            tension: 100,
+            friction: 10,
+            useNativeDriver: false,
+          }),
+        ]);
+      } else {
+        // Timing animation for programmatic zooms
+        const duration = calculateAnimationDuration(
+          transformState.scale,
+          target.scale,
+          transformState.translateX,
+          target.translateX,
+          transformState.translateY,
+          target.translateY
+        );
+
+        animationRef.current = Animated.parallel([
+          Animated.timing(scaleAnim, {
+            toValue: target.scale,
+            duration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }),
+          Animated.timing(translateXAnim, {
+            toValue: target.translateX,
+            duration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: target.translateY,
+            duration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }),
+        ]);
+      }
+
+      animationRef.current.start(({ finished }) => {
+        if (finished) {
+          animationRef.current = null;
+          onZoomComplete?.();
+        }
+      });
+    },
+    [
+      scaleAnim,
+      translateXAnim,
+      translateYAnim,
+      transformState,
+      onZoomComplete,
+    ]
+  );
+
+  // Zoom to path effect
+  useEffect(() => {
+    // If zoomToPath is null or empty, zoom out to full city
+    if (!zoomToPath || zoomToPath === '') {
+      const target = calculateZoomTarget(
+        cityData.bounds,
+        cityData,
+        scaleAndOffset,
+        canvasSize.width,
+        canvasSize.height,
+        maxZoom,
+        0.9 // Use more padding for full city view
+      );
+      animateToTarget(target, 'timing');
+      return;
+    }
+
+    // Find target bounds using shared utility
+    const bounds = findTargetBounds(zoomToPath, cityData);
+    if (!bounds) {
+      console.warn(`[FileCityCanvas] Path not found: ${zoomToPath}`);
+      onZoomComplete?.();
+      return;
+    }
+
+    // Calculate target zoom using shared utility
+    const target = calculateZoomTarget(
+      bounds,
+      cityData,
+      scaleAndOffset,
+      canvasSize.width,
+      canvasSize.height,
+      maxZoom,
+      zoomPadding
+    );
+
+    // Animate to target
+    animateToTarget(target, 'timing');
+  }, [
+    zoomToPath,
+    cityData,
+    scaleAndOffset,
+    canvasSize,
+    maxZoom,
+    zoomPadding,
+    animateToTarget,
+    onZoomComplete,
+  ]);
+
+  // Spring back to constraints if zoom exceeds min/max
+  const springBackToConstraints = useCallback(() => {
+    const currentScale = transformState.scale;
+    let targetScale = currentScale;
+
+    if (currentScale < minZoom) targetScale = minZoom;
+    if (currentScale > maxZoom) targetScale = maxZoom;
+
+    if (targetScale !== currentScale) {
+      animateToTarget(
+        {
+          scale: targetScale,
+          translateX: transformState.translateX,
+          translateY: transformState.translateY,
+        },
+        'spring'
+      );
+    }
+  }, [transformState, minZoom, maxZoom, animateToTarget]);
+
   // Gesture helper functions (called via runOnJS)
-  const saveCurrent = useCallback(() => {
+  const handleGestureStart = useCallback(() => {
+    // Stop animation if user starts gesture
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
     savedTransform.current = { ...transformState };
   }, [transformState]);
 
   const updatePan = useCallback((translationX: number, translationY: number) => {
-    setTransformState({
-      ...savedTransform.current,
-      translateX: savedTransform.current.translateX + translationX,
-      translateY: savedTransform.current.translateY + translationY,
-    });
-  }, []);
+    const newX = savedTransform.current.translateX + translationX;
+    const newY = savedTransform.current.translateY + translationY;
 
-  const updatePinch = useCallback((scale: number) => {
-    const newScale = savedTransform.current.scale * scale;
-    setTransformState({
-      ...savedTransform.current,
-      scale: Math.min(maxZoom, Math.max(minZoom, newScale)),
-    });
-  }, [maxZoom, minZoom]);
+    translateXAnim.setValue(newX);
+    translateYAnim.setValue(newY);
+  }, [translateXAnim, translateYAnim]);
+
+  const updatePinch = useCallback(
+    (scale: number, focalX: number, focalY: number) => {
+      const saved = savedTransform.current;
+      const newScale = Math.min(maxZoom, Math.max(minZoom, saved.scale * scale));
+
+      // Zoom around focal point
+      const scaleRatio = newScale / saved.scale;
+      const newTranslateX = focalX - (focalX - saved.translateX) * scaleRatio;
+      const newTranslateY = focalY - (focalY - saved.translateY) * scaleRatio;
+
+      scaleAnim.setValue(newScale);
+      translateXAnim.setValue(newTranslateX);
+      translateYAnim.setValue(newTranslateY);
+    },
+    [scaleAnim, translateXAnim, translateYAnim, minZoom, maxZoom]
+  );
 
   // Pan gesture
   const panGesture = Gesture.Pan()
     .enabled(enablePan)
     .onStart(() => {
       'worklet';
-      runOnJS(saveCurrent)();
+      runOnJS(handleGestureStart)();
     })
     .onUpdate((e) => {
       'worklet';
       runOnJS(updatePan)(e.translationX, e.translationY);
+    })
+    .onEnd(() => {
+      'worklet';
+      if (animatePan) {
+        // Could add pan constraints here if needed
+      }
     });
 
   // Pinch gesture
@@ -204,11 +511,17 @@ export function FileCityCanvas({
     .enabled(enableZoom)
     .onStart(() => {
       'worklet';
-      runOnJS(saveCurrent)();
+      runOnJS(handleGestureStart)();
     })
     .onUpdate((e) => {
       'worklet';
-      runOnJS(updatePinch)(e.scale);
+      runOnJS(updatePinch)(e.scale, e.focalX, e.focalY);
+    })
+    .onEnd(() => {
+      'worklet';
+      if (animateZoom) {
+        runOnJS(springBackToConstraints)();
+      }
     });
 
   // Tap gesture
@@ -251,16 +564,23 @@ export function FileCityCanvas({
         const layerMatches = layerIndex.getItemsForPath(district.path, 'exact');
         const hasHighlight = layerMatches.length > 0;
 
-        let borderOpacity = 0.6;
-        if (hasHighlight) {
-          borderOpacity = 0.8;
-        }
+        // Get highlight info from first matching layer
+        const firstMatch = hasHighlight ? layerMatches[0] : null;
+        const highlightColor = firstMatch?.layer.color;
+        const renderStrategy: LayerRenderStrategy = firstMatch?.item.renderStrategy || 'border';
+        const layerOpacity = firstMatch?.layer.opacity ?? 1;
+        const layerBorderWidth = firstMatch?.layer.borderWidth ?? 3;
+
+        // Use animated opacity for isolation modes
+        const targetOpacity = getTargetOpacity(hasHighlight, 'district');
+        const borderOpacity = districtOpacityRef.current.get(district.path) ?? targetOpacity;
 
         const districtName = district.path?.split('/').pop() || 'root';
         const shouldShowText = showDirectoryLabels && width > 40 && height > 20;
 
         return {
           key: `district-${district.path}`,
+          path: district.path,
           x: topLeft.x,
           y: topLeft.y,
           width,
@@ -270,10 +590,14 @@ export function FileCityCanvas({
           districtName,
           shouldShowText,
           hasHighlight,
+          highlightColor,
+          renderStrategy,
+          layerOpacity,
+          layerBorderWidth,
         };
       })
       .filter(Boolean);
-  }, [cityData.districts, worldToCanvas, layerIndex, defaultDistrictColor, showDirectoryLabels]);
+  }, [cityData.districts, worldToCanvas, layerIndex, defaultDistrictColor, showDirectoryLabels, getTargetOpacity]);
 
   // Pre-compute building data
   const buildingData = useMemo(() => {
@@ -313,7 +637,11 @@ export function FileCityCanvas({
         const layerOpacity = firstMatch?.layer.opacity;
 
         const color = building.color || getFileColor(building.path);
-        const opacity = hasHighlight ? 1 : 0.6;
+
+        // Use animated opacity for isolation modes
+        const targetOpacity = getTargetOpacity(hasHighlight, 'building');
+        const opacity = buildingOpacityRef.current.get(building.path) ?? targetOpacity;
+
         const actualRadius = Math.min(buildingBorderRadius, Math.min(width, height) / 6);
 
         // Get icon config if enabled
@@ -339,7 +667,15 @@ export function FileCityCanvas({
         };
       })
       .filter(Boolean);
-  }, [cityData.buildings, worldToCanvas, scaleAndOffset, transformState.scale, layerIndex, buildingBorderRadius, showFileTypeIcons, iconMap]);
+  }, [cityData.buildings, worldToCanvas, scaleAndOffset, transformState.scale, layerIndex, buildingBorderRadius, showFileTypeIcons, iconMap, getTargetOpacity]);
+
+  // Filter buildings for 'hide' mode
+  const visibleBuildings = useMemo(() => {
+    if (isolationMode === 'hide' && shouldIsolate) {
+      return buildingData.filter(b => b?.hasHighlight);
+    }
+    return buildingData;
+  }, [buildingData, isolationMode, shouldIsolate]);
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -349,24 +685,60 @@ export function FileCityCanvas({
             {/* Districts (borders only) */}
             {districtData.map((d) =>
               d ? (
-                <RoundedRect
-                  key={d.key}
-                  x={d.x}
-                  y={d.y}
-                  width={d.width}
-                  height={d.height}
-                  r={districtBorderRadius}
-                  color="transparent"
-                  style="stroke"
-                  strokeWidth={1}
-                >
-                  <Paint
-                    color={Skia.Color(d.borderColor)}
-                    style="stroke"
-                    strokeWidth={1}
-                    opacity={d.borderOpacity}
-                  />
-                </RoundedRect>
+                <React.Fragment key={d.key}>
+                  {/* Normal district border */}
+                  {!d.hasHighlight && (
+                    <RoundedRect
+                      x={d.x}
+                      y={d.y}
+                      width={d.width}
+                      height={d.height}
+                      r={districtBorderRadius}
+                      color="transparent"
+                      style="stroke"
+                      strokeWidth={1}
+                    >
+                      <Paint
+                        color={Skia.Color(d.borderColor)}
+                        style="stroke"
+                        strokeWidth={1}
+                        opacity={d.borderOpacity}
+                      />
+                    </RoundedRect>
+                  )}
+
+                  {/* Highlighted district */}
+                  {d.hasHighlight && d.renderStrategy === 'fill' && (
+                    <RoundedRect
+                      x={d.x}
+                      y={d.y}
+                      width={d.width}
+                      height={d.height}
+                      r={districtBorderRadius}
+                      color={hexToSkiaColor(d.highlightColor!, d.layerOpacity!)}
+                    />
+                  )}
+
+                  {d.hasHighlight && d.renderStrategy === 'border' && (
+                    <RoundedRect
+                      x={d.x}
+                      y={d.y}
+                      width={d.width}
+                      height={d.height}
+                      r={districtBorderRadius}
+                      color="transparent"
+                      style="stroke"
+                      strokeWidth={d.layerBorderWidth}
+                    >
+                      <Paint
+                        color={Skia.Color(d.highlightColor!)}
+                        style="stroke"
+                        strokeWidth={d.layerBorderWidth}
+                        opacity={d.layerOpacity}
+                      />
+                    </RoundedRect>
+                  )}
+                </React.Fragment>
               ) : null
             )}
 
@@ -386,7 +758,7 @@ export function FileCityCanvas({
               )}
 
             {/* Buildings */}
-            {buildingData.map((b) =>
+            {visibleBuildings.map((b) =>
               b ? (
                 <Group key={b.key}>
                   {/* Building fill - use highlight color for fill strategy, otherwise base color */}

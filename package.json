@@ -1,6 +1,6 @@
 {
   "name": "principal-ai-mobile",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "main": "index.ts",
   "scripts": {
@@ -22,7 +22,8 @@
   "dependencies": {
     "@expo/cli": "^54.0.10",
     "@principal-ade/industry-theme": "^0.1.18",
-    "@principal-ai/file-city-builder": "^0.4.8",
+    "@principal-ai/file-city-builder": "^0.4.9",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.15.8",
     "@react-navigation/native": "^7.1.18",
     "@react-navigation/stack": "^7.4.9",

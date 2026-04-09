@@ -17,6 +17,8 @@ import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import { Logo } from '../components/Logo';
 import { useAuth } from '../hooks/useAuth';
+import { useMultiAccount } from '../context/MultiAccountContext';
+import { AccountSwitcherSheet } from '../components/AccountSwitcherSheet';
 import type { RootStackParamList } from '../navigation/types';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
@@ -66,13 +68,20 @@ export function AboutScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { isAuthenticated, user, signIn, demoSignIn, signOut } = useAuth();
+  const { accounts } = useMultiAccount();
   const [showDemoLogin, setShowDemoLogin] = useState(false);
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignIn = async () => {
     await signIn();
+  };
+
+  const handleAddAccount = async () => {
+    // Force fresh login to ensure user can sign into a different account
+    await signIn(true);
   };
 
   const handleDemoSignIn = async () => {
@@ -134,6 +143,42 @@ export function AboutScreen() {
                   </Text>
                 </View>
               </View>
+              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+              {accounts.length >= 2 ? (
+                <TouchableOpacity
+                  style={styles.linkRow}
+                  onPress={() => setShowAccountSwitcher(true)}
+                >
+                  <View style={styles.linkContent}>
+                    <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
+                      Switch Account
+                    </Text>
+                    <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
+                      {accounts.length} accounts
+                    </Text>
+                  </View>
+                  <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
+                    ›
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.linkRow}
+                  onPress={handleAddAccount}
+                >
+                  <View style={styles.linkContent}>
+                    <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
+                      Add Account
+                    </Text>
+                    <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
+                      Sign in with another GitHub account
+                    </Text>
+                  </View>
+                  <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
+                    ›
+                  </Text>
+                </TouchableOpacity>
+              )}
               <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
               <TouchableOpacity
                 style={styles.linkRow}
@@ -306,6 +351,12 @@ export function AboutScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Account Switcher Modal */}
+      <AccountSwitcherSheet
+        visible={showAccountSwitcher}
+        onClose={() => setShowAccountSwitcher(false)}
+      />
     </View>
   );
 }
