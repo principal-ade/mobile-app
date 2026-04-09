@@ -11,8 +11,6 @@ import { Alert } from 'react-native';
 
 import { GitHubUser } from '../types/github';
 import {
-  getTokens,
-  deleteTokens,
   clearPendingAuth,
   AuthTokens,
 } from '../utils/authStorage';
@@ -48,21 +46,6 @@ interface AuthProviderProps extends PropsWithChildren {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> {
-  const response = await fetch('https://api.github.com/user', {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `token ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch GitHub user');
-  }
-
-  return (await response.json()) as GitHubUser;
-}
-
 export function AuthProvider({
   children,
   initialTokens = null,
@@ -78,50 +61,15 @@ export function AuthProvider({
   });
   const [isLoading, setIsLoading] = useState(!initialTokens);
 
-  // Bootstrap: restore session from stored tokens (only if no initial data provided)
+  // Sync auth state with MultiAccountContext-provided tokens/user
   useEffect(() => {
-    // Skip bootstrap if initial data was provided
-    if (initialTokens && initialUser) {
-      setIsLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-
-    const bootstrap = async () => {
-      try {
-        const storedTokens = await getTokens();
-        if (!storedTokens) {
-          return;
-        }
-
-        // Validate token by fetching user
-        const user = await fetchGitHubUser(storedTokens.githubAccessToken);
-        if (!isMounted) {
-          return;
-        }
-
-        setState({
-          isAuthenticated: true,
-          tokens: storedTokens,
-          user,
-          pendingVerification: null,
-        });
-      } catch (error) {
-        console.error('Failed to restore authentication state', error);
-        await deleteTokens();
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    bootstrap();
-
-    return () => {
-      isMounted = false;
-    };
+    setState({
+      isAuthenticated: !!(initialTokens && initialUser),
+      tokens: initialTokens,
+      user: initialUser,
+      pendingVerification: null,
+    });
+    setIsLoading(false);
   }, [initialTokens, initialUser]);
 
   const signIn = useCallback(async (preferEphemeralSession = false) => {
@@ -186,13 +134,9 @@ export function AuthProvider({
   }, [onSignIn]);
 
   const signOut = useCallback(async () => {
-    // Notify parent context (MultiAccountContext)
+    // Notify parent context (MultiAccountContext) to handle account removal
     if (onSignOut) {
       await onSignOut();
-    } else {
-      // Fallback to direct storage deletion if no parent context
-      await deleteTokens();
-      await clearPendingAuth();
     }
 
     setState({

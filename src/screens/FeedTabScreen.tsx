@@ -7,7 +7,7 @@ import FeedOnboardingScreen from './FeedOnboardingScreen';
 import { fetchActivityFeed } from '../services/ActivityFeedService';
 import { getFollows } from '../services/FeedApiService';
 import { summariesToCards } from '../utils/feedTransforms';
-import { getToken } from '../utils/authStorage';
+import { useAuthContext } from '../context/AuthContext';
 import type { RepoActivitySummary } from '../types/activity';
 
 /**
@@ -19,6 +19,7 @@ import type { RepoActivitySummary } from '../types/activity';
 export default function FeedTabScreen() {
   const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
+  const { token } = useAuthContext();
 
   // Guest mode state
   const [summaries, setSummaries] = useState<RepoActivitySummary[]>([]);
@@ -53,7 +54,6 @@ export default function FeedTabScreen() {
 
     async function checkFollows() {
       try {
-        const token = await getToken();
         if (!token) {
           setNeedsOnboarding(false);
           return;
@@ -70,7 +70,7 @@ export default function FeedTabScreen() {
       }
     }
     checkFollows();
-  }, [isAuthenticated, loadFeaturedFeed]);
+  }, [isAuthenticated, loadFeaturedFeed, token]);
 
   // Transform summaries to cards for guest mode
   const guestCards = useMemo(() => {

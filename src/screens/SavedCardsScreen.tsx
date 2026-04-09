@@ -18,7 +18,7 @@ import {
   unsaveCard,
   type SavedCard,
 } from '../services/FeedApiService';
-import { getToken } from '../utils/authStorage';
+import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'SavedCards'>;
@@ -79,25 +79,23 @@ export function SavedCardsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const { token } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
-  const [token, setToken] = useState<string | null>(null);
 
   // Load saved cards on mount
   useEffect(() => {
     async function loadCards() {
       try {
-        const authToken = await getToken();
-        if (!authToken) {
+        if (!token) {
           setError('Please sign in to view saved cards');
           setIsLoading(false);
           return;
         }
-        setToken(authToken);
 
-        const result = await getSavedCards(authToken);
+        const result = await getSavedCards(token);
         setSavedCards(result.savedCards);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load saved cards');
@@ -106,7 +104,7 @@ export function SavedCardsScreen() {
       }
     }
     loadCards();
-  }, []);
+  }, [token]);
 
   const handleUnsave = useCallback(
     (card: SavedCard) => {

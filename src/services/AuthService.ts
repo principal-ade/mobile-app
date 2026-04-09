@@ -5,7 +5,6 @@ import {
   savePendingAuth,
   getPendingAuth,
   clearPendingAuth,
-  saveTokens,
   AuthTokens,
 } from '../utils/authStorage';
 import { GitHubUser } from '../types/github';
@@ -193,8 +192,7 @@ async function exchangeForTokens(returnedState: string): Promise<AuthResult> {
     refreshToken: data.refresh_token,
   };
 
-  // Save tokens
-  await saveTokens(tokens);
+  // Note: Tokens are saved by MultiAccountContext via onSignIn callback
 
   const user: GitHubUser = {
     id: typeof data.user.id === 'string' ? parseInt(data.user.id, 10) : data.user.id,
@@ -263,7 +261,7 @@ export async function refreshTokens(refreshToken: string): Promise<AuthTokens> {
     refreshToken: data.refresh_token,
   };
 
-  await saveTokens(tokens);
+  // Note: Caller is responsible for saving refreshed tokens to storage
   return tokens;
 }
 
@@ -299,7 +297,7 @@ export async function demoLogin(email: string, password: string): Promise<AuthRe
     refreshToken: data.refresh_token || '',
   };
 
-  await saveTokens(tokens);
+  // Note: Tokens are saved by MultiAccountContext via onSignIn callback
 
   const user: GitHubUser = {
     id: typeof data.user.id === 'string' ? parseInt(data.user.id, 10) || 0 : data.user.id,

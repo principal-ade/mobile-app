@@ -57,15 +57,7 @@ async function deleteItem(key: string): Promise<void> {
   }
 }
 
-// Token management
-export async function saveTokens(tokens: AuthTokens): Promise<void> {
-  await Promise.all([
-    setItem(GITHUB_TOKEN_KEY, tokens.githubAccessToken),
-    setItem(WORKOS_TOKEN_KEY, tokens.workosAccessToken),
-    setItem(REFRESH_TOKEN_KEY, tokens.refreshToken),
-  ]);
-}
-
+// Legacy token management (used only for migration)
 export async function getTokens(): Promise<AuthTokens | null> {
   const [githubAccessToken, workosAccessToken, refreshToken] = await Promise.all([
     getItem(GITHUB_TOKEN_KEY),
@@ -86,19 +78,6 @@ export async function deleteTokens(): Promise<void> {
     deleteItem(WORKOS_TOKEN_KEY),
     deleteItem(REFRESH_TOKEN_KEY),
   ]);
-}
-
-// Legacy single token support (for migration)
-export async function getToken(): Promise<string | null> {
-  return getItem(GITHUB_TOKEN_KEY);
-}
-
-export async function saveToken(token: string): Promise<void> {
-  await setItem(GITHUB_TOKEN_KEY, token);
-}
-
-export async function deleteToken(): Promise<void> {
-  await deleteItem(GITHUB_TOKEN_KEY);
 }
 
 // Pending auth state (stored during OAuth flow)

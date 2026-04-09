@@ -17,7 +17,7 @@ import {
   saveCard,
   type CommitActivityCard,
 } from '../services/FeedApiService';
-import { getToken } from '../utils/authStorage';
+import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'SwipeFeed'>;
@@ -57,12 +57,12 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const { token } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(isGuest ? !initialCards : true);
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<CommitActivityCard[]>(initialCards || []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [token, setToken] = useState<string | null>(null);
   const [lastSwipedCard, setLastSwipedCard] = useState<{ card: CommitActivityCard; action: 'seen' | 'saved' } | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
@@ -85,15 +85,13 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
 
     try {
       if (showLoading) setIsLoading(true);
-      const authToken = await getToken();
-      if (!authToken) {
+      if (!token) {
         setError('Please sign in to view your feed');
         setIsLoading(false);
         return;
       }
-      setToken(authToken);
 
-      const result = await getCommitQueue(authToken, 50);
+      const result = await getCommitQueue(token, 50);
       setCards(result.cards);
       setCurrentIndex(0);
       setLastSwipedCard(null);
@@ -103,7 +101,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     } finally {
       setIsLoading(false);
     }
-  }, [isGuest]);
+  }, [isGuest, token]);
 
   // Load cards on mount
   useEffect(() => {

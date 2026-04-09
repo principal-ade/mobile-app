@@ -25,7 +25,7 @@ import {
 } from '../services/GitHubSearchService';
 import { FEATURED_REPOS } from '../services/ActivityFeedService';
 import { followUser, followRepo } from '../services/FeedApiService';
-import { getToken } from '../utils/authStorage';
+import { useAuthContext } from '../context/AuthContext';
 
 interface FeedOnboardingScreenProps {
   onComplete: () => void;
@@ -39,6 +39,7 @@ interface SelectedRepo {
 export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { token } = useAuthContext();
 
   // Step state
   const [step, setStep] = useState<1 | 2>(1);
@@ -68,7 +69,6 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
   useEffect(() => {
     async function loadSuggestedUsers() {
       try {
-        const token = await getToken();
         const { users } = await getSuggestedUsers(token);
         setSuggestedUsers(users);
       } catch (err) {
@@ -78,7 +78,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       }
     }
     loadSuggestedUsers();
-  }, []);
+  }, [token]);
 
   // Load suggested repos when entering step 2
   useEffect(() => {
@@ -86,7 +86,6 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
 
     async function loadSuggestedRepos() {
       try {
-        const token = await getToken();
         const { repos } = await getSuggestedRepos(token);
 
         // Combine with featured repos
@@ -132,7 +131,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       }
     }
     loadSuggestedRepos();
-  }, [step]);
+  }, [step, token]);
 
   // Debounced user search
   useEffect(() => {
@@ -211,7 +210,6 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
     setIsSaving(true);
 
     try {
-      const token = await getToken();
       if (!token) {
         onComplete();
         return;
@@ -240,7 +238,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       setIsSaving(false);
       onComplete();
     }
-  }, [selectedUsers, selectedRepos, onComplete]);
+  }, [selectedUsers, selectedRepos, onComplete, token]);
 
   const handleSkip = useCallback(() => {
     Keyboard.dismiss();
