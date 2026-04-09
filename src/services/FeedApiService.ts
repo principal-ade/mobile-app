@@ -568,6 +568,44 @@ export async function checkTourAvailability(
 }
 
 // ============================================================================
+// Repos with Tours
+// ============================================================================
+
+export interface RepoWithTour {
+  owner: string;
+  name: string;
+  full_name: string;
+  description?: string | null;
+  stargazers_count: number;
+  language?: string | null;
+  forkOwner: string; // The tour org that has the fork
+  forkRepo: string; // The fork repo name
+  tourPath: string; // Path to tour file
+}
+
+/**
+ * Get all repositories that have tours available
+ * Returns repos from tour organizations with parent repo info
+ * Cached on server for 24 hours
+ */
+export async function getReposWithTours(): Promise<{ repos: RepoWithTour[]; cached: boolean }> {
+  const url = `${API_BASE}/trpc/github.getReposWithTours`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch repos with tours: ${response.status}`);
+  }
+
+  const data: TRPCResponse<{ repos: RepoWithTour[]; cached: boolean }> = await response.json();
+  return data.result.data;
+}
+
+// ============================================================================
 // AI Commit Summary
 // ============================================================================
 

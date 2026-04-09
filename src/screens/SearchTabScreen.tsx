@@ -16,6 +16,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { searchRepos, formatStars } from '../services/GitHubSearchService';
 import type { GitHubRepo } from '../services/GitHubSearchService';
 import type { RootStackParamList } from '../navigation/types';
+import { getReposWithTours, type RepoWithTour } from '../services/FeedApiService';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -257,6 +258,10 @@ export function SearchTabScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [showingTours, setShowingTours] = useState(false);
+  const [toursRepos, setToursRepos] = useState<RepoWithTour[]>([]);
+  const [isLoadingTours, setIsLoadingTours] = useState(false);
+  const [toursFilter, setToursFilter] = useState('');
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -290,6 +295,53 @@ export function SearchTabScreen() {
     },
     [navigation]
   );
+
+  const handleTourRepoPress = useCallback(
+    (repo: RepoWithTour) => {
+      navigation.navigate('RepoFileCity', {
+        owner: repo.owner,
+        name: repo.name,
+        fullName: repo.full_name,
+      });
+    },
+    [navigation]
+  );
+
+  const handleShowTours = useCallback(async () => {
+    setShowingTours(true);
+    setIsLoadingTours(true);
+    setError(null);
+
+    try {
+      const { repos } = await getReposWithTours();
+      setToursRepos(repos);
+    } catch (err) {
+      console.error('Error fetching tours:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load tours');
+    } finally {
+      setIsLoadingTours(false);
+    }
+  }, []);
+
+  const handleBackToSearch = useCallback(() => {
+    setShowingTours(false);
+    setQuery('');
+    setResults([]);
+    setHasSearched(false);
+    setError(null);
+    setToursFilter('');
+  }, []);
+
+  const filteredToursRepos = React.useMemo(() => {
+    if (!toursFilter.trim()) return toursRepos;
+
+    const lowerQuery = toursFilter.toLowerCase();
+    return toursRepos.filter(repo =>
+      repo.full_name.toLowerCase().includes(lowerQuery) ||
+      repo.description?.toLowerCase().includes(lowerQuery) ||
+      repo.language?.toLowerCase().includes(lowerQuery)
+    );
+  }, [toursRepos, toursFilter]);
 
   const renderRepoItem = useCallback(
     ({ item }: { item: GitHubRepo }) => (
@@ -335,73 +387,221 @@ export function SearchTabScreen() {
     [theme, handleRepoPress]
   );
 
+  const renderTourRepoItem = useCallback(
+    ({ item }: { item: RepoWithTour }) => (
+      <TouchableOpacity
+        style={[styles.repoItem, { backgroundColor: theme.colors.surface }]}
+        onPress={() => handleTourRepoPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.tourBadgeContainer}>
+          <Text style={[styles.tourBadge, { color: theme.colors.primary, borderColor: theme.colors.primary }]}>
+            Tour Available
+          </Text>
+        </View>
+        <View style={styles.repoHeader}>
+          <Text style={[styles.repoName, { color: theme.colors.primary }]}>
+            {item.full_name}
+          </Text>
+          <View style={styles.repoStats}>
+            <StarIcon color={theme.colors.textSecondary} size={10} />
+            <Text style={[styles.starCount, { color: theme.colors.textSecondary }]}>
+              {formatStars(item.stargazers_count)}
+            </Text>
+          </View>
+        </View>
+        {item.description && (
+          <Text
+            style={[styles.repoDescription, { color: theme.colors.textSecondary }]}
+            numberOfLines={2}
+          >
+            {item.description}
+          </Text>
+        )}
+        {item.language && (
+          <View style={styles.languageContainer}>
+            <View
+              style={[
+                styles.languageDot,
+                { backgroundColor: getLanguageColor(item.language) },
+              ]}
+            />
+            <Text style={[styles.languageText, { color: theme.colors.textSecondary }]}>
+              {item.language}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    ),
+    [theme, handleTourRepoPress]
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Search</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-          Find repositories to visualize
-        </Text>
-      </View>
-
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <View
-          style={[
-            styles.searchInputContainer,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={styles.searchIconWrapper}>
-            <SearchIcon color={theme.colors.textSecondary} size={16} />
-          </View>
-          <TextInput
-            style={[styles.searchInput, { color: theme.colors.text }]}
-            placeholder="Search repositories..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                setQuery('');
-                setResults([]);
-                setHasSearched(false);
-                setError(null);
-                setTotalCount(0);
-              }}
-              style={styles.clearButton}
-            >
-              <ClearIcon color={theme.colors.textSecondary} size={14} />
-            </TouchableOpacity>
-          )}
+        <View style={styles.headerLeft}>
+          <Text style={[styles.title, { color: theme.colors.text }]}>
+            {showingTours ? 'Repos with Tours' : 'Search'}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            {showingTours ? 'Guided tours available' : 'Find repositories to visualize'}
+          </Text>
         </View>
         <TouchableOpacity
-          style={[
-            styles.searchButton,
-            {
-              backgroundColor: theme.colors.primary,
-              opacity: query.trim() ? 1 : 0.5,
-            },
-          ]}
-          onPress={handleSearch}
-          disabled={!query.trim()}
+          style={[styles.toursButton, { backgroundColor: showingTours ? theme.colors.surface : theme.colors.primary }]}
+          onPress={showingTours ? handleBackToSearch : handleShowTours}
         >
-          <Text style={styles.searchButtonText}>Search</Text>
+          <Text style={[styles.toursButtonText, { color: showingTours ? theme.colors.text : '#fff' }]}>
+            {showingTours ? 'Search' : 'Tours'}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Results */}
-      {isSearching ? (
+      {/* Search Input - Only show when not showing tours */}
+      {!showingTours && (
+        <View style={styles.searchContainer}>
+          <View
+            style={[
+              styles.searchInputContainer,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={styles.searchIconWrapper}>
+              <SearchIcon color={theme.colors.textSecondary} size={16} />
+            </View>
+            <TextInput
+              style={[styles.searchInput, { color: theme.colors.text }]}
+              placeholder="Search repositories..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {query.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setQuery('');
+                  setResults([]);
+                  setHasSearched(false);
+                  setError(null);
+                  setTotalCount(0);
+                }}
+                style={styles.clearButton}
+              >
+                <ClearIcon color={theme.colors.textSecondary} size={14} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.searchButton,
+              {
+                backgroundColor: theme.colors.primary,
+                opacity: query.trim() ? 1 : 0.5,
+              },
+            ]}
+            onPress={handleSearch}
+            disabled={!query.trim()}
+          >
+            <Text style={styles.searchButtonText}>Search</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Tours Filter - Only show when showing tours */}
+      {showingTours && !isLoadingTours && (
+        <View style={styles.filterContainer}>
+          <View
+            style={[
+              styles.filterInputContainer,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={styles.searchIconWrapper}>
+              <SearchIcon color={theme.colors.textSecondary} size={16} />
+            </View>
+            <TextInput
+              style={[styles.searchInput, { color: theme.colors.text }]}
+              placeholder="Filter tours..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={toursFilter}
+              onChangeText={setToursFilter}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {toursFilter.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setToursFilter('')}
+                style={styles.clearButton}
+              >
+                <ClearIcon color={theme.colors.textSecondary} size={14} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Results or Tours */}
+      {showingTours ? (
+        // Tours View
+        isLoadingTours ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+              Loading repositories with tours...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <WarningIcon color={theme.colors.error} size={48} />
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>
+              {error}
+            </Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleShowTours}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredToursRepos}
+            keyExtractor={(item) => `${item.owner}/${item.name}`}
+            renderItem={renderTourRepoItem}
+            contentContainerStyle={styles.resultsList}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              toursRepos.length > 0 ? (
+                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
+                  {filteredToursRepos.length} of {toursRepos.length} {toursRepos.length === 1 ? 'repository' : 'repositories'}
+                  {toursFilter.trim() && ` matching "${toursFilter}"`}
+                </Text>
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                  {toursFilter.trim()
+                    ? `No tours matching "${toursFilter}"`
+                    : 'No repositories with tours found'
+                  }
+                </Text>
+              </View>
+            }
+          />
+        )
+      ) : isSearching ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
@@ -463,8 +663,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
   },
   title: {
     fontSize: 28,
@@ -474,14 +680,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 4,
   },
+  toursButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginLeft: 12,
+  },
+  toursButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 12,
   },
+  filterContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
   searchInputContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  filterInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
@@ -556,6 +784,18 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+  },
+  tourBadgeContainer: {
+    marginBottom: 8,
+  },
+  tourBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
   },
   repoHeader: {
     flexDirection: 'row',
