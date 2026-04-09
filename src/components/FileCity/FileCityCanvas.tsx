@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo, useCallback, useState, useRef, useEffect, useReducer } from 'react';
-import { View, StyleSheet, LayoutChangeEvent, Animated, Easing } from 'react-native';
+import { View, StyleSheet, LayoutChangeEvent, Easing } from 'react-native';
 import {
   Canvas,
   RoundedRect,
@@ -23,9 +23,17 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import {
+  runOnJS,
+  useSharedValue,
+  useAnimatedReaction,
+  useDerivedValue,
+  withTiming,
+  withSpring,
+  Easing as ReanimatedEasing,
+} from 'react-native-reanimated';
 
-import type { LayerRenderStrategy } from '@principal-ai/file-city-builder';
+import type { LayerRenderStrategy, HighlightLayer, LayerItem } from '@principal-ai/file-city-builder';
 import { getFileColor } from '@principal-ai/file-city-builder';
 import { FileCityCanvasProps, TransformState, FileTypeIconConfig } from './types';
 import {
@@ -105,7 +113,7 @@ export function FileCityCanvas({
   highlightLayers = [],
   backgroundColor = DEFAULT_BACKGROUND_COLOR,
   defaultDistrictColor = DEFAULT_DISTRICT_COLOR,
-  buildingBorderRadius = 2,
+  buildingBorderRadius = 0,
   districtBorderRadius = 0,
   showDirectoryLabels = true,
   showFileTypeIcons = false,
@@ -131,12 +139,22 @@ export function FileCityCanvas({
   const font = useFont(null, 10);
   const iconFont = useFont(null, 16);
 
-  // Animated values for smooth zoom/pan transitions
-  const scaleAnim = useRef(new Animated.Value(initialZoom)).current;
-  const translateXAnim = useRef(new Animated.Value(0)).current;
-  const translateYAnim = useRef(new Animated.Value(0)).current;
+  // Shared values for smooth zoom/pan transitions (no React re-renders)
+  // Skia components can use these directly for GPU-accelerated animations
+  const scale = useSharedValue(initialZoom);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
 
-  // Transform state (synced from animated values for Skia rendering)
+  // Create transform matrix for Skia from shared values
+  const transform = useDerivedValue(() => {
+    return [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ];
+  }, [scale, translateX, translateY]);
+
+  // Transform state (only updated when animation completes for hit testing)
   const [transformState, setTransformState] = useState<TransformState>({
     scale: initialZoom,
     translateX: 0,
@@ -144,7 +162,7 @@ export function FileCityCanvas({
   });
 
   // Animation tracking
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const isAnimating = useSharedValue(false);
 
   // Refs for gesture tracking
   const savedTransform = useRef({ scale: initialZoom, translateX: 0, translateY: 0 });
@@ -160,6 +178,32 @@ export function FileCityCanvas({
     () => new LayerIndex(highlightLayers),
     [highlightLayers]
   );
+
+  // Pre-compute highlight matches for all buildings and districts
+  // This eliminates repeated layerIndex.getItemsForPath() calls
+  const highlightMatchMap = useMemo(() => {
+    const map = new Map<string, Array<{ layer: HighlightLayer; item: LayerItem }>>();
+
+    // Pre-compute matches for all buildings
+    cityData.buildings.forEach((building) => {
+      const matches = layerIndex
+        .getItemsForPath(building.path)
+        .filter((match) => match.item.type === 'file');
+      if (matches.length > 0) {
+        map.set(building.path, matches);
+      }
+    });
+
+    // Pre-compute matches for all districts
+    cityData.districts.forEach((district) => {
+      const matches = layerIndex.getItemsForPath(district.path, 'exact');
+      if (matches.length > 0) {
+        map.set(district.path, matches);
+      }
+    });
+
+    return map;
+  }, [cityData, layerIndex]);
 
   // Detect if highlights are active (for isolation mode)
   const hasActiveHighlights = useMemo(() => {
@@ -199,24 +243,27 @@ export function FileCityCanvas({
     [shouldIsolate, isolationMode]
   );
 
-  // Sync animated values to React state for Skia rendering
-  useEffect(() => {
-    const scaleListener = scaleAnim.addListener(({ value }) => {
-      setTransformState(prev => ({ ...prev, scale: value }));
-    });
-    const translateXListener = translateXAnim.addListener(({ value }) => {
-      setTransformState(prev => ({ ...prev, translateX: value }));
-    });
-    const translateYListener = translateYAnim.addListener(({ value }) => {
-      setTransformState(prev => ({ ...prev, translateY: value }));
-    });
-
-    return () => {
-      scaleAnim.removeListener(scaleListener);
-      translateXAnim.removeListener(translateXListener);
-      translateYAnim.removeListener(translateYListener);
-    };
-  }, [scaleAnim, translateXAnim, translateYAnim]);
+  // Only sync shared values to React state when animation completes (for hit testing)
+  // This prevents 60fps re-renders during animations
+  useAnimatedReaction(
+    () => ({
+      scale: scale.value,
+      translateX: translateX.value,
+      translateY: translateY.value,
+      animating: isAnimating.value,
+    }),
+    (current, previous) => {
+      // Only update React state when animation stops or values significantly change
+      if (!current.animating && previous?.animating) {
+        runOnJS(setTransformState)({
+          scale: current.scale,
+          translateX: current.translateX,
+          translateY: current.translateY,
+        });
+      }
+    },
+    [scale, translateX, translateY, isAnimating]
+  );
 
   // Calculate scale and offset
   const scaleAndOffset = useMemo(
@@ -228,16 +275,21 @@ export function FileCityCanvas({
   useEffect(() => {
     const EASING_FACTOR = 0.08; // Match web 3D
     const THRESHOLD = 0.01;
+    let frameCount = 0;
+    let allSettled = false;
 
     const animate = () => {
+      // Only check for settling every 5 frames to reduce overhead
+      const shouldCheckSettling = frameCount % 5 === 0;
       let hasChanges = false;
+
+      if (shouldCheckSettling) {
+        allSettled = true; // Assume settled until proven otherwise
+      }
 
       // Animate building opacities
       cityData.buildings.forEach((building) => {
-        const layerMatches = layerIndex
-          .getItemsForPath(building.path)
-          .filter((match) => match.item.type === 'file');
-        const hasHighlight = layerMatches.length > 0;
+        const hasHighlight = highlightMatchMap.has(building.path);
         const target = getTargetOpacity(hasHighlight, 'building');
         const current = buildingOpacityRef.current.get(building.path) ?? target;
         const diff = target - current;
@@ -246,13 +298,15 @@ export function FileCityCanvas({
           const newOpacity = current + diff * EASING_FACTOR;
           buildingOpacityRef.current.set(building.path, newOpacity);
           hasChanges = true;
+          if (shouldCheckSettling) {
+            allSettled = false;
+          }
         }
       });
 
       // Animate district opacities
       cityData.districts.forEach((district) => {
-        const layerMatches = layerIndex.getItemsForPath(district.path, 'exact');
-        const hasHighlight = layerMatches.length > 0;
+        const hasHighlight = highlightMatchMap.has(district.path);
         const target = getTargetOpacity(hasHighlight, 'district');
         const current = districtOpacityRef.current.get(district.path) ?? target;
         const diff = target - current;
@@ -261,12 +315,28 @@ export function FileCityCanvas({
           const newOpacity = current + diff * EASING_FACTOR;
           districtOpacityRef.current.set(district.path, newOpacity);
           hasChanges = true;
+          if (shouldCheckSettling) {
+            allSettled = false;
+          }
         }
       });
 
-      if (hasChanges) {
+      // Throttle forceUpdate to every 2 frames (~30fps) to reduce re-render overhead
+      if (hasChanges && frameCount % 2 === 0) {
         forceUpdate();
+      }
+
+      frameCount++;
+
+      // Only continue if not settled
+      if (!allSettled) {
         opacityAnimationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        // Final update to ensure we render the settled state
+        if (hasChanges) {
+          forceUpdate();
+        }
+        opacityAnimationFrameRef.current = null;
       }
     };
 
@@ -277,7 +347,7 @@ export function FileCityCanvas({
         cancelAnimationFrame(opacityAnimationFrameRef.current);
       }
     };
-  }, [isolationMode, cityData, layerIndex, getTargetOpacity]);
+  }, [isolationMode, cityData, highlightMatchMap, getTargetOpacity]);
 
   // Handle canvas layout
   const onLayout = useCallback((event: LayoutChangeEvent) => {
@@ -285,120 +355,153 @@ export function FileCityCanvas({
     setCanvasSize({ width, height });
   }, []);
 
-  // Handle tap
+  // Handle tap - reads current shared values and inverse-transforms for hit testing
   const handleTap = useCallback(
     (x: number, y: number) => {
+      'worklet';
+      // Inverse-transform tap coordinates to base space
+      // Since we apply transform via Skia Group, we need to undo it for hit testing
+      const currentScale = scale.value;
+      const currentTranslateX = translateX.value;
+      const currentTranslateY = translateY.value;
+
+      const baseX = (x - currentTranslateX) / currentScale;
+      const baseY = (y - currentTranslateY) / currentScale;
+
+      // Create a transform with scale=1 for hit testing (coordinates are already in base space)
+      const baseTransform: TransformState = {
+        scale: 1,
+        translateX: 0,
+        translateY: 0,
+      };
+
       const { building, district } = findHitTarget(
-        x,
-        y,
+        baseX,
+        baseY,
         cityData,
         scaleAndOffset,
-        transformState
+        baseTransform
       );
 
       if (building && onBuildingPress) {
-        onBuildingPress(building);
+        runOnJS(onBuildingPress)(building);
       } else if (district && onDistrictPress) {
-        onDistrictPress(district);
+        runOnJS(onDistrictPress)(district);
       }
     },
-    [cityData, scaleAndOffset, transformState, onBuildingPress, onDistrictPress]
+    [cityData, scaleAndOffset, scale, translateX, translateY, onBuildingPress, onDistrictPress]
   );
 
   // Animation helper - animate to target zoom/pan position
+  // Called from JS thread (useEffect), so no 'worklet' directive
   const animateToTarget = useCallback(
     (target: ZoomTarget, type: 'spring' | 'timing') => {
-      // Stop any ongoing animation
-      if (animationRef.current) {
-        animationRef.current.stop();
-      }
-
+      // Mark animation as active
+      isAnimating.value = true;
 
       if (type === 'spring') {
         // Spring animation for gesture-initiated zooms
-        animationRef.current = Animated.parallel([
-          Animated.spring(scaleAnim, {
-            toValue: target.scale,
-            tension: 100,
-            friction: 10,
-            useNativeDriver: false,
-          }),
-          Animated.spring(translateXAnim, {
-            toValue: target.translateX,
-            tension: 100,
-            friction: 10,
-            useNativeDriver: false,
-          }),
-          Animated.spring(translateYAnim, {
-            toValue: target.translateY,
-            tension: 100,
-            friction: 10,
-            useNativeDriver: false,
-          }),
-        ]);
+        scale.value = withSpring(
+          target.scale,
+          {
+            damping: 10,
+            stiffness: 100,
+          },
+          (finished) => {
+            if (finished) {
+              isAnimating.value = false;
+              if (onZoomComplete) {
+                runOnJS(onZoomComplete)();
+              }
+            }
+          }
+        );
+        translateX.value = withSpring(target.translateX, {
+          damping: 10,
+          stiffness: 100,
+        });
+        translateY.value = withSpring(target.translateY, {
+          damping: 10,
+          stiffness: 100,
+        });
       } else {
         // Timing animation for programmatic zooms
         const duration = calculateAnimationDuration(
-          transformState.scale,
+          scale.value,
           target.scale,
-          transformState.translateX,
+          translateX.value,
           target.translateX,
-          transformState.translateY,
+          translateY.value,
           target.translateY
         );
 
-        animationRef.current = Animated.parallel([
-          Animated.timing(scaleAnim, {
-            toValue: target.scale,
+        scale.value = withTiming(
+          target.scale,
+          {
             duration,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
-          }),
-          Animated.timing(translateXAnim, {
-            toValue: target.translateX,
-            duration,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
-          }),
-          Animated.timing(translateYAnim, {
-            toValue: target.translateY,
-            duration,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
-          }),
-        ]);
+            easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+          },
+          (finished) => {
+            if (finished) {
+              isAnimating.value = false;
+              if (onZoomComplete) {
+                runOnJS(onZoomComplete)();
+              }
+            }
+          }
+        );
+        translateX.value = withTiming(target.translateX, {
+          duration,
+          easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+        });
+        translateY.value = withTiming(target.translateY, {
+          duration,
+          easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+        });
       }
-
-      animationRef.current.start(({ finished }) => {
-        if (finished) {
-          animationRef.current = null;
-          onZoomComplete?.();
-        }
-      });
     },
-    [
-      scaleAnim,
-      translateXAnim,
-      translateYAnim,
-      transformState,
-      onZoomComplete,
-    ]
+    [scale, translateX, translateY, isAnimating, onZoomComplete]
   );
 
-  // Zoom to path effect
+  // Track previous zoomToPath to prevent re-animating on re-renders
+  const prevZoomToPath = useRef<string | null | undefined>(zoomToPath);
+  const hasInitialized = useRef(false);
+
+  // Zoom to path effect - only runs when zoomToPath actually changes
   useEffect(() => {
-    // If zoomToPath is null or empty, zoom out to full city
+    // Skip on initial mount if no zoomToPath
+    if (!hasInitialized.current && (!zoomToPath || zoomToPath === '')) {
+      hasInitialized.current = true;
+      prevZoomToPath.current = zoomToPath;
+      return;
+    }
+
+    // Skip if zoomToPath hasn't changed
+    if (prevZoomToPath.current === zoomToPath) {
+      return;
+    }
+
+    const previousPath = prevZoomToPath.current;
+    prevZoomToPath.current = zoomToPath;
+    hasInitialized.current = true;
+
+    // If zoomToPath is null/empty
     if (!zoomToPath || zoomToPath === '') {
-      const target = calculateZoomTarget(
-        cityData.bounds,
-        cityData,
-        scaleAndOffset,
-        canvasSize.width,
-        canvasSize.height,
-        maxZoom,
-        0.9 // Use more padding for full city view
-      );
-      animateToTarget(target, 'timing');
+      // Only zoom out if we're transitioning FROM a path TO empty
+      // (e.g., tour focus changed from a directory to "show all")
+      if (previousPath && previousPath !== '') {
+        // Zoom out to show entire repo
+        const target = calculateZoomTarget(
+          cityData.bounds,
+          cityData,
+          scaleAndOffset,
+          canvasSize.width,
+          canvasSize.height,
+          maxZoom,
+          0.9 // More padding for full city view
+        );
+        animateToTarget(target, 'timing');
+      }
       return;
     }
 
@@ -411,6 +514,7 @@ export function FileCityCanvas({
     }
 
     // Calculate target zoom using shared utility
+    // bounds is guaranteed non-null due to check above
     const target = calculateZoomTarget(
       bounds,
       cityData,
@@ -423,81 +527,53 @@ export function FileCityCanvas({
 
     // Animate to target
     animateToTarget(target, 'timing');
-  }, [
-    zoomToPath,
-    cityData,
-    scaleAndOffset,
-    canvasSize,
-    maxZoom,
-    zoomPadding,
-    animateToTarget,
-    onZoomComplete,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomToPath]); // Only respond to zoomToPath changes
 
   // Spring back to constraints if zoom exceeds min/max
+  // This runs as a worklet on UI thread
   const springBackToConstraints = useCallback(() => {
-    const currentScale = transformState.scale;
+    'worklet';
+    const currentScale = scale.value;
     let targetScale = currentScale;
 
     if (currentScale < minZoom) targetScale = minZoom;
     if (currentScale > maxZoom) targetScale = maxZoom;
 
     if (targetScale !== currentScale) {
-      animateToTarget(
-        {
-          scale: targetScale,
-          translateX: transformState.translateX,
-          translateY: transformState.translateY,
-        },
-        'spring'
-      );
+      // Animate directly with shared values (no animateToTarget wrapper)
+      isAnimating.value = true;
+      scale.value = withSpring(targetScale, {
+        damping: 10,
+        stiffness: 100,
+      }, (finished) => {
+        if (finished) {
+          isAnimating.value = false;
+        }
+      });
     }
-  }, [transformState, minZoom, maxZoom, animateToTarget]);
+  }, [scale, isAnimating, minZoom, maxZoom]);
 
-  // Gesture helper functions (called via runOnJS)
-  const handleGestureStart = useCallback(() => {
-    // Stop animation if user starts gesture
-    if (animationRef.current) {
-      animationRef.current.stop();
-    }
-    savedTransform.current = { ...transformState };
-  }, [transformState]);
+  // Saved transform for gesture tracking
+  const savedScale = useSharedValue(initialZoom);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
 
-  const updatePan = useCallback((translationX: number, translationY: number) => {
-    const newX = savedTransform.current.translateX + translationX;
-    const newY = savedTransform.current.translateY + translationY;
-
-    translateXAnim.setValue(newX);
-    translateYAnim.setValue(newY);
-  }, [translateXAnim, translateYAnim]);
-
-  const updatePinch = useCallback(
-    (scale: number, focalX: number, focalY: number) => {
-      const saved = savedTransform.current;
-      const newScale = Math.min(maxZoom, Math.max(minZoom, saved.scale * scale));
-
-      // Zoom around focal point
-      const scaleRatio = newScale / saved.scale;
-      const newTranslateX = focalX - (focalX - saved.translateX) * scaleRatio;
-      const newTranslateY = focalY - (focalY - saved.translateY) * scaleRatio;
-
-      scaleAnim.setValue(newScale);
-      translateXAnim.setValue(newTranslateX);
-      translateYAnim.setValue(newTranslateY);
-    },
-    [scaleAnim, translateXAnim, translateYAnim, minZoom, maxZoom]
-  );
-
-  // Pan gesture
+  // Pan gesture - works directly with shared values (no JS bridge)
   const panGesture = Gesture.Pan()
     .enabled(enablePan)
     .onStart(() => {
       'worklet';
-      runOnJS(handleGestureStart)();
+      // Save current position at gesture start
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+      isAnimating.value = false; // Cancel any ongoing animation
     })
     .onUpdate((e) => {
       'worklet';
-      runOnJS(updatePan)(e.translationX, e.translationY);
+      // Directly update shared values - no React re-render
+      translateX.value = savedTranslateX.value + e.translationX;
+      translateY.value = savedTranslateY.value + e.translationY;
     })
     .onEnd(() => {
       'worklet';
@@ -506,62 +582,78 @@ export function FileCityCanvas({
       }
     });
 
-  // Pinch gesture
+  // Pinch gesture - works directly with shared values (no JS bridge)
   const pinchGesture = Gesture.Pinch()
     .enabled(enableZoom)
     .onStart(() => {
       'worklet';
-      runOnJS(handleGestureStart)();
+      // Save current transform at gesture start
+      savedScale.value = scale.value;
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+      isAnimating.value = false; // Cancel any ongoing animation
     })
     .onUpdate((e) => {
       'worklet';
-      runOnJS(updatePinch)(e.scale, e.focalX, e.focalY);
+      const newScale = Math.min(maxZoom, Math.max(minZoom, savedScale.value * e.scale));
+
+      // Zoom around focal point
+      const scaleRatio = newScale / savedScale.value;
+      const newTranslateX = e.focalX - (e.focalX - savedTranslateX.value) * scaleRatio;
+      const newTranslateY = e.focalY - (e.focalY - savedTranslateY.value) * scaleRatio;
+
+      // Directly update shared values - no React re-render
+      scale.value = newScale;
+      translateX.value = newTranslateX;
+      translateY.value = newTranslateY;
     })
     .onEnd(() => {
       'worklet';
       if (animateZoom) {
-        runOnJS(springBackToConstraints)();
+        springBackToConstraints();
       }
     });
 
   // Tap gesture
   const tapGesture = Gesture.Tap().onEnd((e) => {
     'worklet';
-    runOnJS(handleTap)(e.x, e.y);
+    handleTap(e.x, e.y);
   });
 
   // Combine gestures
   const composedGesture = Gesture.Simultaneous(panGesture, pinchGesture, tapGesture);
 
-  // World to canvas coordinate transform (inline for Skia)
-  const worldToCanvas = useCallback(
+  // World to canvas coordinate transform - computes base coordinates only
+  // The pan/zoom transform is applied via Skia Group transform
+  const worldToCanvasBase = useCallback(
     (x: number, z: number) => {
       const { scale, offsetX, offsetZ } = scaleAndOffset;
       const baseX = (x - cityData.bounds.minX) * scale + offsetX;
       const baseY = (z - cityData.bounds.minZ) * scale + offsetZ;
       return {
-        x: baseX * transformState.scale + transformState.translateX,
-        y: baseY * transformState.scale + transformState.translateY,
+        x: baseX,
+        y: baseY,
       };
     },
-    [cityData.bounds, scaleAndOffset, transformState]
+    [cityData.bounds, scaleAndOffset]
   );
 
-  // Pre-compute district data
+  // Pre-compute district data (base coordinates, transform applied via Skia Group)
   const districtData = useMemo(() => {
     return cityData.districts
       .filter((district) => district.path && district.path !== '')
       .map((district) => {
         const { minX, maxX, minZ, maxZ } = district.worldBounds;
-        const topLeft = worldToCanvas(minX, minZ);
-        const bottomRight = worldToCanvas(maxX, maxZ);
+        const topLeft = worldToCanvasBase(minX, minZ);
+        const bottomRight = worldToCanvasBase(maxX, maxZ);
 
         const width = bottomRight.x - topLeft.x;
         const height = bottomRight.y - topLeft.y;
 
-        if (width < 2 || height < 2) return null;
+        // Size check will be applied after transform
+        if (width < 1 || height < 1) return null;
 
-        const layerMatches = layerIndex.getItemsForPath(district.path, 'exact');
+        const layerMatches = highlightMatchMap.get(district.path) || [];
         const hasHighlight = layerMatches.length > 0;
 
         // Get highlight info from first matching layer
@@ -569,7 +661,9 @@ export function FileCityCanvas({
         const highlightColor = firstMatch?.layer.color;
         const renderStrategy: LayerRenderStrategy = firstMatch?.item.renderStrategy || 'border';
         const layerOpacity = firstMatch?.layer.opacity ?? 1;
-        const layerBorderWidth = firstMatch?.layer.borderWidth ?? 3;
+
+        // Ultra-thin border - layout engine assumes borders are minimal
+        const scaledBorderWidth = 0.25;
 
         // Use animated opacity for isolation modes
         const targetOpacity = getTargetOpacity(hasHighlight, 'district');
@@ -593,28 +687,28 @@ export function FileCityCanvas({
           highlightColor,
           renderStrategy,
           layerOpacity,
-          layerBorderWidth,
+          scaledBorderWidth,
         };
       })
       .filter(Boolean);
-  }, [cityData.districts, worldToCanvas, layerIndex, defaultDistrictColor, showDirectoryLabels, getTargetOpacity]);
+  }, [cityData.districts, worldToCanvasBase, highlightMatchMap, defaultDistrictColor, showDirectoryLabels, getTargetOpacity]);
 
-  // Pre-compute building data
+  // Pre-compute building data (base coordinates, transform applied via Skia Group)
   const buildingData = useMemo(() => {
-    const totalScale = scaleAndOffset.scale * transformState.scale;
+    const baseScale = scaleAndOffset.scale;
 
     return cityData.buildings
       .map((building) => {
-        const pos = worldToCanvas(building.position.x, building.position.z);
+        const pos = worldToCanvasBase(building.position.x, building.position.z);
 
         let width: number, height: number;
         if (building.dimensions[0] > 50 || building.dimensions[2] > 50) {
-          width = building.dimensions[0] * totalScale * 0.95;
-          height = building.dimensions[2] * totalScale * 0.95;
+          width = building.dimensions[0] * baseScale * 0.95;
+          height = building.dimensions[2] * baseScale * 0.95;
         } else {
           const size = Math.max(
             2,
-            Math.max(building.dimensions[0], building.dimensions[2]) * totalScale * 0.9
+            Math.max(building.dimensions[0], building.dimensions[2]) * baseScale * 0.9
           );
           width = size;
           height = size;
@@ -625,9 +719,7 @@ export function FileCityCanvas({
         const x = pos.x - width / 2;
         const y = pos.y - height / 2;
 
-        const layerMatches = layerIndex
-          .getItemsForPath(building.path)
-          .filter((match) => match.item.type === 'file');
+        const layerMatches = highlightMatchMap.get(building.path) || [];
         const hasHighlight = layerMatches.length > 0;
 
         // Get highlight info from first matching layer
@@ -644,6 +736,9 @@ export function FileCityCanvas({
 
         const actualRadius = Math.min(buildingBorderRadius, Math.min(width, height) / 6);
 
+        // Ultra-thin border - layout engine assumes borders are minimal
+        const scaledBorderWidth = 0.25;
+
         // Get icon config if enabled
         const icon = showFileTypeIcons ? getFileTypeIcon(building.path, iconMap) : null;
 
@@ -659,6 +754,7 @@ export function FileCityCanvas({
           color,
           opacity,
           radius: actualRadius,
+          scaledBorderWidth,
           hasHighlight,
           highlightColor,
           renderStrategy,
@@ -667,7 +763,7 @@ export function FileCityCanvas({
         };
       })
       .filter(Boolean);
-  }, [cityData.buildings, worldToCanvas, scaleAndOffset, transformState.scale, layerIndex, buildingBorderRadius, showFileTypeIcons, iconMap, getTargetOpacity]);
+  }, [cityData.buildings, worldToCanvasBase, scaleAndOffset, highlightMatchMap, buildingBorderRadius, showFileTypeIcons, iconMap, getTargetOpacity]);
 
   // Filter buildings for 'hide' mode
   const visibleBuildings = useMemo(() => {
@@ -677,70 +773,107 @@ export function FileCityCanvas({
     return buildingData;
   }, [buildingData, isolationMode, shouldIsolate]);
 
+  // Pre-separate districts by rendering pass for performance
+  const districtRenderPasses = useMemo(() => {
+    const normal: typeof districtData = [];
+    const highlightFills: typeof districtData = [];
+    const highlightBorders: typeof districtData = [];
+
+    districtData.forEach(d => {
+      if (!d) return;
+      if (!d.hasHighlight) {
+        normal.push(d);
+      } else if (d.renderStrategy === 'fill') {
+        highlightFills.push(d);
+      } else {
+        highlightBorders.push(d);
+      }
+    });
+
+    return { normal, highlightFills, highlightBorders };
+  }, [districtData]);
+
+  // Pre-separate buildings by rendering pass for performance
+  const buildingRenderPasses = useMemo(() => {
+    const fills: typeof visibleBuildings = [];
+    const icons: typeof visibleBuildings = [];
+    const highlightBorders: typeof visibleBuildings = [];
+
+    visibleBuildings.forEach(b => {
+      if (!b) return;
+      fills.push(b);
+      if (b.icon) icons.push(b);
+      if (b.hasHighlight && b.highlightColor && b.renderStrategy !== 'fill') {
+        highlightBorders.push(b);
+      }
+    });
+
+    return { fills, icons, highlightBorders };
+  }, [visibleBuildings]);
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <GestureDetector gesture={composedGesture}>
         <View style={[styles.canvasContainer, { backgroundColor }]} onLayout={onLayout}>
           <Canvas style={styles.canvas}>
-            {/* Districts (borders only) */}
-            {districtData.map((d) =>
-              d ? (
-                <React.Fragment key={d.key}>
-                  {/* Normal district border */}
-                  {!d.hasHighlight && (
-                    <RoundedRect
-                      x={d.x}
-                      y={d.y}
-                      width={d.width}
-                      height={d.height}
-                      r={districtBorderRadius}
-                      color="transparent"
-                      style="stroke"
-                      strokeWidth={1}
-                    >
-                      <Paint
-                        color={Skia.Color(d.borderColor)}
-                        style="stroke"
-                        strokeWidth={1}
-                        opacity={d.borderOpacity}
-                      />
-                    </RoundedRect>
-                  )}
+            {/* Apply pan/zoom transform via GPU - no React re-renders during animation */}
+            <Group transform={transform}>
+              {/* Pass 1: Normal district borders (bottom layer) */}
+              {districtRenderPasses.normal.map((d) => (
+                <RoundedRect
+                  key={d.key}
+                  x={d.x}
+                  y={d.y}
+                  width={d.width}
+                  height={d.height}
+                  r={districtBorderRadius}
+                  color="transparent"
+                  style="stroke"
+                  strokeWidth={d.scaledBorderWidth}
+                >
+                  <Paint
+                    color={Skia.Color(d.borderColor)}
+                    style="stroke"
+                    strokeWidth={d.scaledBorderWidth}
+                    opacity={d.borderOpacity}
+                  />
+                </RoundedRect>
+              ))}
 
-                  {/* Highlighted district */}
-                  {d.hasHighlight && d.renderStrategy === 'fill' && (
-                    <RoundedRect
-                      x={d.x}
-                      y={d.y}
-                      width={d.width}
-                      height={d.height}
-                      r={districtBorderRadius}
-                      color={hexToSkiaColor(d.highlightColor!, d.layerOpacity!)}
-                    />
-                  )}
+              {/* Pass 2: Highlighted district fills (middle layer) */}
+              {districtRenderPasses.highlightFills.map((d) => (
+                <RoundedRect
+                  key={`${d.key}-fill`}
+                  x={d.x}
+                  y={d.y}
+                  width={d.width}
+                  height={d.height}
+                  r={districtBorderRadius}
+                  color={hexToSkiaColor(d.highlightColor!, d.layerOpacity!)}
+                />
+              ))}
 
-                  {d.hasHighlight && d.renderStrategy === 'border' && (
-                    <RoundedRect
-                      x={d.x}
-                      y={d.y}
-                      width={d.width}
-                      height={d.height}
-                      r={districtBorderRadius}
-                      color="transparent"
-                      style="stroke"
-                      strokeWidth={d.layerBorderWidth}
-                    >
-                      <Paint
-                        color={Skia.Color(d.highlightColor!)}
-                        style="stroke"
-                        strokeWidth={d.layerBorderWidth}
-                        opacity={d.layerOpacity}
-                      />
-                    </RoundedRect>
-                  )}
-                </React.Fragment>
-              ) : null
-            )}
+              {/* Pass 3: Highlighted district borders (top layer) */}
+              {districtRenderPasses.highlightBorders.map((d) => (
+                <RoundedRect
+                  key={`${d.key}-highlight`}
+                  x={d.x}
+                  y={d.y}
+                  width={d.width}
+                  height={d.height}
+                  r={districtBorderRadius}
+                  color="transparent"
+                  style="stroke"
+                  strokeWidth={d.scaledBorderWidth}
+                >
+                  <Paint
+                    color={Skia.Color(d.highlightColor!)}
+                    style="stroke"
+                    strokeWidth={d.scaledBorderWidth}
+                    opacity={d.layerOpacity}
+                  />
+                </RoundedRect>
+              ))}
 
             {/* District labels */}
             {font &&
@@ -757,89 +890,94 @@ export function FileCityCanvas({
                 ) : null
               )}
 
-            {/* Buildings */}
-            {visibleBuildings.map((b) =>
-              b ? (
-                <Group key={b.key}>
-                  {/* Building fill - use highlight color for fill strategy, otherwise base color */}
-                  <RoundedRect
-                    x={b.x}
-                    y={b.y}
-                    width={b.width}
-                    height={b.height}
-                    r={b.radius}
-                    style="fill"
-                    color={hexToSkiaColor(
-                      b.hasHighlight && b.highlightColor && b.renderStrategy === 'fill'
-                        ? b.highlightColor
-                        : b.color,
-                      b.hasHighlight && b.renderStrategy === 'fill'
-                        ? (b.layerOpacity ?? 1)
-                        : b.opacity
-                    )}
-                  />
-                  {/* Highlight - border strategy (default) */}
-                  {b.hasHighlight && b.highlightColor && b.renderStrategy !== 'fill' && (
-                    <RoundedRect
-                      x={b.x}
-                      y={b.y}
-                      width={b.width}
-                      height={b.height}
-                      r={b.radius}
-                      color="transparent"
-                      style="stroke"
-                      strokeWidth={2}
-                    >
-                      <Paint color={Skia.Color(b.highlightColor)} style="stroke" strokeWidth={2} />
-                    </RoundedRect>
-                  )}
-                  {/* File type icon (Lucide SVG or emoji) */}
-                  {(() => {
-                    // Only show icons on buildings large enough to display them
-                    const minSize = Math.min(b.width, b.height);
-                    if (!b.icon || minSize < 6) return null;
+            {/* Buildings - Pass 1: All fills (normal and highlighted) */}
+            {buildingRenderPasses.fills.map((b) => (
+              <RoundedRect
+                key={b.key}
+                x={b.x}
+                y={b.y}
+                width={b.width}
+                height={b.height}
+                r={b.radius}
+                style="fill"
+                color={hexToSkiaColor(
+                  b.hasHighlight && b.highlightColor && b.renderStrategy === 'fill'
+                    ? b.highlightColor
+                    : b.color,
+                  b.hasHighlight && b.renderStrategy === 'fill'
+                    ? (b.layerOpacity ?? 1)
+                    : b.opacity
+                )}
+              />
+            ))}
 
-                    // Scale icon to fit within building (use 80% of min dimension)
-                    const size = minSize * 0.8;
+            {/* Buildings - Pass 2: Icons (on top of fills, below highlight borders) */}
+            {buildingRenderPasses.icons.map((b) => (
+              <Group key={`${b.key}-icon`}>
+                {/* File type icon (Lucide SVG or emoji) */}
+                {(() => {
+                  // Only show icons on buildings large enough to display them
+                  const minSize = Math.min(b.width, b.height);
+                  if (!b.icon || minSize < 6) return null;
 
-                    if (b.icon.type === 'lucide') {
-                      const svgString = getLucideIconSvg(b.icon.name, b.icon.color || '#ffffff');
-                      if (!svgString) return null;
-                      const svg = Skia.SVG.MakeFromString(svgString);
-                      if (!svg) return null;
-                      // SVG is 24x24, scale to fit
-                      const scale = size / 24;
-                      return (
-                        <Group
-                          transform={[
-                            { translateX: b.centerX - size / 2 },
-                            { translateY: b.centerY - size / 2 },
-                            { scale: scale },
-                          ]}
-                        >
-                          <ImageSVG svg={svg} x={0} y={0} width={24} height={24} />
-                        </Group>
-                      );
-                    }
+                  // Scale icon to fit within building (use 80% of min dimension)
+                  const size = minSize * 0.8;
 
-                    // Emoji fallback
-                    if (b.icon.type === 'emoji' && iconFont) {
-                      return (
-                        <Text
-                          x={b.centerX - size * 0.3}
-                          y={b.centerY + size * 0.3}
-                          text={b.icon.name}
-                          font={iconFont}
-                          color={Skia.Color(b.icon.color || '#ffffff')}
-                        />
-                      );
-                    }
+                  if (b.icon.type === 'lucide') {
+                    const svgString = getLucideIconSvg(b.icon.name, b.icon.color || '#ffffff');
+                    if (!svgString) return null;
+                    const svg = Skia.SVG.MakeFromString(svgString);
+                    if (!svg) return null;
+                    // SVG is 24x24, scale to fit
+                    const scale = size / 24;
+                    return (
+                      <Group
+                        transform={[
+                          { translateX: b.centerX - size / 2 },
+                          { translateY: b.centerY - size / 2 },
+                          { scale: scale },
+                        ]}
+                      >
+                        <ImageSVG svg={svg} x={0} y={0} width={24} height={24} />
+                      </Group>
+                    );
+                  }
 
-                    return null;
-                  })()}
-                </Group>
-              ) : null
-            )}
+                  // Emoji fallback
+                  if (b.icon.type === 'emoji' && iconFont) {
+                    return (
+                      <Text
+                        x={b.centerX - size * 0.3}
+                        y={b.centerY + size * 0.3}
+                        text={b.icon.name}
+                        font={iconFont}
+                        color={Skia.Color(b.icon.color || '#ffffff')}
+                      />
+                    );
+                  }
+
+                  return null;
+                })()}
+              </Group>
+            ))}
+
+            {/* Buildings - Pass 3: Highlight borders (top layer) */}
+            {buildingRenderPasses.highlightBorders.map((b) => (
+              <RoundedRect
+                key={`${b.key}-highlight`}
+                x={b.x}
+                y={b.y}
+                width={b.width}
+                height={b.height}
+                r={b.radius}
+                color="transparent"
+                style="stroke"
+                strokeWidth={b.scaledBorderWidth}
+              >
+                <Paint color={Skia.Color(b.highlightColor!)} style="stroke" strokeWidth={b.scaledBorderWidth} />
+              </RoundedRect>
+            ))}
+            </Group>
           </Canvas>
         </View>
       </GestureDetector>
