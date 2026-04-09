@@ -9,6 +9,7 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { ContributionCalendar, DailyContribution } from '../components/ContributionCalendar';
 
@@ -70,11 +71,12 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
 }) => {
   const { theme } = useTheme();
   const { width } = Dimensions.get('window');
+  const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Define header collapse threshold
-  const HEADER_MAX_HEIGHT = 300;
-  const HEADER_MIN_HEIGHT = 60;
+  const HEADER_MAX_HEIGHT = 300 + insets.top;
+  const HEADER_MIN_HEIGHT = 60 + insets.top;
   const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
   // Animated values
@@ -138,6 +140,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             borderBottomColor: theme.colors.border,
             opacity: stickyHeaderOpacity,
             transform: [{ translateY: stickyHeaderTranslateY }],
+            paddingTop: insets.top,
+            height: 60 + insets.top,
           },
         ]}
       >
@@ -159,7 +163,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
       </Animated.View>
       <Animated.ScrollView
         style={{ backgroundColor: theme.colors.background }}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 32 + insets.bottom }]}
         scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -175,19 +179,12 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             },
           ]}
         >
-        {/* Contribution calendar background for entire header */}
-        {contributions.length > 0 && (
-          <View style={styles.contributionBackground}>
-            <View style={styles.calendarWrapper}>
-              <ContributionCalendar contributions={contributions} months={5} showLabels={false} />
-            </View>
-          </View>
-        )}
-
+        {/* Avatar with contribution calendar background */}
         <Animated.View
           style={[
-            styles.avatarContainer,
+            styles.avatarSection,
             {
+              marginTop: 32 + insets.top,
               transform: [
                 { scale: avatarScale },
                 { translateY: avatarTranslateY },
@@ -195,11 +192,23 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             },
           ]}
         >
-          <Image
-            source={{ uri: avatarUrl }}
-            style={styles.avatar}
-            resizeMode="cover"
-          />
+          {/* Heatmap background behind avatar */}
+          {contributions.length > 0 && (
+            <View style={styles.contributionBackground}>
+              <View style={styles.calendarWrapper}>
+                <ContributionCalendar contributions={contributions} months={5} showLabels={false} />
+              </View>
+            </View>
+          )}
+
+          {/* Avatar on top */}
+          <View style={styles.avatarContainer}>
+            <Image
+              source={{ uri: avatarUrl }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          </View>
         </Animated.View>
 
         <Animated.View
@@ -405,15 +414,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
                     >
                       {group.commitCount} {group.commitCount === 1 ? 'commit' : 'commits'}
                     </Text>
-                    <Text
-                      style={[
-                        styles.activityDetails,
-                        { color: theme.colors.success },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      +{group.totalAdditions} -{group.totalDeletions}
-                    </Text>
                   </View>
                 </View>
                 <Text
@@ -485,25 +485,26 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   contentContainer: {
-    paddingBottom: 32,
+    // paddingBottom is applied dynamically with safe area insets
   },
   header: {
     alignItems: 'center',
-    paddingTop: 24,
     paddingHorizontal: 16,
     overflow: 'hidden',
     position: 'relative',
   },
-  avatarContainer: {
+  avatarSection: {
+    alignItems: 'center',
+    position: 'relative',
     marginBottom: 16,
-    zIndex: 1,
+    width: '100%',
   },
   contributionBackground: {
     position: 'absolute',
-    top: -120,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: -15, // Center heatmap with avatar
+    left: -16, // Extend beyond header's paddingHorizontal
+    right: -16, // Extend beyond header's paddingHorizontal
+    height: 180,
     opacity: 0.3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -511,7 +512,10 @@ const styles = StyleSheet.create({
   },
   calendarWrapper: {
     width: '100%',
-    height: 140,
+    height: 180,
+  },
+  avatarContainer: {
+    zIndex: 1,
   },
   avatar: {
     width: 120,

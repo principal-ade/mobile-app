@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import React from 'react';
 import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UserProfileScreen, HourlyActivityGroup } from './UserProfileScreen';
 import { DailyContribution } from '../components/ContributionCalendar';
 
@@ -112,18 +113,25 @@ const generateMockContributions = (pattern: 'active' | 'moderate' | 'light' | 's
 };
 
 const MobileFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <View
-    style={{
-      width: 375,
-      height: 812,
-      borderWidth: 1,
-      borderColor: '#ccc',
-      borderRadius: 8,
-      overflow: 'hidden',
+  <SafeAreaProvider
+    initialMetrics={{
+      frame: { x: 0, y: 0, width: 375, height: 812 },
+      insets: { top: 44, left: 0, right: 0, bottom: 34 },
     }}
   >
-    {children}
-  </View>
+    <View
+      style={{
+        width: 375,
+        height: 812,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    >
+      {children}
+    </View>
+  </SafeAreaProvider>
 );
 
 const meta: Meta<typeof UserProfileScreen> = {

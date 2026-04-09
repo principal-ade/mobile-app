@@ -17,6 +17,18 @@ export interface GitHubUser {
   type?: 'User' | 'Organization';
 }
 
+export interface GitHubUserProfile {
+  login: string;
+  name: string | null;
+  avatar_url: string;
+  bio: string | null;
+  location: string | null;
+  blog: string | null;
+  public_repos: number;
+  followers: number;
+  following: number;
+}
+
 export interface SuggestedUser extends GitHubUser {
   name?: string | null;
   bio?: string | null;
@@ -197,6 +209,101 @@ export async function getSuggestedRepos(
 
   const data: TRPCResponse<SuggestedReposResponse> = await response.json();
   return { repos: data.result.data.repos };
+}
+
+/**
+ * Get GitHub user profile by username
+ * Fetches directly from GitHub API
+ */
+export async function getUserProfile(
+  username: string
+): Promise<GitHubUserProfile> {
+  const url = `https://api.github.com/users/${username}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'PrincipalAI-Mobile/1.0',
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('User not found');
+    }
+    if (response.status === 403) {
+      throw new Error('Rate limit exceeded. Please try again later.');
+    }
+    throw new Error(`Failed to fetch user profile: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+export interface DailyContribution {
+  date: string;
+  count: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: 'commit' | 'pr_merged' | 'pr_opened' | 'issue_opened';
+  timestamp: string;
+  repository: string;
+  repositoryUrl?: string;
+  ownerType?: 'User' | 'Organization';
+  isPrivate?: boolean;
+  title?: string;
+  url?: string;
+  metadata?: {
+    commitCount?: number;
+    additions?: number;
+    deletions?: number;
+    prNumber?: number;
+    issueNumber?: number;
+    isClosed?: boolean;
+    closedBy?: string;
+  };
+}
+
+export interface UserActivityResponse {
+  user: {
+    login: string;
+    name: string | null;
+    avatarUrl: string;
+    followersCount: number;
+  };
+  activity: ActivityEvent[];
+  contributions: DailyContribution[];
+}
+
+/**
+ * Get GitHub user activity and contributions
+ * Fetches from web-ade backend which uses GraphQL
+ * @param username - GitHub username
+ * @param contributionDays - Number of days of contribution data to fetch (default: 7, max: 365)
+ * @param activityDays - Number of days of activity events to fetch (default: 7, max: 365)
+ */
+export async function getUserActivity(
+  username: string,
+  contributionDays: number = 7,
+  activityDays: number = 7
+): Promise<UserActivityResponse> {
+  const url = `${API_BASE}/github/user/${username}/activity?contributionDays=${contributionDays}&activityDays=${activityDays}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('User not found');
+    }
+    if (response.status === 403) {
+      throw new Error('Rate limit exceeded. Please try again later.');
+    }
+    throw new Error(`Failed to fetch user activity: ${response.status}`);
+  }
+
+  return await response.json();
 }
 
 /**

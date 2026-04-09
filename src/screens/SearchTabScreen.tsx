@@ -14,14 +14,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
-import { searchRepos, formatStars } from '../services/GitHubSearchService';
-import type { GitHubRepo } from '../services/GitHubSearchService';
+import { searchRepos, searchUsers, formatStars } from '../services/GitHubSearchService';
+import type { GitHubRepo, GitHubUser } from '../services/GitHubSearchService';
 import type { RootStackParamList } from '../navigation/types';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { getReposWithTours, type RepoWithTour } from '../services/FeedApiService';
 import { getCompletedTours } from './TourFileCityScreen';
 import { LucideIcon } from '../components/LucideIcon';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
+
+type SearchType = 'repos' | 'users';
 
 // Custom icon components (no emojis)
 function ClearIcon({ color, size = 14 }: { color: string; size?: number }) {
@@ -185,8 +188,10 @@ export function SearchTabScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
+  const [searchType, setSearchType] = useState<SearchType>('repos');
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GitHubRepo[]>([]);
+  const [repoResults, setRepoResults] = useState<GitHubRepo[]>([]);
+  const [userResults, setUserResults] = useState<GitHubUser[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -217,18 +222,27 @@ export function SearchTabScreen() {
     setError(null);
 
     try {
-      const { repos, totalCount: count } = await searchRepos(query, { perPage: 20 });
-      setResults(repos);
-      setTotalCount(count);
+      if (searchType === 'repos') {
+        const { repos, totalCount: count } = await searchRepos(query, { perPage: 20 });
+        setRepoResults(repos);
+        setUserResults([]);
+        setTotalCount(count);
+      } else {
+        const { users, totalCount: count } = await searchUsers(query, { perPage: 20 });
+        setUserResults(users);
+        setRepoResults([]);
+        setTotalCount(count);
+      }
     } catch (err) {
       console.error('Search error:', err);
       setError(err instanceof Error ? err.message : 'Search failed');
-      setResults([]);
+      setRepoResults([]);
+      setUserResults([]);
       setTotalCount(0);
     } finally {
       setIsSearching(false);
     }
-  }, [query]);
+  }, [query, searchType]);
 
   const handleRepoPress = useCallback(
     (repo: GitHubRepo) => {
@@ -236,6 +250,15 @@ export function SearchTabScreen() {
         owner: repo.owner,
         name: repo.name,
         fullName: repo.full_name,
+      });
+    },
+    [navigation]
+  );
+
+  const handleUserPress = useCallback(
+    (user: GitHubUser) => {
+      navigation.navigate('UserProfile', {
+        username: user.login,
       });
     },
     [navigation]
@@ -274,10 +297,20 @@ export function SearchTabScreen() {
   const handleBackToSearch = useCallback(() => {
     setShowingTours(false);
     setQuery('');
-    setResults([]);
+    setRepoResults([]);
+    setUserResults([]);
     setHasSearched(false);
     setError(null);
     setToursFilter('');
+  }, []);
+
+  const handleSearchTypeChange = useCallback((index: number) => {
+    setSearchType(index === 0 ? 'repos' : 'users');
+    setRepoResults([]);
+    setUserResults([]);
+    setHasSearched(false);
+    setError(null);
+    setTotalCount(0);
   }, []);
 
   const filteredToursRepos = React.useMemo(() => {
@@ -342,6 +375,34 @@ export function SearchTabScreen() {
       </TouchableOpacity>
     ),
     [theme, handleRepoPress]
+  );
+
+  const renderUserItem = useCallback(
+    ({ item }: { item: GitHubUser }) => (
+      <TouchableOpacity
+        style={[styles.repoItem, { backgroundColor: theme.colors.surface }]}
+        onPress={() => handleUserPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.repoHeaderWithAvatar}>
+          <Image
+            source={{ uri: item.avatar_url }}
+            style={styles.ownerAvatar}
+          />
+          <View style={styles.repoInfo}>
+            <Text style={[styles.repoName, { color: theme.colors.primary }]}>
+              {item.login}
+            </Text>
+            {item.type && (
+              <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
+                {item.type}
+              </Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    ),
+    [theme, handleUserPress]
   );
 
   const renderTourRepoItem = useCallback(
@@ -438,10 +499,20 @@ export function SearchTabScreen() {
 
       {/* Search Input - Only show when not showing tours */}
       {!showingTours && (
-        <View style={styles.searchContainer}>
-          <View
-            style={[
-              styles.searchInputContainer,
+        <>
+          {/* Segmented Control */}
+          <View style={styles.segmentedControlContainer}>
+            <SegmentedControl
+              segments={['Repos', 'Users']}
+              selectedIndex={searchType === 'repos' ? 0 : 1}
+              onChange={handleSearchTypeChange}
+            />
+          </View>
+
+          <View style={styles.searchContainer}>
+            <View
+              style={[
+                styles.searchInputContainer,
               {
                 backgroundColor: theme.colors.surface,
                 borderColor: theme.colors.border,
@@ -453,7 +524,7 @@ export function SearchTabScreen() {
             </View>
             <TextInput
               style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder="Search repositories..."
+              placeholder={searchType === 'repos' ? 'Search repositories...' : 'Search users...'}
               placeholderTextColor={theme.colors.textSecondary}
               value={query}
               onChangeText={setQuery}
@@ -466,7 +537,8 @@ export function SearchTabScreen() {
               <TouchableOpacity
                 onPress={() => {
                   setQuery('');
-                  setResults([]);
+                  setRepoResults([]);
+                  setUserResults([]);
                   setHasSearched(false);
                   setError(null);
                   setTotalCount(0);
@@ -490,7 +562,8 @@ export function SearchTabScreen() {
           >
             <Text style={styles.searchButtonText}>Search</Text>
           </TouchableOpacity>
-        </View>
+          </View>
+        </>
       )}
 
       {/* Tours Filter - Only show when showing tours */}
@@ -600,35 +673,61 @@ export function SearchTabScreen() {
           </TouchableOpacity>
         </View>
       ) : hasSearched ? (
-        <FlatList
-          data={results}
-          keyExtractor={(item) => `${item.owner}/${item.name}`}
-          renderItem={renderRepoItem}
-          contentContainerStyle={styles.resultsList}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            totalCount > 0 ? (
-              <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
-                {totalCount.toLocaleString()} repositories found
-              </Text>
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No repositories found for "{query}"
-              </Text>
-            </View>
-          }
-        />
+        searchType === 'repos' ? (
+          <FlatList
+            data={repoResults}
+            keyExtractor={(item) => `${item.owner}/${item.name}`}
+            renderItem={renderRepoItem}
+            contentContainerStyle={styles.resultsList}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              totalCount > 0 ? (
+                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
+                  {totalCount.toLocaleString()} repositories found
+                </Text>
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                  No repositories found for "{query}"
+                </Text>
+              </View>
+            }
+          />
+        ) : (
+          <FlatList
+            data={userResults}
+            keyExtractor={(item) => item.login}
+            renderItem={renderUserItem}
+            contentContainerStyle={styles.resultsList}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              totalCount > 0 ? (
+                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
+                  {totalCount.toLocaleString()} users found
+                </Text>
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                  No users found for "{query}"
+                </Text>
+              </View>
+            }
+          />
+        )
       ) : (
         <View style={styles.emptyStateContainer}>
           <CityIcon color={theme.colors.textSecondary} size={80} />
           <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>
-            Explore Code Cities
+            {searchType === 'repos' ? 'Explore Code Cities' : 'Find GitHub Users'}
           </Text>
           <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
-            Search for a repository to visualize its file structure as a city
+            {searchType === 'repos'
+              ? 'Search for a repository to visualize its file structure as a city'
+              : 'Search for GitHub users to view their profiles and activity'}
           </Text>
         </View>
       )}
@@ -667,6 +766,10 @@ const styles = StyleSheet.create({
   toursButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  segmentedControlContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   searchContainer: {
     flexDirection: 'row',

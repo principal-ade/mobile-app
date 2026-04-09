@@ -21,6 +21,7 @@ import CardDetailScreen from '../screens/CardDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import RepoFileCityScreen from '../screens/RepoFileCityScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
+import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { LucideIcon } from '../components/LucideIcon';
@@ -196,6 +197,11 @@ export default function AppNavigator() {
               name="TourFileCity"
               component={TourFileCityScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="UserProfile"
+              component={UserProfileScreenContainer}
+              options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
             />
             {isAuthenticated && (
               <>

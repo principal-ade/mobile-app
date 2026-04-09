@@ -65,4 +65,7 @@ export type RootStackParamList = {
     forkRepo: string;
     tourPath: string;
   };
+  UserProfile: {
+    username: string;
+  };
 };
