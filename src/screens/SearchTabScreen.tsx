@@ -250,7 +250,6 @@ export function SearchTabScreen() {
 
       // Handle user results
       if (userResponse.status === 'fulfilled') {
-        console.log('[SearchTabScreen] User search results:', JSON.stringify(userResponse.value.users, null, 2));
         setUserResults(userResponse.value.users);
         setUserTotalCount(userResponse.value.totalCount);
       } else {
@@ -360,9 +359,11 @@ export function SearchTabScreen() {
             <Text style={[styles.repoName, { color: theme.colors.primary }]}>
               {item.name || item.login}
             </Text>
-            <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
-              {item.name ? item.login : (item.type === 'Organization' ? 'Organization' : '')}
-            </Text>
+            {(item.name || item.type === 'Organization') && (
+              <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
+                {item.name ? `@${item.login}` : 'Organization'}
+              </Text>
+            )}
           </View>
         </View>
       </TouchableOpacity>

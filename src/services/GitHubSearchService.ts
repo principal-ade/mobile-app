@@ -15,6 +15,7 @@ export interface GitHubUser {
   login: string;
   avatar_url: string;
   type?: 'User' | 'Organization';
+  name?: string | null;
 }
 
 export interface GitHubUserProfile {
