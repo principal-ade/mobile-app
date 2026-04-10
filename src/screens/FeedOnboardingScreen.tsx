@@ -26,9 +26,15 @@ import {
 import { FEATURED_REPOS } from '../services/ActivityFeedService';
 import { watchUser, watchRepo } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 
 interface FeedOnboardingScreenProps {
   onComplete: () => void;
+}
+
+interface SelectedUser {
+  login: string;
+  avatarUrl: string;
 }
 
 interface SelectedRepo {
@@ -40,12 +46,13 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { token } = useAuthContext();
+  const { addUser, addRepo } = useFeedPreferences();
 
   // Step state
   const [step, setStep] = useState<1 | 2>(1);
 
   // Selection state
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<SelectedUser[]>([]);
   const [selectedRepos, setSelectedRepos] = useState<SelectedRepo[]>([]);
 
   // Users step state
@@ -177,10 +184,14 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
     return () => clearTimeout(timeoutId);
   }, [repoSearchQuery]);
 
-  const toggleUser = useCallback((login: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(login) ? prev.filter((u) => u !== login) : [...prev, login]
-    );
+  const toggleUser = useCallback((login: string, avatarUrl: string) => {
+    setSelectedUsers((prev) => {
+      const exists = prev.some((u) => u.login === login);
+      if (exists) {
+        return prev.filter((u) => u.login !== login);
+      }
+      return [...prev, { login, avatarUrl }];
+    });
   }, []);
 
   const toggleRepo = useCallback((owner: string, repo: string) => {
@@ -210,24 +221,40 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
     setIsSaving(true);
 
     try {
-      if (!token) {
-        onComplete();
-        return;
-      }
-
-      // Follow all selected users
-      for (const login of selectedUsers) {
+      // Add all selected users - update context AND backend
+      for (const user of selectedUsers) {
         try {
-          await watchUser(token, login);
+          // Update local context immediately (for UI responsiveness)
+          addUser({
+            login: user.login,
+            avatarUrl: user.avatarUrl,
+            watchedAt: new Date().toISOString(),
+          });
+
+          // Also update backend
+          if (token) {
+            await watchUser(token, user.login);
+          }
         } catch (err) {
-          console.warn(`Failed to follow user ${login}:`, err);
+          console.warn(`Failed to follow user ${user.login}:`, err);
         }
       }
 
-      // Follow all selected repos
+      // Add all selected repos - update context AND backend
       for (const { owner, repo } of selectedRepos) {
         try {
-          await watchRepo(token, owner, repo);
+          // Update local context immediately (for UI responsiveness)
+          addRepo({
+            owner,
+            repo,
+            watchedAt: new Date().toISOString(),
+            isFeatured: false,
+          });
+
+          // Also update backend
+          if (token) {
+            await watchRepo(token, owner, repo);
+          }
         } catch (err) {
           console.warn(`Failed to follow repo ${owner}/${repo}:`, err);
         }
@@ -238,7 +265,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       setIsSaving(false);
       onComplete();
     }
-  }, [selectedUsers, selectedRepos, onComplete, token]);
+  }, [selectedUsers, selectedRepos, onComplete, addUser, addRepo, token]);
 
   const handleSkip = useCallback(() => {
     Keyboard.dismiss();
@@ -252,7 +279,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
   // Render user chip
   const renderUserChip = useCallback(
     (user: { login: string; avatar_url: string; name?: string | null }) => {
-      const isSelected = selectedUsers.includes(user.login);
+      const isSelected = selectedUsers.some((u) => u.login === user.login);
       return (
         <TouchableOpacity
           key={user.login}
@@ -263,7 +290,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
               borderColor: isSelected ? theme.colors.primary : theme.colors.border,
             },
           ]}
-          onPress={() => toggleUser(user.login)}
+          onPress={() => toggleUser(user.login, user.avatar_url)}
           activeOpacity={0.7}
         >
           <Image source={{ uri: user.avatar_url }} style={styles.chipAvatar} />
@@ -348,15 +375,16 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
         style={styles.content}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {step === 1 ? (
           <>
             {/* Step 1: Follow Users */}
             <Text style={[styles.title, { color: theme.colors.text }]}>
-              Follow people to see their activity
+              Follow developers you care about
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-              Select GitHub users whose commits you want to follow
+              Get updates on commits and contributions from people you follow
             </Text>
 
             {/* Search Input */}
@@ -369,12 +397,15 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
                   borderColor: theme.colors.border,
                 },
               ]}
-              placeholder="Search GitHub users..."
+              placeholder="Find developers..."
               placeholderTextColor={theme.colors.textSecondary}
               value={userSearchQuery}
               onChangeText={setUserSearchQuery}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="search"
+              blurOnSubmit={true}
+              onSubmitEditing={() => Keyboard.dismiss()}
             />
 
             {/* Search Results */}
@@ -411,7 +442,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
               </View>
             ) : (
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                Search for GitHub users to follow
+                No suggestions yet. Search for developers or teammates to follow
               </Text>
             )}
           </>
@@ -419,10 +450,10 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
           <>
             {/* Step 2: Follow Repos */}
             <Text style={[styles.title, { color: theme.colors.text }]}>
-              Follow repositories you're interested in
+              Watch repositories that matter
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-              Select repositories to see their commit activity
+              Stay updated on commits and activity from projects you care about
             </Text>
 
             {/* Search Input */}
@@ -435,12 +466,15 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
                   borderColor: theme.colors.border,
                 },
               ]}
-              placeholder="Search GitHub repositories..."
+              placeholder="Find repositories..."
               placeholderTextColor={theme.colors.textSecondary}
               value={repoSearchQuery}
               onChangeText={setRepoSearchQuery}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="search"
+              blurOnSubmit={true}
+              onSubmitEditing={() => Keyboard.dismiss()}
             />
 
             {/* Search Results */}
@@ -469,7 +503,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
             ) : suggestedRepos.length > 0 ? (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-                  Popular Repositories
+                  Featured & Recommended
                 </Text>
                 <View style={styles.chipGrid}>
                   {suggestedRepos.map((repo) => renderRepoChip(repo))}
@@ -477,7 +511,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
               </View>
             ) : (
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                Search for GitHub repositories to follow
+                No suggestions available. Search for your favorite projects
               </Text>
             )}
           </>
@@ -502,7 +536,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
             activeOpacity={0.8}
           >
             <Text style={styles.actionButtonText}>
-              Next{selectedUsers.length > 0 ? ` (${selectedUsers.length} selected)` : ''}
+              Continue{selectedUsers.length > 0 ? ` (${selectedUsers.length} ${selectedUsers.length === 1 ? 'user' : 'users'})` : ''}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -519,7 +553,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
               <LoadingSpinner size="small" color="#fff" />
             ) : (
               <Text style={styles.actionButtonText}>
-                Done{selectedRepos.length > 0 ? ` (${selectedRepos.length} repos)` : ''}
+                Complete Setup{selectedRepos.length > 0 ? ` (${selectedRepos.length} ${selectedRepos.length === 1 ? 'repo' : 'repos'})` : ''}
               </Text>
             )}
           </TouchableOpacity>
