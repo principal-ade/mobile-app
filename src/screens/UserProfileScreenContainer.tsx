@@ -5,10 +5,9 @@
  * and renders the UserProfileScreen component.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { UserProfileScreen, type HourlyActivityGroup } from './UserProfileScreen';
 import type { RootStackParamList } from '../navigation/types';
@@ -19,6 +18,7 @@ import {
   type UserActivityResponse,
   type ActivityEvent,
 } from '../services/GitHubSearchService';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 
 type UserProfileRouteProp = RouteProp<RootStackParamList, 'UserProfile'>;
 
@@ -82,12 +82,34 @@ function transformActivityToHourlyGroups(activity: ActivityEvent[]): HourlyActiv
 export function UserProfileScreenContainer() {
   const { theme } = useTheme();
   const route = useRoute<UserProfileRouteProp>();
+  const navigation = useNavigation();
   const { username } = route.params;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<GitHubUserProfile | null>(null);
   const [activityData, setActivityData] = useState<UserActivityResponse | null>(null);
+
+  // Feed preferences for watching users
+  const { watchedUsers, addUser, removeUser } = useFeedPreferences();
+
+  // Check if user is being watched
+  const isWatching = useMemo(() => {
+    return watchedUsers.some((u) => u.login.toLowerCase() === username.toLowerCase());
+  }, [watchedUsers, username]);
+
+  // Toggle watch state
+  const handleToggleWatch = () => {
+    if (isWatching) {
+      removeUser(username);
+    } else {
+      addUser({
+        login: username,
+        watchedAt: new Date().toISOString(),
+        avatarUrl: userData?.avatar_url,
+      });
+    }
+  };
 
   useEffect(() => {
     async function fetchUserData() {
@@ -114,14 +136,6 @@ export function UserProfileScreenContainer() {
 
     fetchUserData();
   }, [username]);
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <LoadingSpinner size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
 
   if (error) {
     return (
@@ -152,29 +166,25 @@ export function UserProfileScreenContainer() {
     );
   }
 
-  if (!userData) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <LoadingSpinner size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <UserProfileScreen
-      avatarUrl={userData.avatar_url}
-      name={userData.name || userData.login}
-      username={userData.login}
-      bio={userData.bio || undefined}
-      location={userData.location || undefined}
-      website={userData.blog || undefined}
-      stats={{
+      loading={isLoading || !userData}
+      avatarUrl={userData?.avatar_url}
+      name={userData?.name || userData?.login}
+      username={userData?.login}
+      bio={userData?.bio || undefined}
+      location={userData?.location || undefined}
+      website={userData?.blog || undefined}
+      stats={userData ? {
         repositories: userData.public_repos,
         followers: userData.followers,
         following: userData.following,
-      }}
+      } : undefined}
       contributions={activityData?.contributions || []}
       recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}
+      onClose={() => navigation.goBack()}
+      onWatchPress={handleToggleWatch}
+      isWatching={isWatching}
     />
   );
 }

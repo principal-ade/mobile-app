@@ -18,8 +18,8 @@ import {
   DEFAULT_REPOS,
 } from '../context/FeedPreferencesContext';
 import {
-  unfollowUser as apiUnfollowUser,
-  unfollowRepo as apiUnfollowRepo,
+  unwatchUser as apiUnwatchUser,
+  unwatchRepo as apiUnwatchRepo,
 } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
@@ -32,8 +32,8 @@ export function FeedCustomizationScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
   const {
-    followedUsers,
-    followedRepos,
+    watchedUsers,
+    watchedRepos,
     isLoading,
     removeUser,
     removeRepo,
@@ -50,7 +50,7 @@ export function FeedCustomizationScreen() {
     // Sync to API
     if (tokenRef.current) {
       setIsSyncing(true);
-      apiUnfollowUser(tokenRef.current, login)
+      apiUnwatchUser(tokenRef.current, login)
         .catch((err) => console.warn('Failed to sync unfollow user:', err))
         .finally(() => setIsSyncing(false));
     }
@@ -62,7 +62,7 @@ export function FeedCustomizationScreen() {
     // Sync to API
     if (tokenRef.current) {
       setIsSyncing(true);
-      apiUnfollowRepo(tokenRef.current, owner, repo)
+      apiUnwatchRepo(tokenRef.current, owner, repo)
         .catch((err) => console.warn('Failed to sync unfollow repo:', err))
         .finally(() => setIsSyncing(false));
     }
@@ -86,9 +86,9 @@ export function FeedCustomizationScreen() {
   }, [resetToDefaults]);
 
   const hasCustomizations =
-    followedUsers.length > 0 ||
-    followedRepos.length !== DEFAULT_REPOS.length ||
-    followedRepos.some((r) => !r.isFeatured);
+    watchedUsers.length > 0 ||
+    watchedRepos.length !== DEFAULT_REPOS.length ||
+    watchedRepos.some((r) => !r.isFeatured);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -118,15 +118,15 @@ export function FeedCustomizationScreen() {
         {/* Users Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-            USERS YOU FOLLOW
+            USERS YOU'RE WATCHING
           </Text>
           <View style={[styles.sectionContent, { backgroundColor: theme.colors.surface }]}>
-            {followedUsers.length === 0 && (
+            {watchedUsers.length === 0 && (
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No users followed yet
+                No users watched yet
               </Text>
             )}
-            {followedUsers.map((user) => (
+            {watchedUsers.map((user) => (
               <View
                 key={user.login}
                 style={[styles.listItem, { borderBottomColor: theme.colors.border }]}
@@ -162,15 +162,15 @@ export function FeedCustomizationScreen() {
         {/* Repos Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-            REPOSITORIES YOU FOLLOW
+            REPOSITORIES YOU'RE WATCHING
           </Text>
           <View style={[styles.sectionContent, { backgroundColor: theme.colors.surface }]}>
-            {followedRepos.length === 0 && (
+            {watchedRepos.length === 0 && (
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No repositories followed yet
+                No repositories watched yet
               </Text>
             )}
-            {followedRepos.map((repo) => (
+            {watchedRepos.map((repo) => (
               <View
                 key={`${repo.owner}/${repo.repo}`}
                 style={[styles.listItem, { borderBottomColor: theme.colors.border }]}

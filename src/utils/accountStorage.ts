@@ -6,7 +6,7 @@
 import * as SecureStore from 'expo-secure-store';
 import type { AccountRegistry } from '../types/account';
 import type { AuthTokens } from './authStorage';
-import type { FollowedUser, FollowedRepo } from './feedStorage';
+import type { WatchedUser, WatchedRepo } from './feedStorage';
 
 // Storage keys
 const ACCOUNTS_REGISTRY_KEY = 'accounts_registry';
@@ -106,18 +106,18 @@ export async function deleteAccountTokens(userId: number): Promise<void> {
  * Account Feed Users Management
  */
 
-export async function getAccountFeedUsers(userId: number): Promise<FollowedUser[]> {
+export async function getAccountFeedUsers(userId: number): Promise<WatchedUser[]> {
   const data = await getItem(getAccountKey(userId, 'feed_users'));
   if (!data) return [];
   try {
-    return JSON.parse(data) as FollowedUser[];
+    return JSON.parse(data) as WatchedUser[];
   } catch {
     console.error(`Failed to parse feed users for account ${userId}`);
     return [];
   }
 }
 
-export async function saveAccountFeedUsers(userId: number, users: FollowedUser[]): Promise<void> {
+export async function saveAccountFeedUsers(userId: number, users: WatchedUser[]): Promise<void> {
   await setItem(getAccountKey(userId, 'feed_users'), JSON.stringify(users));
 }
 
@@ -125,18 +125,18 @@ export async function saveAccountFeedUsers(userId: number, users: FollowedUser[]
  * Account Feed Repos Management
  */
 
-export async function getAccountFeedRepos(userId: number): Promise<FollowedRepo[]> {
+export async function getAccountFeedRepos(userId: number): Promise<WatchedRepo[]> {
   const data = await getItem(getAccountKey(userId, 'feed_repos'));
   if (!data) return [];
   try {
-    return JSON.parse(data) as FollowedRepo[];
+    return JSON.parse(data) as WatchedRepo[];
   } catch {
     console.error(`Failed to parse feed repos for account ${userId}`);
     return [];
   }
 }
 
-export async function saveAccountFeedRepos(userId: number, repos: FollowedRepo[]): Promise<void> {
+export async function saveAccountFeedRepos(userId: number, repos: WatchedRepo[]): Promise<void> {
   await setItem(getAccountKey(userId, 'feed_repos'), JSON.stringify(repos));
 }
 

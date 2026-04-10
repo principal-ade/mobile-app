@@ -84,7 +84,7 @@ import { getContributors, type Contributor } from '../services/ContributorsServi
 import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../components/DailyActivityHeatmap';
-import { getRepoActivity, checkTourAvailability, getFollows, followRepo, unfollowRepo } from '../services/FeedApiService';
+import { getRepoActivity, checkTourAvailability, getWatches, watchRepo, unwatchRepo } from '../services/FeedApiService';
 
 type RouteProps = RouteProp<RootStackParamList, 'RepoFileCity'>;
 
@@ -473,7 +473,7 @@ export function RepoFileCityScreen() {
 
         // Fetch repo follow status (requires authentication)
         const followsPromise = isAuthenticated && token
-          ? getFollows(token)
+          ? getWatches(token)
           : Promise.resolve(null);
 
         const [tourResult, followsResult] = await Promise.all([
@@ -486,7 +486,7 @@ export function RepoFileCityScreen() {
 
           if (followsResult) {
             const repoKey = `${owner}/${name}`.toLowerCase();
-            const isFollowed = followsResult.followedRepos.some(
+            const isFollowed = followsResult.watchedRepos.some(
               (r) => `${r.owner}/${r.repo}`.toLowerCase() === repoKey
             );
             setIsRepoFollowed(isFollowed);
@@ -530,10 +530,10 @@ export function RepoFileCityScreen() {
     setRepoFollowToggling(true);
     try {
       if (isRepoFollowed) {
-        await unfollowRepo(token, owner, name);
+        await unwatchRepo(token, owner, name);
         setIsRepoFollowed(false);
       } else {
-        await followRepo(token, owner, name);
+        await watchRepo(token, owner, name);
         setIsRepoFollowed(true);
       }
     } catch (err) {

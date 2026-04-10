@@ -2,7 +2,7 @@
  * Feed API Service
  *
  * Handles syncing feed preferences with the server via tRPC endpoints.
- * Manages followed users and repos for personalized feed.
+ * Manages watched users and repos for personalized feed.
  *
  * See: web-ade/.principal-views/feed-collections/feed-collections.otel.canvas
  */
@@ -12,20 +12,20 @@ import type { IntroductionTour } from '@principal-ai/file-city-builder';
 
 const API_BASE = apiConfig.baseUrl;
 
-export interface FollowedUser {
+export interface WatchedUser {
   login: string;
-  followedAt: string;
+  watchedAt: string;
 }
 
-export interface FollowedRepo {
+export interface WatchedRepo {
   owner: string;
   repo: string;
-  followedAt: string;
+  watchedAt: string;
 }
 
-export interface FeedFollows {
-  followedUsers: FollowedUser[];
-  followedRepos: FollowedRepo[];
+export interface FeedWatches {
+  watchedUsers: WatchedUser[];
+  watchedRepos: WatchedRepo[];
 }
 
 // Commit Queue Types (Swipe Feed)
@@ -73,13 +73,13 @@ interface TRPCError {
 }
 
 /**
- * Get user's current follows (users and repos)
+ * Get user's current watches (users and repos)
  * Requires authentication
  */
-export async function getFollows(
+export async function getWatches(
   githubToken: string
-): Promise<FeedFollows> {
-  const url = `${API_BASE}/trpc/feed.getFollows`;
+): Promise<FeedWatches> {
+  const url = `${API_BASE}/trpc/feed.getWatches`;
 
   const response = await fetch(url, {
     headers: {
@@ -91,22 +91,22 @@ export async function getFollows(
     if (response.status === 401) {
       throw new Error('Authentication required');
     }
-    throw new Error(`Failed to fetch follows: ${response.status}`);
+    throw new Error(`Failed to fetch watches: ${response.status}`);
   }
 
-  const data: TRPCResponse<FeedFollows> = await response.json();
+  const data: TRPCResponse<FeedWatches> = await response.json();
   return data.result.data;
 }
 
 /**
- * Follow a GitHub user
+ * Watch a GitHub user
  * Requires authentication
  */
-export async function followUser(
+export async function watchUser(
   githubToken: string,
   login: string
-): Promise<{ success: boolean; followedUsers: FollowedUser[] }> {
-  const url = `${API_BASE}/trpc/feed.followUser`;
+): Promise<{ success: boolean; watchedUsers: WatchedUser[] }> {
+  const url = `${API_BASE}/trpc/feed.watchUser`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -123,30 +123,30 @@ export async function followUser(
       throw new Error('Authentication required');
     }
     if (response.status === 409) {
-      throw new Error('Already following this user');
+      throw new Error('Already watching this user');
     }
     if (response.status === 412) {
-      throw new Error('Follow limit reached');
+      throw new Error('Watch limit reached');
     }
     throw new Error(
-      (errorData as TRPCError)?.error?.message || `Failed to follow user: ${response.status}`
+      (errorData as TRPCError)?.error?.message || `Failed to watch user: ${response.status}`
     );
   }
 
-  const data: TRPCResponse<{ success: boolean; followedUsers: FollowedUser[] }> =
+  const data: TRPCResponse<{ success: boolean; watchedUsers: WatchedUser[] }> =
     await response.json();
   return data.result.data;
 }
 
 /**
- * Unfollow a GitHub user
+ * Unwatch a GitHub user
  * Requires authentication
  */
-export async function unfollowUser(
+export async function unwatchUser(
   githubToken: string,
   login: string
-): Promise<{ success: boolean; followedUsers: FollowedUser[] }> {
-  const url = `${API_BASE}/trpc/feed.unfollowUser`;
+): Promise<{ success: boolean; watchedUsers: WatchedUser[] }> {
+  const url = `${API_BASE}/trpc/feed.unwatchUser`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -161,24 +161,24 @@ export async function unfollowUser(
     if (response.status === 401) {
       throw new Error('Authentication required');
     }
-    throw new Error(`Failed to unfollow user: ${response.status}`);
+    throw new Error(`Failed to unwatch user: ${response.status}`);
   }
 
-  const data: TRPCResponse<{ success: boolean; followedUsers: FollowedUser[] }> =
+  const data: TRPCResponse<{ success: boolean; watchedUsers: WatchedUser[] }> =
     await response.json();
   return data.result.data;
 }
 
 /**
- * Follow a repository
+ * Watch a repository
  * Requires authentication
  */
-export async function followRepo(
+export async function watchRepo(
   githubToken: string,
   owner: string,
   repo: string
-): Promise<{ success: boolean; followedRepos: FollowedRepo[] }> {
-  const url = `${API_BASE}/trpc/feed.followRepo`;
+): Promise<{ success: boolean; watchedRepos: WatchedRepo[] }> {
+  const url = `${API_BASE}/trpc/feed.watchRepo`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -195,31 +195,31 @@ export async function followRepo(
       throw new Error('Authentication required');
     }
     if (response.status === 409) {
-      throw new Error('Already following this repository');
+      throw new Error('Already watching this repository');
     }
     if (response.status === 412) {
-      throw new Error('Follow limit reached');
+      throw new Error('Watch limit reached');
     }
     throw new Error(
-      (errorData as TRPCError)?.error?.message || `Failed to follow repo: ${response.status}`
+      (errorData as TRPCError)?.error?.message || `Failed to watch repo: ${response.status}`
     );
   }
 
-  const data: TRPCResponse<{ success: boolean; followedRepos: FollowedRepo[] }> =
+  const data: TRPCResponse<{ success: boolean; watchedRepos: WatchedRepo[] }> =
     await response.json();
   return data.result.data;
 }
 
 /**
- * Unfollow a repository
+ * Unwatch a repository
  * Requires authentication
  */
-export async function unfollowRepo(
+export async function unwatchRepo(
   githubToken: string,
   owner: string,
   repo: string
-): Promise<{ success: boolean; followedRepos: FollowedRepo[] }> {
-  const url = `${API_BASE}/trpc/feed.unfollowRepo`;
+): Promise<{ success: boolean; watchedRepos: WatchedRepo[] }> {
+  const url = `${API_BASE}/trpc/feed.unwatchRepo`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -234,10 +234,10 @@ export async function unfollowRepo(
     if (response.status === 401) {
       throw new Error('Authentication required');
     }
-    throw new Error(`Failed to unfollow repo: ${response.status}`);
+    throw new Error(`Failed to unwatch repo: ${response.status}`);
   }
 
-  const data: TRPCResponse<{ success: boolean; followedRepos: FollowedRepo[] }> =
+  const data: TRPCResponse<{ success: boolean; watchedRepos: WatchedRepo[] }> =
     await response.json();
   return data.result.data;
 }
@@ -435,7 +435,7 @@ export interface ActivityHeatmapResponse {
 
 /**
  * Get commit activity for heatmap visualization
- * Returns commits from followed users/repos for the specified time range
+ * Returns commits from watched users/repos for the specified time range
  * Requires authentication
  *
  * @param hoursBack - Number of hours to look back (default: 24, max: 168/1 week)

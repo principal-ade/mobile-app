@@ -16,7 +16,7 @@ import React, {
 } from 'react';
 import type { AccountInfo, AccountRegistry } from '../types/account';
 import type { AuthTokens } from '../utils/authStorage';
-import type { FollowedUser, FollowedRepo } from '../utils/feedStorage';
+import type { WatchedUser, WatchedRepo } from '../utils/feedStorage';
 import type { GitHubUser } from '../types/github';
 import {
   getAccountRegistry,
@@ -32,8 +32,8 @@ import {
 import { migrateLegacyAccount } from '../utils/accountMigration';
 
 export interface AccountFeedPreferences {
-  followedUsers: FollowedUser[];
-  followedRepos: FollowedRepo[];
+  followedUsers: WatchedUser[];
+  followedRepos: WatchedRepo[];
 }
 
 interface MultiAccountContextValue {

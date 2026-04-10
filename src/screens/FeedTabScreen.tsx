@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import SwipeFeedScreen from './SwipeFeedScreen';
 import FeedOnboardingScreen from './FeedOnboardingScreen';
 import { fetchActivityFeed } from '../services/ActivityFeedService';
-import { getFollows } from '../services/FeedApiService';
+import { getWatches } from '../services/FeedApiService';
 import { summariesToCards } from '../utils/feedTransforms';
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -60,9 +60,9 @@ export default function FeedTabScreen() {
           return;
         }
 
-        const follows = await getFollows(token);
+        const follows = await getWatches(token);
         const hasFollows =
-          follows.followedUsers.length > 0 || follows.followedRepos.length > 0;
+          follows.watchedUsers.length > 0 || follows.watchedRepos.length > 0;
         setNeedsOnboarding(!hasFollows);
       } catch (err) {
         console.warn('Failed to check follows:', err);

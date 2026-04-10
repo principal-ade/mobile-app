@@ -3,7 +3,7 @@
  */
 
 import { getTokens, deleteTokens } from './authStorage';
-import { getFollowedUsers, getFollowedRepos } from './feedStorage';
+import { getWatchedUsers, getWatchedRepos } from './feedStorage';
 import {
   getAccountRegistry,
   saveAccountRegistry,
@@ -96,8 +96,8 @@ export async function migrateLegacyAccount(): Promise<boolean> {
 
     // Migrate feed preferences
     const [users, repos] = await Promise.all([
-      getFollowedUsers(),
-      getFollowedRepos(),
+      getWatchedUsers(),
+      getWatchedRepos(),
     ]);
 
     await saveAccountFeedUsers(user.id, users || []);

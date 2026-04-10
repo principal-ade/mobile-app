@@ -25,11 +25,11 @@ import { UserCard } from '../components/ActivityFeed/UserCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
   getActivityHeatmap,
-  getFollows,
+  getWatches,
   HeatmapCommit,
   HeatmapAuthor,
   HeatmapRepo,
-  FeedFollows,
+  FeedWatches,
 } from '../services/FeedApiService';
 
 type Tab = 'repos' | 'users';
@@ -65,7 +65,7 @@ export function ActivityTabScreen() {
   const [commits, setCommits] = useState<HeatmapCommit[]>([]);
   const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
   const [repos, setRepos] = useState<HeatmapRepo[]>([]);
-  const [follows, setFollows] = useState<FeedFollows | null>(null);
+  const [follows, setFollows] = useState<FeedWatches | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export function ActivityTabScreen() {
       // Fetch both activity and follows in parallel
       const [activityResponse, followsResponse] = await Promise.all([
         getActivityHeatmap(token, { hoursBack: 24 }),
-        getFollows(token),
+        getWatches(token),
       ]);
 
       setCommits(activityResponse.commits);
@@ -138,9 +138,9 @@ export function ActivityTabScreen() {
   const repoActivityData: RepoActivityData[] = React.useMemo(() => {
     if (!follows) return [];
 
-    // Create a set of followed repo IDs for fast lookup
+    // Create a set of watched repo IDs for fast lookup
     const followedRepoIds = new Set(
-      follows.followedRepos.map(fr => `${fr.owner}/${fr.repo}`)
+      follows.watchedRepos.map(fr => `${fr.owner}/${fr.repo}`)
     );
 
     // Group commits by repo
@@ -189,9 +189,9 @@ export function ActivityTabScreen() {
   const userActivityData: UserActivityData[] = React.useMemo(() => {
     if (!follows) return [];
 
-    // Create a set of followed user logins for fast lookup
+    // Create a set of watched user logins for fast lookup
     const followedUserLogins = new Set(
-      follows.followedUsers.map(fu => fu.login)
+      follows.watchedUsers.map(fu => fu.login)
     );
 
     // Group commits by author

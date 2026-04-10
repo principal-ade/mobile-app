@@ -1,18 +1,18 @@
 import * as SecureStore from 'expo-secure-store';
 
-const FOLLOWED_USERS_KEY = 'feed_followed_users';
-const FOLLOWED_REPOS_KEY = 'feed_followed_repos';
+const WATCHED_USERS_KEY = 'feed_followed_users';
+const WATCHED_REPOS_KEY = 'feed_followed_repos';
 
-export interface FollowedUser {
+export interface WatchedUser {
   login: string;
-  followedAt?: string;
+  watchedAt?: string;
   avatarUrl?: string;
 }
 
-export interface FollowedRepo {
+export interface WatchedRepo {
   owner: string;
   repo: string;
-  followedAt?: string;
+  watchedAt?: string;
   isFeatured?: boolean;
 }
 
@@ -45,13 +45,13 @@ async function getItem(key: string): Promise<string | null> {
   return null;
 }
 
-// Followed Users
-export async function saveFollowedUsers(users: FollowedUser[]): Promise<void> {
-  await setItem(FOLLOWED_USERS_KEY, JSON.stringify(users));
+// Watched Users
+export async function saveWatchedUsers(users: WatchedUser[]): Promise<void> {
+  await setItem(WATCHED_USERS_KEY, JSON.stringify(users));
 }
 
-export async function getFollowedUsers(): Promise<FollowedUser[] | null> {
-  const data = await getItem(FOLLOWED_USERS_KEY);
+export async function getWatchedUsers(): Promise<WatchedUser[] | null> {
+  const data = await getItem(WATCHED_USERS_KEY);
   if (!data) return null;
   try {
     return JSON.parse(data);
@@ -60,13 +60,13 @@ export async function getFollowedUsers(): Promise<FollowedUser[] | null> {
   }
 }
 
-// Followed Repos
-export async function saveFollowedRepos(repos: FollowedRepo[]): Promise<void> {
-  await setItem(FOLLOWED_REPOS_KEY, JSON.stringify(repos));
+// Watched Repos
+export async function saveWatchedRepos(repos: WatchedRepo[]): Promise<void> {
+  await setItem(WATCHED_REPOS_KEY, JSON.stringify(repos));
 }
 
-export async function getFollowedRepos(): Promise<FollowedRepo[] | null> {
-  const data = await getItem(FOLLOWED_REPOS_KEY);
+export async function getWatchedRepos(): Promise<WatchedRepo[] | null> {
+  const data = await getItem(WATCHED_REPOS_KEY);
   if (!data) return null;
   try {
     return JSON.parse(data);
@@ -77,6 +77,6 @@ export async function getFollowedRepos(): Promise<FollowedRepo[] | null> {
 
 // Check if user has customized their feed (vs using defaults)
 export async function hasCustomizedFeed(): Promise<boolean> {
-  const repos = await getItem(FOLLOWED_REPOS_KEY);
+  const repos = await getItem(WATCHED_REPOS_KEY);
   return repos !== null;
 }

@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { ContributionCalendar, DailyContribution } from '../components/ContributionCalendar';
+import { Logo } from '../components/Logo';
 
 interface UserStats {
   repositories: number;
@@ -41,21 +42,23 @@ export interface HourlyActivityGroup {
 }
 
 export interface UserProfileScreenProps {
-  avatarUrl: string;
-  name: string;
-  username: string;
+  loading?: boolean;
+  avatarUrl?: string;
+  name?: string;
+  username?: string;
   bio?: string;
   location?: string;
   website?: string;
-  stats: UserStats;
-  onFollowPress?: () => void;
-  onMessagePress?: () => void;
-  isFollowing?: boolean;
+  stats?: UserStats;
+  onWatchPress?: () => void;
+  onClose?: () => void;
+  isWatching?: boolean;
   recentActivity?: HourlyActivityGroup[];
   contributions?: DailyContribution[];
 }
 
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
+  loading = false,
   avatarUrl,
   name,
   username,
@@ -63,9 +66,9 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   location,
   website,
   stats,
-  onFollowPress,
-  onMessagePress,
-  isFollowing = false,
+  onWatchPress,
+  onClose,
+  isWatching = false,
   recentActivity = [],
   contributions = [],
 }) => {
@@ -73,6 +76,54 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const { width } = Dimensions.get('window');
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Render skeleton loading state
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        {/* Close button */}
+        {onClose && (
+          <TouchableOpacity
+            style={[styles.closeButton, { top: insets.top + 12 }]}
+            onPress={onClose}
+          >
+            <View style={[styles.closeButtonCircle, { backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>×</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Header area - match exact layout of loaded state */}
+        <View style={[styles.header, styles.skeletonHeaderHeight]}>
+          <View style={[styles.avatarSection, { marginTop: 32 + insets.top }]}>
+            {/* Logo as avatar - match exact size and position */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.skeletonAvatarCircle}>
+                <Logo width={112} height={112} animated={true} />
+              </View>
+            </View>
+          </View>
+
+          {/* Name placeholder */}
+          <View style={styles.nameContainer}>
+            <View style={[styles.skeletonBar, styles.skeletonName, { backgroundColor: theme.colors.surface }]} />
+            <View style={[styles.skeletonBar, styles.skeletonUsername, { backgroundColor: theme.colors.surface, marginTop: 4 }]} />
+          </View>
+
+          {/* Action button placeholder */}
+          <View style={styles.actionButtons}>
+            <View style={[styles.skeletonButton, { backgroundColor: theme.colors.surface }]} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // After loading, these should always be defined
+  const userAvatarUrl = avatarUrl!;
+  const userName = name!;
+  const userUsername = username!;
+  const userStats = stats!;
 
   // Define header collapse threshold
   const HEADER_MAX_HEIGHT = 300 + insets.top;
@@ -131,6 +182,18 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Close button */}
+      {onClose && (
+        <TouchableOpacity
+          style={[styles.closeButton, { top: insets.top + 12 }]}
+          onPress={onClose}
+        >
+          <View style={[styles.closeButtonCircle, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>×</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
       {/* Sticky Header Bar */}
       <Animated.View
         style={[
@@ -147,16 +210,16 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
       >
         <View style={styles.stickyHeaderContent}>
           <Image
-            source={{ uri: avatarUrl }}
+            source={{ uri: userAvatarUrl }}
             style={styles.stickyAvatar}
             resizeMode="cover"
           />
           <View style={styles.stickyNameContainer}>
             <Text style={[styles.stickyName, { color: theme.colors.text }]} numberOfLines={1}>
-              {name}
+              {userName}
             </Text>
             <Text style={[styles.stickyUsername, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-              @{username}
+              @{userUsername}
             </Text>
           </View>
         </View>
@@ -204,7 +267,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           {/* Avatar on top */}
           <View style={styles.avatarContainer}>
             <Image
-              source={{ uri: avatarUrl }}
+              source={{ uri: userAvatarUrl }}
               style={styles.avatar}
               resizeMode="cover"
             />
@@ -228,7 +291,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
               },
             ]}
           >
-            {name}
+            {userName}
           </Animated.Text>
           <Animated.Text
             style={[
@@ -239,11 +302,11 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
               },
             ]}
           >
-            @{username}
+            @{userUsername}
           </Animated.Text>
         </Animated.View>
 
-        {/* Action Buttons */}
+        {/* Action Button */}
         <Animated.View
           style={[
             styles.actionButtons,
@@ -254,40 +317,25 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         >
           <TouchableOpacity
             style={[
-              styles.followButton,
+              styles.watchButton,
               {
-                backgroundColor: isFollowing
+                backgroundColor: isWatching
                   ? theme.colors.surface
                   : theme.colors.primary,
                 borderColor: theme.colors.primary,
               },
             ]}
-            onPress={onFollowPress}
+            onPress={onWatchPress}
           >
             <Text
               style={[
-                styles.followButtonText,
+                styles.watchButtonText,
                 {
-                  color: isFollowing ? theme.colors.primary : theme.colors.text,
+                  color: isWatching ? theme.colors.primary : theme.colors.text,
                 },
               ]}
             >
-              {isFollowing ? 'Following' : 'Follow'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.messageButton,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              },
-            ]}
-            onPress={onMessagePress}
-          >
-            <Text style={[styles.messageButtonText, { color: theme.colors.text }]}>
-              Message
+              {isWatching ? 'Watching' : 'Watch'}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -341,7 +389,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
       >
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {stats.repositories}
+            {userStats.repositories}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
             Repositories
@@ -354,7 +402,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
 
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {stats.followers}
+            {userStats.followers}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
             Followers
@@ -367,7 +415,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
 
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {stats.following}
+            {userStats.following}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
             Following
@@ -383,7 +431,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             { color: theme.colors.text },
           ]}
         >
-          Recent Activity (24h)
+          Recent Activity
         </Text>
         {recentActivity.length > 0 ? (
           <View>
@@ -539,32 +587,20 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'center',
     width: '100%',
     paddingHorizontal: 8,
     zIndex: 1,
   },
-  followButton: {
-    flex: 1,
+  watchButton: {
     paddingVertical: 12,
+    paddingHorizontal: 32,
     borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  followButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  messageButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  messageButtonText: {
+  watchButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
@@ -675,5 +711,58 @@ const styles = StyleSheet.create({
   activityTimestamp: {
     fontSize: 12,
     marginLeft: 44,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 200,
+  },
+  closeButtonCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  closeButtonText: {
+    fontSize: 28,
+    fontWeight: '300',
+    lineHeight: 28,
+    marginTop: -2,
+  },
+  // Skeleton styles
+  skeletonHeaderHeight: {
+    height: 300, // Fixed height to prevent layout shift
+  },
+  skeletonAvatarCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: '#ff6b35',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  skeletonBar: {
+    borderRadius: 10,
+  },
+  skeletonName: {
+    width: 180,
+    height: 28,
+  },
+  skeletonUsername: {
+    width: 120,
+    height: 18,
+  },
+  skeletonButton: {
+    width: 140,
+    height: 48,
+    borderRadius: 12,
   },
 });

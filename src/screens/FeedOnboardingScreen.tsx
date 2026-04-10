@@ -24,7 +24,7 @@ import {
   type GitHubRepo,
 } from '../services/GitHubSearchService';
 import { FEATURED_REPOS } from '../services/ActivityFeedService';
-import { followUser, followRepo } from '../services/FeedApiService';
+import { watchUser, watchRepo } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 
 interface FeedOnboardingScreenProps {
@@ -218,7 +218,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       // Follow all selected users
       for (const login of selectedUsers) {
         try {
-          await followUser(token, login);
+          await watchUser(token, login);
         } catch (err) {
           console.warn(`Failed to follow user ${login}:`, err);
         }
@@ -227,7 +227,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       // Follow all selected repos
       for (const { owner, repo } of selectedRepos) {
         try {
-          await followRepo(token, owner, repo);
+          await watchRepo(token, owner, repo);
         } catch (err) {
           console.warn(`Failed to follow repo ${owner}/${repo}:`, err);
         }

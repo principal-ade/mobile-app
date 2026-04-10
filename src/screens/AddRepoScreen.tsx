@@ -20,7 +20,7 @@ import {
   type GitHubRepo,
   type SuggestedRepo,
 } from '../services/GitHubSearchService';
-import { followRepo } from '../services/FeedApiService';
+import { watchRepo } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -38,7 +38,7 @@ export function AddRepoScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
-  const { followedRepos, addRepo } = useFeedPreferences();
+  const { watchedRepos, addRepo } = useFeedPreferences();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GitHubRepo[]>([]);
@@ -53,10 +53,10 @@ export function AddRepoScreen() {
   const tokenRef = useRef<string | null>(token);
   tokenRef.current = token;
 
-  // Derive already-following from context
-  const alreadyFollowing = useMemo(
-    () => new Set(followedRepos.map((r) => `${r.owner}/${r.repo}`.toLowerCase())),
-    [followedRepos]
+  // Derive already-watching from context
+  const alreadyWatching = useMemo(
+    () => new Set(watchedRepos.map((r) => `${r.owner}/${r.repo}`.toLowerCase())),
+    [watchedRepos]
   );
 
   // Load suggestions on mount
@@ -117,7 +117,7 @@ export function AddRepoScreen() {
     async (owner: string, name: string) => {
       // Don't add if already following or just added
       const repoKey = `${owner}/${name}`.toLowerCase();
-      if (alreadyFollowing.has(repoKey) || addedRepos.has(repoKey)) {
+      if (alreadyWatching.has(repoKey) || addedRepos.has(repoKey)) {
         return;
       }
 
@@ -132,19 +132,19 @@ export function AddRepoScreen() {
       // Sync to API if authenticated
       if (tokenRef.current) {
         try {
-          await followRepo(tokenRef.current, owner, name);
+          await watchRepo(tokenRef.current, owner, name);
         } catch (err) {
-          console.warn('Failed to sync follow to API:', err);
+          console.warn('Failed to sync watch to API:', err);
         }
       }
     },
-    [alreadyFollowing, addedRepos, addRepo]
+    [alreadyWatching, addedRepos, addRepo]
   );
 
   const renderSearchResult = useCallback(
     ({ item }: { item: GitHubRepo }) => {
       const repoKey = `${item.owner}/${item.name}`.toLowerCase();
-      const isFollowing = alreadyFollowing.has(repoKey);
+      const isFollowing = alreadyWatching.has(repoKey);
       const isAdded = addedRepos.has(repoKey);
       const isDisabled = isFollowing || isAdded;
 
@@ -194,13 +194,13 @@ export function AddRepoScreen() {
         </TouchableOpacity>
       );
     },
-    [theme, handleSelectRepo, alreadyFollowing, addedRepos]
+    [theme, handleSelectRepo, alreadyWatching, addedRepos]
   );
 
   const renderSuggestion = useCallback(
     ({ item }: { item: SuggestedRepo }) => {
       const repoKey = `${item.owner}/${item.name}`.toLowerCase();
-      const isFollowing = alreadyFollowing.has(repoKey);
+      const isFollowing = alreadyWatching.has(repoKey);
       const isAdded = addedRepos.has(repoKey);
       const isDisabled = isFollowing || isAdded;
 
@@ -250,7 +250,7 @@ export function AddRepoScreen() {
         </TouchableOpacity>
       );
     },
-    [theme, handleSelectRepo, alreadyFollowing, addedRepos]
+    [theme, handleSelectRepo, alreadyWatching, addedRepos]
   );
 
   const renderSectionHeader = useCallback(

@@ -20,7 +20,7 @@ import {
   type GitHubUser,
   type SuggestedUser,
 } from '../services/GitHubSearchService';
-import { followUser } from '../services/FeedApiService';
+import { watchUser } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -38,7 +38,7 @@ export function AddUserScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
-  const { followedUsers, addUser } = useFeedPreferences();
+  const { watchedUsers, addUser } = useFeedPreferences();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GitHubUser[]>([]);
@@ -53,10 +53,10 @@ export function AddUserScreen() {
   const tokenRef = useRef<string | null>(token);
   tokenRef.current = token;
 
-  // Derive already-following from context
-  const alreadyFollowing = useMemo(
-    () => new Set(followedUsers.map((u) => u.login.toLowerCase())),
-    [followedUsers]
+  // Derive already-watching from context
+  const alreadyWatching = useMemo(
+    () => new Set(watchedUsers.map((u) => u.login.toLowerCase())),
+    [watchedUsers]
   );
 
   // Load suggestions on mount
@@ -117,7 +117,7 @@ export function AddUserScreen() {
     async (login: string, avatarUrl: string) => {
       // Don't add if already following or just added
       const loginLower = login.toLowerCase();
-      if (alreadyFollowing.has(loginLower) || addedUsers.has(loginLower)) {
+      if (alreadyWatching.has(loginLower) || addedUsers.has(loginLower)) {
         return;
       }
 
@@ -132,19 +132,19 @@ export function AddUserScreen() {
       // Sync to API if authenticated
       if (tokenRef.current) {
         try {
-          await followUser(tokenRef.current, login);
+          await watchUser(tokenRef.current, login);
         } catch (err) {
-          console.warn('Failed to sync follow to API:', err);
+          console.warn('Failed to sync watch to API:', err);
         }
       }
     },
-    [alreadyFollowing, addedUsers, addUser]
+    [alreadyWatching, addedUsers, addUser]
   );
 
   const renderSearchResult = useCallback(
     ({ item }: { item: GitHubUser }) => {
       const loginLower = item.login.toLowerCase();
-      const isFollowing = alreadyFollowing.has(loginLower);
+      const isFollowing = alreadyWatching.has(loginLower);
       const isAdded = addedUsers.has(loginLower);
       const isDisabled = isFollowing || isAdded;
 
@@ -177,13 +177,13 @@ export function AddUserScreen() {
         </TouchableOpacity>
       );
     },
-    [theme, handleSelectUser, alreadyFollowing, addedUsers]
+    [theme, handleSelectUser, alreadyWatching, addedUsers]
   );
 
   const renderSuggestion = useCallback(
     ({ item }: { item: SuggestedUser }) => {
       const loginLower = item.login.toLowerCase();
-      const isFollowing = alreadyFollowing.has(loginLower);
+      const isFollowing = alreadyWatching.has(loginLower);
       const isAdded = addedUsers.has(loginLower);
       const isDisabled = isFollowing || isAdded;
 
@@ -216,7 +216,7 @@ export function AddUserScreen() {
         </TouchableOpacity>
       );
     },
-    [theme, handleSelectUser, alreadyFollowing, addedUsers]
+    [theme, handleSelectUser, alreadyWatching, addedUsers]
   );
 
   const renderSectionHeader = useCallback(
