@@ -1,15 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Image,
+  ScrollView,
+  FlatList,
+  ViewToken,
+  useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
-import { SwipeCard } from '../components/ActivityFeed/SwipeCard';
+import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
 import {
   getCommitQueue,
   passCard,
@@ -19,6 +25,8 @@ import {
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { RootStackParamList } from '../navigation/types';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
+import { TapGestureHandler, State } from 'react-native-gesture-handler';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'SwipeFeed'>;
 
@@ -58,20 +66,30 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
+  const { watchedUsers, watchedRepos } = useFeedPreferences();
+  const { height } = useWindowDimensions();
 
   const [isLoading, setIsLoading] = useState(isGuest ? !initialCards : true);
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<CommitActivityCard[]>(initialCards || []);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [lastSwipedCard, setLastSwipedCard] = useState<{ card: CommitActivityCard; action: 'seen' | 'saved' } | null>(null);
+  const [seenCards, setSeenCards] = useState<Set<string>>(new Set());
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const [savedCardId, setSavedCardId] = useState<string | null>(null);
+  const heartScale = useRef(new Animated.Value(0)).current;
+
+  // Debug: log seen cards count when changed
+  useEffect(() => {
+    if (seenCards.size > 0) {
+      console.log(`[SwipeFeedScreen] Marked ${seenCards.size} cards as seen`);
+    }
+  }, [seenCards]);
 
   // Update cards when initialCards changes (for guest mode)
   useEffect(() => {
     if (isGuest) {
       if (initialCards) {
         setCards(initialCards);
-        setCurrentIndex(0);
+        setSeenCards(new Set());
         setIsLoading(false);
       } else {
         setIsLoading(true);
@@ -93,8 +111,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
 
       const result = await getCommitQueue(token, 50);
       setCards(result.cards);
-      setCurrentIndex(0);
-      setLastSwipedCard(null);
+      setSeenCards(new Set());
       setLastFetchedAt(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feed');
@@ -119,84 +136,81 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     }, [token, isGuest, loadCards])
   );
 
-  const currentCard = cards[currentIndex];
-
-  const handleSwipeLeft = useCallback(async () => {
-    if (!currentCard) return;
-
-    // Track for undo
-    setLastSwipedCard({ card: currentCard, action: 'seen' });
-
-    // Optimistically advance to next card
-    setCurrentIndex((prev) => prev + 1);
-
-    // Pass the card in background (only for authenticated users)
-    // Send commit SHAs so only these specific commits are marked as seen
-    if (token && !isGuest) {
-      try {
-        const seenShas = currentCard.commits.map((c) => c.sha);
-        await passCard(token, currentCard.itemId, seenShas);
-      } catch (err) {
-        console.warn('Failed to pass card:', err);
-      }
-    }
-  }, [token, currentCard, isGuest]);
-
-  const handleSwipeRight = useCallback(async () => {
-    if (!currentCard) return;
-
-    // Track for undo
-    setLastSwipedCard({ card: currentCard, action: 'saved' });
-
-    // Optimistically advance to next card
-    setCurrentIndex((prev) => prev + 1);
+  // Handle double-tap to save
+  const handleDoubleTap = useCallback(async (card: CommitActivityCard) => {
+    // Show heart animation
+    setSavedCardId(card.itemId);
+    Animated.sequence([
+      Animated.spring(heartScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 3,
+      }),
+      Animated.delay(400),
+      Animated.timing(heartScale, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setSavedCardId(null);
+    });
 
     // Save the card in background (only for authenticated users)
     if (token && !isGuest) {
       try {
-        await saveCard(token, currentCard);
+        await saveCard(token, card);
       } catch (err) {
         console.warn('Failed to save card:', err);
       }
     }
-  }, [token, currentCard, isGuest]);
+  }, [token, isGuest, heartScale]);
 
-  const handleUndo = useCallback(() => {
-    if (!lastSwipedCard || currentIndex === 0) return;
+  // Store token and isGuest in refs to avoid recreating onViewableItemsChanged
+  const tokenRef = useRef(token);
+  const isGuestRef = useRef(isGuest);
 
-    // Go back to the previous card
-    setCurrentIndex((prev) => prev - 1);
-    setLastSwipedCard(null);
+  useEffect(() => {
+    tokenRef.current = token;
+    isGuestRef.current = isGuest;
+  }, [token, isGuest]);
 
-    // Note: We don't unsave/unpass from API - this is just local undo
-    // The card will be re-evaluated on next swipe
-  }, [lastSwipedCard, currentIndex]);
+  // Track viewable items and mark as seen when scrolled past
+  const handleViewableItemsChanged = useCallback(({ viewableItems: _viewableItems, changed }: { viewableItems: ViewToken[]; changed: ViewToken[] }) => {
+    // Mark cards that are no longer viewable as seen
+    changed.forEach((item) => {
+      if (!item.isViewable && item.item) {
+        const card = item.item as CommitActivityCard;
+        setSeenCards((prev) => {
+          if (prev.has(card.itemId)) return prev;
+          const newSet = new Set(prev);
+          newSet.add(card.itemId);
 
-  const handleCardPress = useCallback(() => {
-    if (!currentCard) return;
+          // Mark as seen in the API (only for authenticated users)
+          if (tokenRef.current && !isGuestRef.current) {
+            const seenShas = card.commits.map((c) => c.sha);
+            passCard(tokenRef.current, card.itemId, seenShas).catch((err) => {
+              console.warn('Failed to pass card:', err);
+            });
+          }
 
-    const summary = cardToSummary(currentCard);
-    navigation.navigate('CardDetail', {
-      summary: {
-        owner: summary.owner,
-        repo: summary.repo,
-        fullName: summary.fullName,
-        commits: summary.commits.map((c) => ({
-          repoOwner: c.repoOwner,
-          repoName: c.repoName,
-          sha: c.sha,
-          message: c.message,
-          author: c.author,
-          authorLogin: c.authorLogin,
-          authorEmail: c.authorEmail,
-          authorAvatarUrl: c.authorAvatarUrl,
-          date: c.date,
-        })),
-        latestCommitAt: summary.latestCommitAt.toISOString(),
-        commitCount: summary.commitCount,
-      },
+          return newSet;
+        });
+      }
     });
-  }, [currentCard, navigation]);
+  }, []);
+
+  const onViewableItemsChanged = useRef(handleViewableItemsChanged);
+
+  useEffect(() => {
+    onViewableItemsChanged.current = handleViewableItemsChanged;
+  }, [handleViewableItemsChanged]);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 1000, // Must be visible for 1 second before considering it viewed
+  }).current;
 
   // Format relative time for "last updated" display
   const formatLastFetched = useCallback(() => {
@@ -217,6 +231,45 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const handleGoToCustomize = useCallback(() => {
     navigation.navigate('FeedCustomization', {});
   }, [navigation]);
+
+  // Render each card
+  const renderCard = useCallback(({ item: card }: { item: CommitActivityCard }) => {
+    const summary = cardToSummary(card);
+    const isSaved = savedCardId === card.itemId;
+
+    return (
+      <TapGestureHandler
+        numberOfTaps={2}
+        onHandlerStateChange={(event) => {
+          if (event.nativeEvent.state === State.ACTIVE) {
+            handleDoubleTap(card);
+          }
+        }}
+      >
+        <View style={[styles.cardWrapper, { height }]}>
+          <MobileRepoCard
+            summary={summary}
+            containerHeight={height}
+            skipTopInset={false}
+          />
+          {/* Heart animation overlay */}
+          {isSaved && (
+            <Animated.View
+              style={[
+                styles.heartOverlay,
+                {
+                  transform: [{ scale: heartScale }],
+                },
+              ]}
+              pointerEvents="none"
+            >
+              <Text style={styles.heartIcon}>♥</Text>
+            </Animated.View>
+          )}
+        </View>
+      </TapGestureHandler>
+    );
+  }, [height, handleDoubleTap, savedCardId, heartScale]);
 
   // Loading state
   if (isLoading) {
@@ -248,10 +301,13 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     );
   }
 
-  // Empty state (no more cards)
-  if (!currentCard || currentIndex >= cards.length) {
+  // Empty state (no cards)
+  if (cards.length === 0) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <ScrollView
+        style={[styles.emptyContainer, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={[styles.emptyContent, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}
+      >
         {/* Checkmark icon */}
         <View style={[styles.emptyIconContainer, { borderColor: theme.colors.success }]}>
           <View style={[styles.checkmark, { borderColor: theme.colors.success }]} />
@@ -265,10 +321,68 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
             : 'No more activity cards to review right now.'}
         </Text>
         {lastFetchedAt && (
-          <Text style={[styles.lastUpdatedText, { color: theme.colors.textMuted, marginBottom: 16 }]}>
+          <Text style={[styles.lastUpdatedText, { color: theme.colors.textMuted, marginBottom: 24 }]}>
             {formatLastFetched()}
           </Text>
         )}
+
+        {/* Show watched users and repos for authenticated users */}
+        {!isGuest && (watchedUsers.length > 0 || watchedRepos.length > 0) && (
+          <View style={styles.watchedContainer}>
+            {/* Watched Users */}
+            {watchedUsers.length > 0 && (
+              <View style={styles.watchedSection}>
+                <Text style={[styles.watchedSectionTitle, { color: theme.colors.textSecondary }]}>
+                  WATCHING {watchedUsers.length} {watchedUsers.length === 1 ? 'USER' : 'USERS'}
+                </Text>
+                <View style={styles.usersList}>
+                  {watchedUsers.map((user) => (
+                    <View key={user.login} style={styles.userItem}>
+                      <Image
+                        source={{ uri: user.avatarUrl }}
+                        style={styles.userAvatar}
+                      />
+                      <Text style={[styles.userLogin, { color: theme.colors.text }]} numberOfLines={1}>
+                        {user.login}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Watched Repos */}
+            {watchedRepos.length > 0 && (
+              <View style={styles.watchedSection}>
+                <Text style={[styles.watchedSectionTitle, { color: theme.colors.textSecondary }]}>
+                  WATCHING {watchedRepos.length} {watchedRepos.length === 1 ? 'REPOSITORY' : 'REPOSITORIES'}
+                </Text>
+                <View style={styles.reposList}>
+                  {watchedRepos.map((repo) => (
+                    <View
+                      key={`${repo.owner}/${repo.repo}`}
+                      style={[
+                        styles.repoItem,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
+                        {repo.owner}/{repo.repo}
+                      </Text>
+                      {repo.isFeatured && (
+                        <Text style={styles.featuredBadge}>★</Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.emptyButtonsContainer}>
           {isGuest ? (
             <>
@@ -296,48 +410,28 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </ScrollView>
     );
   }
-
-  // Get visible cards (current + next) - using slice preserves keys
-  const visibleCards = cards.slice(currentIndex, currentIndex + 2);
 
   return (
     <View
       style={[
         styles.container,
-        { backgroundColor: theme.colors.background, paddingTop: insets.top },
+        { backgroundColor: theme.colors.background },
       ]}
     >
-      {/* Card Stack - render in reverse so first card is on top */}
-      <View style={styles.cardContainer}>
-        {visibleCards.map((card, index) => {
-          const isCurrentCard = index === 0;
-          const summary = cardToSummary(card);
-
-          return (
-            <View
-              key={card.itemId}
-              style={[
-                styles.stackedCard,
-                { zIndex: visibleCards.length - index },
-              ]}
-            >
-              <SwipeCard
-                summary={summary}
-                containerHeight={0}
-                swipeDisabled={!isCurrentCard}
-                onPress={isCurrentCard ? handleCardPress : undefined}
-                onSwipeLeft={isCurrentCard ? handleSwipeLeft : undefined}
-                onSwipeRight={isCurrentCard ? handleSwipeRight : undefined}
-                onSwipeDown={isCurrentCard && lastSwipedCard ? handleUndo : undefined}
-              />
-            </View>
-          );
-        })}
-      </View>
-
+      <FlatList
+        data={cards}
+        renderItem={renderCard}
+        keyExtractor={(item) => item.itemId}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={height}
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged.current}
+        viewabilityConfig={viewabilityConfig}
+      />
     </View>
   );
 }
@@ -351,6 +445,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+  },
+  emptyContainer: {
+    flex: 1,
+  },
+  emptyContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
   loadingText: {
     marginTop: 16,
@@ -397,9 +498,69 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
+  watchedContainer: {
+    width: '100%',
+    marginBottom: 24,
+    gap: 24,
+  },
+  watchedSection: {
+    width: '100%',
+  },
+  watchedSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  usersList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    maxWidth: '100%',
+  },
+  userAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  userLogin: {
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  reposList: {
+    gap: 8,
+  },
+  repoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  repoName: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  featuredBadge: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
   emptyButtonsContainer: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 8,
   },
   primaryButton: {
     paddingVertical: 14,
@@ -424,12 +585,22 @@ const styles = StyleSheet.create({
   lastUpdatedText: {
     fontSize: 12,
   },
-  cardContainer: {
-    flex: 1,
+  cardWrapper: {
+    width: '100%',
     position: 'relative',
   },
-  stackedCard: {
+  heartOverlay: {
     ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  heartIcon: {
+    fontSize: 120,
+    color: '#FF3B30',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
 });
 
