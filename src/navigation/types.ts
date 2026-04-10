@@ -4,7 +4,7 @@ export type MainTabParamList = {
   Feed: undefined;
   Activity: undefined;
   Search: undefined;
-  Saved: undefined;
+  Tours: undefined;
   About: undefined;
 };
 

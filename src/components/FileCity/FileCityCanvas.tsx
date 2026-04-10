@@ -355,16 +355,10 @@ export function FileCityCanvas({
     setCanvasSize({ width, height });
   }, []);
 
-  // Handle tap - reads current shared values and inverse-transforms for hit testing
-  const handleTap = useCallback(
-    (x: number, y: number) => {
-      'worklet';
+  // JS-side handler that performs hit testing and dispatches press events
+  const handleTapJS = useCallback(
+    (x: number, y: number, currentScale: number, currentTranslateX: number, currentTranslateY: number) => {
       // Inverse-transform tap coordinates to base space
-      // Since we apply transform via Skia Group, we need to undo it for hit testing
-      const currentScale = scale.value;
-      const currentTranslateX = translateX.value;
-      const currentTranslateY = translateY.value;
-
       const baseX = (x - currentTranslateX) / currentScale;
       const baseY = (y - currentTranslateY) / currentScale;
 
@@ -384,12 +378,27 @@ export function FileCityCanvas({
       );
 
       if (building && onBuildingPress) {
-        runOnJS(onBuildingPress)(building);
+        onBuildingPress(building);
       } else if (district && onDistrictPress) {
-        runOnJS(onDistrictPress)(district);
+        onDistrictPress(district);
       }
     },
-    [cityData, scaleAndOffset, scale, translateX, translateY, onBuildingPress, onDistrictPress]
+    [cityData, scaleAndOffset, onBuildingPress, onDistrictPress]
+  );
+
+  // Handle tap - just passes coordinates and transform to JS side
+  const handleTap = useCallback(
+    (x: number, y: number) => {
+      'worklet';
+      // Read current transform values and pass them to JS side
+      const currentScale = scale.value;
+      const currentTranslateX = translateX.value;
+      const currentTranslateY = translateY.value;
+
+      // Pass all necessary data as primitives to JS side
+      runOnJS(handleTapJS)(x, y, currentScale, currentTranslateX, currentTranslateY);
+    },
+    [scale, translateX, translateY, handleTapJS]
   );
 
   // Animation helper - animate to target zoom/pan position
