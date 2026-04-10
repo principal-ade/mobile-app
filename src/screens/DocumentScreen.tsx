@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { fetchMarkdownFileContent } from '../services/GithubService';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 type DocumentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Document'>;
 type DocumentScreenRouteProp = RouteProp<RootStackParamList, 'Document'>;
@@ -67,7 +68,7 @@ export default function DocumentScreen({ navigation: _navigation, route }: Props
       </View>
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
         </View>
       ) : error ? (
         <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>

@@ -8,7 +8,6 @@ import {
   Linking,
   Image,
   TextInput,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +15,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import { Logo } from '../components/Logo';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
 import { AccountSwitcherSheet } from '../components/AccountSwitcherSheet';
@@ -197,6 +197,23 @@ export function AboutScreen() {
                 </Text>
               </TouchableOpacity>
               <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
+              <TouchableOpacity
+                style={styles.linkRow}
+                onPress={() => navigation.navigate('SavedCards')}
+              >
+                <View style={styles.linkContent}>
+                  <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
+                    Saved Cards
+                  </Text>
+                  <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
+                    View your saved activity cards
+                  </Text>
+                </View>
+                <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
+                  ›
+                </Text>
+              </TouchableOpacity>
+              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
               <TouchableOpacity style={styles.linkRow} onPress={handleSignOut}>
                 <Text style={[styles.signOutText, { color: theme.colors.error || '#ef4444' }]}>
                   Sign out
@@ -249,7 +266,7 @@ export function AboutScreen() {
                   disabled={isLoading || !email.trim() || !password.trim()}
                 >
                   {isLoading ? (
-                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                    <LoadingSpinner size="small" color={theme.colors.primary} />
                   ) : (
                     <Text style={[styles.signInText, { color: theme.colors.primary }]}>
                       Sign In

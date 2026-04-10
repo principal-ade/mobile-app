@@ -6,10 +6,10 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Image,
   Keyboard,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import {
@@ -379,11 +379,9 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
 
             {/* Search Results */}
             {isSearchingUsers && (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.primary}
-                style={styles.loader}
-              />
+              <View style={styles.loader}>
+                <LoadingSpinner size="small" color={theme.colors.primary} />
+              </View>
             )}
 
             {userSearchResults.length > 0 && (
@@ -399,11 +397,9 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
 
             {/* Suggestions */}
             {isLoadingUsers ? (
-              <ActivityIndicator
-                size="large"
-                color={theme.colors.primary}
-                style={styles.loader}
-              />
+              <View style={styles.loader}>
+                <LoadingSpinner size="large" color={theme.colors.primary} />
+              </View>
             ) : suggestedUsers.length > 0 ? (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
@@ -449,11 +445,9 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
 
             {/* Search Results */}
             {isSearchingRepos && (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.primary}
-                style={styles.loader}
-              />
+              <View style={styles.loader}>
+                <LoadingSpinner size="small" color={theme.colors.primary} />
+              </View>
             )}
 
             {repoSearchResults.length > 0 && (
@@ -469,11 +463,9 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
 
             {/* Suggestions */}
             {isLoadingRepos ? (
-              <ActivityIndicator
-                size="large"
-                color={theme.colors.primary}
-                style={styles.loader}
-              />
+              <View style={styles.loader}>
+                <LoadingSpinner size="large" color={theme.colors.primary} />
+              </View>
             ) : suggestedRepos.length > 0 ? (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
@@ -524,7 +516,7 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <LoadingSpinner size="small" color="#fff" />
             ) : (
               <Text style={styles.actionButtonText}>
                 Done{selectedRepos.length > 0 ? ` (${selectedRepos.length} repos)` : ''}

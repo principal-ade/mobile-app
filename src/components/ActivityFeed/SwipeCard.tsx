@@ -7,12 +7,12 @@ import {
   Pressable,
   Animated,
   Dimensions,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
+import { LoadingSpinner } from '../LoadingSpinner';
 import type { RepoActivitySummary } from '../../types/activity';
 import { getCommitsSummary } from '../../services/FeedApiService';
 import { apiConfig } from '../../utils/config';
@@ -481,7 +481,7 @@ export function SwipeCard({
       >
         {summaryLoading ? (
           <View style={styles.summaryLoading}>
-            <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+            <LoadingSpinner size="small" color={theme.colors.textSecondary} />
             <Text style={[styles.summaryLoadingText, { color: theme.colors.textSecondary }]}>
               Summarizing commits...
             </Text>

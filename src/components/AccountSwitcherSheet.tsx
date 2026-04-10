@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -21,6 +20,7 @@ import { useMultiAccount } from '../context/MultiAccountContext';
 import { useAuth } from '../hooks/useAuth';
 import type { AccountInfo } from '../types/account';
 import { LucideIcon } from './LucideIcon';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface AccountSwitcherSheetProps {
   visible: boolean;
@@ -139,7 +139,7 @@ export function AccountSwitcherSheet({ visible, onClose }: AccountSwitcherSheetP
         {/* Content */}
         {isSwitching ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <LoadingSpinner size="large" color={theme.colors.primary} />
             <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
               Switching account...
             </Text>

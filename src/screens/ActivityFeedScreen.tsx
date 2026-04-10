@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   ViewToken,
   LayoutChangeEvent,
@@ -18,6 +17,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
 import { groupSummariesByHour, HourlyRepoCard } from '../utils/activityGrouping';
 import { useAuth } from '../hooks/useAuth';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { RepoActivitySummary } from '../types/activity';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -97,7 +97,7 @@ export function ActivityFeedScreen({
   if (loading && cards.length === 0) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
         <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
           Loading activity...
         </Text>

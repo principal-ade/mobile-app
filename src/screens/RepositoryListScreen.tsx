@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -230,7 +230,7 @@ export default function RepositoryListScreen({ navigation }: Props) {
 
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -291,7 +291,7 @@ export default function RepositoryListScreen({ navigation }: Props) {
 
           {isLoadingContents ? (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <LoadingSpinner size="small" color={theme.colors.primary} />
             </View>
           ) : (
             <FlatList

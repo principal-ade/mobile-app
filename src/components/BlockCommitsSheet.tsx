@@ -13,13 +13,13 @@ import {
   Modal,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
   Image,
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { getBlockCommits } from '../services/CommitCacheService';
+import { LoadingSpinner } from './LoadingSpinner';
 import type { ActivityCommit } from '../types/activity';
 
 interface BlockCommitsSheetProps {
@@ -199,7 +199,7 @@ export function BlockCommitsSheet({
         {/* Content */}
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <LoadingSpinner size="large" color={theme.colors.primary} />
             <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
               Loading commits...
             </Text>

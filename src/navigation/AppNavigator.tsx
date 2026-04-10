@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -16,15 +16,17 @@ import AddRepoScreen from '../screens/AddRepoScreen';
 import SwipeFeedScreen from '../screens/SwipeFeedScreen';
 import FeedTabScreen from '../screens/FeedTabScreen';
 import ActivityTabScreen from '../screens/ActivityTabScreen';
-import SavedTabScreen from '../screens/SavedTabScreen';
+import ToursTabScreen from '../screens/ToursTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
+import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import RepoFileCityScreen from '../screens/RepoFileCityScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { LucideIcon } from '../components/LucideIcon';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const prefix = Linking.createURL('/');
 
@@ -44,7 +46,7 @@ const linking: LinkingOptions<RootStackParamList> = {
           Feed: 'feed',
           Activity: 'activity',
           Search: 'search',
-          Saved: 'saved',
+          Tours: 'tours',
           About: 'about',
         },
       },
@@ -111,10 +113,10 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Saved"
-        component={SavedTabScreen}
+        name="Tours"
+        component={ToursTabScreen}
         options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Bookmark" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <LucideIcon name="Map" size={24} color={color} />,
         }}
       />
       <Tab.Screen
@@ -141,7 +143,7 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -239,6 +241,11 @@ export default function AppNavigator() {
                   name="CardDetail"
                   component={CardDetailScreen}
                   options={{ headerShown: false, presentation: 'modal' }}
+                />
+                <Stack.Screen
+                  name="SavedCards"
+                  component={SavedCardsScreen}
+                  options={{ title: 'Saved Cards' }}
                 />
               </>
             )}

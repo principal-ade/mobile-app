@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   Image,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -108,7 +108,7 @@ export function FeedCustomizationScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
         </View>
       ) : (
       <ScrollView

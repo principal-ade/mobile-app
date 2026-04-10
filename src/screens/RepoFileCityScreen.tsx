@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 // Custom warning icon (no emoji)
 function WarningIcon({ color, size = 48 }: { color: string; size?: number }) {
@@ -635,7 +635,7 @@ export function RepoFileCityScreen() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
             Building city from repository...
           </Text>
@@ -679,7 +679,7 @@ export function RepoFileCityScreen() {
             {activeViz === 'stars' && (
               <View style={styles.starChartContainer}>
                 {stargazersLoading ? (
-                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                  <LoadingSpinner size="large" color={theme.colors.primary} />
                 ) : stargazers.length >= 2 ? (
                   <StarChart stargazers={stargazers} totalCount={stargazersTotalCount} size={CANVAS_SIZE} theme={theme} />
 
@@ -851,7 +851,7 @@ export function RepoFileCityScreen() {
                   {/* Contributors Section */}
                   <View style={styles.contributorsSection}>
                     {contributorsLoading ? (
-                      <ActivityIndicator size="small" color={theme.colors.primary} />
+                      <LoadingSpinner size="small" color={theme.colors.primary} />
                     ) : contributors.length > 0 ? (
                       <>
                         <View style={styles.contributorsHeader}>
@@ -922,7 +922,7 @@ export function RepoFileCityScreen() {
                 <View style={styles.heatmapContent}>
                   {contributorsLoading ? (
                     <View style={styles.heatmapLoading}>
-                      <ActivityIndicator size="large" color={theme.colors.primary} />
+                      <LoadingSpinner size="large" color={theme.colors.primary} />
                     </View>
                   ) : (() => {
                     // Filter contributors to only show those with activity in the last week

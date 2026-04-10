@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -124,7 +124,7 @@ export function EmailVerificationScreen({ route }: Props) {
           disabled={isLoading || code.length !== 6}
         >
           {isLoading ? (
-            <ActivityIndicator color="#fff" />
+            <LoadingSpinner size="small" color="#fff" />
           ) : (
             <Text style={styles.verifyButtonText}>Verify</Text>
           )}

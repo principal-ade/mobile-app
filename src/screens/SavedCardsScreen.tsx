@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   TouchableOpacity,
   FlatList,
   Image,
@@ -19,6 +18,7 @@ import {
   type SavedCard,
 } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'SavedCards'>;
@@ -219,7 +219,7 @@ export function SavedCardsScreen() {
   if (isLoading) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
         <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
           Loading saved cards...
         </Text>

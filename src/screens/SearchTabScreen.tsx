@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,25 +6,23 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
+  SectionList,
+  Pressable,
   Keyboard,
   Image,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { searchRepos, searchUsers, formatStars } from '../services/GitHubSearchService';
 import type { GitHubRepo, GitHubUser } from '../services/GitHubSearchService';
 import type { RootStackParamList } from '../navigation/types';
-import { SegmentedControl } from '../components/SegmentedControl';
-import { getReposWithTours, type RepoWithTour } from '../services/FeedApiService';
-import { getCompletedTours } from './TourFileCityScreen';
 import { LucideIcon } from '../components/LucideIcon';
+import { saveSearchQuery, getSearchHistory, clearSearchHistory, type SearchHistoryEntry } from '../utils/searchStorage';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
-
-type SearchType = 'repos' | 'users';
 
 // Custom icon components (no emojis)
 function ClearIcon({ color, size = 14 }: { color: string; size?: number }) {
@@ -188,61 +186,88 @@ export function SearchTabScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
-  const [searchType, setSearchType] = useState<SearchType>('repos');
+  // Search state
   const [query, setQuery] = useState('');
-  const [repoResults, setRepoResults] = useState<GitHubRepo[]>([]);
-  const [userResults, setUserResults] = useState<GitHubUser[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
-  const [showingTours, setShowingTours] = useState(false);
-  const [toursRepos, setToursRepos] = useState<RepoWithTour[]>([]);
-  const [isLoadingTours, setIsLoadingTours] = useState(false);
-  const [toursFilter, setToursFilter] = useState('');
-  const [completedTours, setCompletedTours] = useState<Set<string>>(new Set());
 
-  // Load completed tours when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      async function loadCompletedTours() {
-        const completed = await getCompletedTours();
-        setCompletedTours(completed);
-      }
-      loadCompletedTours();
-    }, [])
-  );
+  // Results state
+  const [repoResults, setRepoResults] = useState<GitHubRepo[]>([]);
+  const [userResults, setUserResults] = useState<GitHubUser[]>([]);
+  const [repoTotalCount, setRepoTotalCount] = useState(0);
+  const [userTotalCount, setUserTotalCount] = useState(0);
 
-  const handleSearch = useCallback(async () => {
-    if (!query.trim()) return;
+  // UI state
+  const [activeTab, setActiveTab] = useState<'all' | 'repos' | 'users'>('all');
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([]);
 
-    Keyboard.dismiss();
-    setIsSearching(true);
-    setHasSearched(true);
-    setError(null);
+  // Error state (support partial failures)
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [userError, setUserError] = useState<string | null>(null);
 
-    try {
-      if (searchType === 'repos') {
-        const { repos, totalCount: count } = await searchRepos(query, { perPage: 20 });
-        setRepoResults(repos);
-        setUserResults([]);
-        setTotalCount(count);
-      } else {
-        const { users, totalCount: count } = await searchUsers(query, { perPage: 20 });
-        setUserResults(users);
-        setRepoResults([]);
-        setTotalCount(count);
-      }
-    } catch (err) {
-      console.error('Search error:', err);
-      setError(err instanceof Error ? err.message : 'Search failed');
+  // Load search history on mount
+  useEffect(() => {
+    async function loadHistory() {
+      const history = await getSearchHistory();
+      setSearchHistory(history);
+    }
+    loadHistory();
+  }, []);
+
+  // Debounced search (300ms) - searches both repos and users in parallel
+  useEffect(() => {
+    if (!query.trim()) {
       setRepoResults([]);
       setUserResults([]);
-      setTotalCount(0);
-    } finally {
-      setIsSearching(false);
+      setRepoTotalCount(0);
+      setUserTotalCount(0);
+      setHasSearched(false);
+      setRepoError(null);
+      setUserError(null);
+      return;
     }
-  }, [query, searchType]);
+
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
+      setRepoError(null);
+      setUserError(null);
+
+      // Parallel API calls with Promise.allSettled for partial failure support
+      const [repoResponse, userResponse] = await Promise.allSettled([
+        searchRepos(query, { perPage: 20 }),
+        searchUsers(query, { perPage: 20 })
+      ]);
+
+      // Handle repo results
+      if (repoResponse.status === 'fulfilled') {
+        setRepoResults(repoResponse.value.repos);
+        setRepoTotalCount(repoResponse.value.totalCount);
+      } else {
+        setRepoError(repoResponse.reason?.message || 'Failed to search repos');
+        setRepoResults([]);
+        setRepoTotalCount(0);
+      }
+
+      // Handle user results
+      if (userResponse.status === 'fulfilled') {
+        console.log('[SearchTabScreen] User search results:', JSON.stringify(userResponse.value.users, null, 2));
+        setUserResults(userResponse.value.users);
+        setUserTotalCount(userResponse.value.totalCount);
+      } else {
+        setUserError(userResponse.reason?.message || 'Failed to search users');
+        setUserResults([]);
+        setUserTotalCount(0);
+      }
+
+      setHasSearched(true);
+      setIsSearching(false);
+
+      // Save to history (don't await)
+      saveSearchQuery(query);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [query]);
 
   const handleRepoPress = useCallback(
     (repo: GitHubRepo) => {
@@ -264,65 +289,7 @@ export function SearchTabScreen() {
     [navigation]
   );
 
-  const handleTourRepoPress = useCallback(
-    (repo: RepoWithTour) => {
-      navigation.navigate('TourFileCity', {
-        owner: repo.owner,
-        name: repo.name,
-        fullName: repo.full_name,
-        forkOwner: repo.forkOwner,
-        forkRepo: repo.forkRepo,
-        tourPath: repo.tourPath,
-      });
-    },
-    [navigation]
-  );
 
-  const handleShowTours = useCallback(async () => {
-    setShowingTours(true);
-    setIsLoadingTours(true);
-    setError(null);
-
-    try {
-      const { repos } = await getReposWithTours();
-      setToursRepos(repos);
-    } catch (err) {
-      console.error('Error fetching tours:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load tours');
-    } finally {
-      setIsLoadingTours(false);
-    }
-  }, []);
-
-  const handleBackToSearch = useCallback(() => {
-    setShowingTours(false);
-    setQuery('');
-    setRepoResults([]);
-    setUserResults([]);
-    setHasSearched(false);
-    setError(null);
-    setToursFilter('');
-  }, []);
-
-  const handleSearchTypeChange = useCallback((index: number) => {
-    setSearchType(index === 0 ? 'repos' : 'users');
-    setRepoResults([]);
-    setUserResults([]);
-    setHasSearched(false);
-    setError(null);
-    setTotalCount(0);
-  }, []);
-
-  const filteredToursRepos = React.useMemo(() => {
-    if (!toursFilter.trim()) return toursRepos;
-
-    const lowerQuery = toursFilter.toLowerCase();
-    return toursRepos.filter(repo =>
-      repo.full_name.toLowerCase().includes(lowerQuery) ||
-      repo.description?.toLowerCase().includes(lowerQuery) ||
-      repo.language?.toLowerCase().includes(lowerQuery)
-    );
-  }, [toursRepos, toursFilter]);
 
   const renderRepoItem = useCallback(
     ({ item }: { item: GitHubRepo }) => (
@@ -391,13 +358,11 @@ export function SearchTabScreen() {
           />
           <View style={styles.repoInfo}>
             <Text style={[styles.repoName, { color: theme.colors.primary }]}>
-              {item.login}
+              {item.name || item.login}
             </Text>
-            {item.type && (
-              <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
-                {item.type}
-              </Text>
-            )}
+            <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
+              {item.name ? item.login : (item.type === 'Organization' ? 'Organization' : '')}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -405,329 +370,283 @@ export function SearchTabScreen() {
     [theme, handleUserPress]
   );
 
-  const renderTourRepoItem = useCallback(
-    ({ item }: { item: RepoWithTour }) => {
-      const tourId = `${item.owner}/${item.name}/${item.tourPath}`;
-      const isCompleted = completedTours.has(tourId);
-
-      return (
-        <TouchableOpacity
-          style={[styles.repoItem, { backgroundColor: theme.colors.surface }]}
-          onPress={() => handleTourRepoPress(item)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.repoHeaderWithAvatar}>
-            <Image
-              source={{ uri: item.owner_avatar_url }}
-              style={styles.ownerAvatar}
-            />
-            <View style={styles.repoInfo}>
-              <Text style={[styles.repoName, { color: theme.colors.primary }]}>
-                {item.name}
-              </Text>
-              <Text style={[styles.ownerName, { color: theme.colors.textSecondary }]}>
-                {item.owner}
-              </Text>
-            </View>
-            <View style={styles.repoStats}>
-              <LucideIcon name="Star" color={theme.colors.textSecondary} size={12} />
-              <Text style={[styles.starCount, { color: theme.colors.textSecondary }]}>
-                {formatStars(item.stargazers_count)}
-              </Text>
-            </View>
-          </View>
-        {item.description && (
-          <Text
-            style={[styles.repoDescription, { color: theme.colors.textSecondary }]}
-            numberOfLines={2}
-          >
-            {item.description}
-          </Text>
-        )}
-        <View style={styles.languageContainer}>
-          {item.language && (
-            <>
-              <View
-                style={[
-                  styles.languageDot,
-                  { backgroundColor: getLanguageColor(item.language) },
-                ]}
-              />
-              <Text style={[styles.languageText, { color: theme.colors.textSecondary }]}>
-                {item.language}
-              </Text>
-            </>
-          )}
-          <Text style={[
-            styles.tourBadgeInline,
-            {
-              color: isCompleted ? theme.colors.success : theme.colors.primary,
-              borderColor: isCompleted ? theme.colors.success : theme.colors.primary,
-              marginLeft: item.language ? 8 : 0,
-            }
-          ]}>
-            {isCompleted ? 'Tour Completed' : 'Tour Available'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-      );
-    },
-    [theme, handleTourRepoPress, completedTours]
-  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerLeft}>
+        <View style={styles.headerContent}>
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            {showingTours ? 'Repos with Tours' : 'Search'}
+            Search
           </Text>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            {showingTours ? 'Guided tours available' : 'Find repositories to visualize'}
+            Search for repositories and users
           </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.toursButton, { backgroundColor: showingTours ? theme.colors.surface : theme.colors.primary }]}
-          onPress={showingTours ? handleBackToSearch : handleShowTours}
-        >
-          <Text style={[styles.toursButtonText, { color: showingTours ? theme.colors.text : '#fff' }]}>
-            {showingTours ? 'Search' : 'Tours'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Search Input - Only show when not showing tours */}
-      {!showingTours && (
-        <>
-          {/* Segmented Control */}
-          <View style={styles.segmentedControlContainer}>
-            <SegmentedControl
-              segments={['Repos', 'Users']}
-              selectedIndex={searchType === 'repos' ? 0 : 1}
-              onChange={handleSearchTypeChange}
-            />
+      {/* Search Input */}
+      <View style={styles.searchContainer}>
+        <View
+          style={[
+            styles.searchInputContainer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.searchIconWrapper}>
+            <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
           </View>
+          <TextInput
+            style={[styles.searchInput, { color: theme.colors.text }]}
+            placeholder="Search repositories and users..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {query.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setQuery('');
+                setRepoResults([]);
+                setUserResults([]);
+                setRepoTotalCount(0);
+                setUserTotalCount(0);
+                setHasSearched(false);
+                setRepoError(null);
+                setUserError(null);
+              }}
+              style={styles.clearButton}
+            >
+              <ClearIcon color={theme.colors.textSecondary} size={14} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
-          <View style={styles.searchContainer}>
-            <View
-              style={[
-                styles.searchInputContainer,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <View style={styles.searchIconWrapper}>
-              <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
-            </View>
-            <TextInput
-              style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder={searchType === 'repos' ? 'Search repositories...' : 'Search users...'}
-              placeholderTextColor={theme.colors.textSecondary}
-              value={query}
-              onChangeText={setQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {query.length > 0 && (
-              <TouchableOpacity
-                onPress={() => {
-                  setQuery('');
-                  setRepoResults([]);
-                  setUserResults([]);
-                  setHasSearched(false);
-                  setError(null);
-                  setTotalCount(0);
-                }}
-                style={styles.clearButton}
-              >
-                <ClearIcon color={theme.colors.textSecondary} size={14} />
-              </TouchableOpacity>
-            )}
+      {/* Search History - shown when input is empty and not searching */}
+      {!query && searchHistory.length > 0 && !hasSearched && (
+        <View style={styles.historyContainer}>
+          <View style={styles.historyHeader}>
+            <Text style={[styles.historyTitle, { color: theme.colors.textSecondary }]}>
+              RECENT SEARCHES
+            </Text>
+            <TouchableOpacity onPress={async () => {
+              await clearSearchHistory();
+              setSearchHistory([]);
+            }}>
+              <Text style={[styles.clearHistory, { color: theme.colors.primary }]}>
+                Clear
+              </Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.searchButton,
-              {
-                backgroundColor: theme.colors.primary,
-                opacity: query.trim() ? 1 : 0.5,
-              },
-            ]}
-            onPress={handleSearch}
-            disabled={!query.trim()}
-          >
-            <Text style={styles.searchButtonText}>Search</Text>
-          </TouchableOpacity>
-          </View>
-        </>
-      )}
-
-      {/* Tours Filter - Only show when showing tours */}
-      {showingTours && !isLoadingTours && (
-        <View style={styles.filterContainer}>
-          <View
-            style={[
-              styles.filterInputContainer,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <View style={styles.searchIconWrapper}>
-              <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
-            </View>
-            <TextInput
-              style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder="Filter tours..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={toursFilter}
-              onChangeText={setToursFilter}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {toursFilter.length > 0 && (
+          <View style={styles.historyChips}>
+            {searchHistory.map((entry) => (
               <TouchableOpacity
-                onPress={() => setToursFilter('')}
-                style={styles.clearButton}
+                key={entry.timestamp}
+                style={[styles.historyChip, {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border
+                }]}
+                onPress={() => setQuery(entry.query)}
               >
-                <ClearIcon color={theme.colors.textSecondary} size={14} />
+                <LucideIcon name="Clock" size={14} color={theme.colors.textSecondary} />
+                <Text style={[styles.historyChipText, { color: theme.colors.text }]}>
+                  {entry.query}
+                </Text>
               </TouchableOpacity>
-            )}
+            ))}
           </View>
         </View>
       )}
 
-      {/* Results or Tours */}
-      {showingTours ? (
-        // Tours View
-        isLoadingTours ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
-              Loading repositories with tours...
+      {/* Tabs - Only show after search */}
+      {hasSearched && (
+        <View style={[styles.tabsContainer, { borderBottomColor: theme.colors.border }]}>
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'all' && [
+                styles.activeTab,
+                { borderBottomColor: theme.colors.primary },
+              ],
+            ]}
+            onPress={() => setActiveTab('all')}
+          >
+            <Text style={[
+              styles.tabText,
+              { color: activeTab === 'all' ? theme.colors.text : theme.colors.textSecondary },
+              activeTab === 'all' && styles.activeTabText
+            ]}>
+              All
             </Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <WarningIcon color={theme.colors.error} size={48} />
-            <Text style={[styles.errorText, { color: theme.colors.error }]}>
-              {error}
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'repos' && [
+                styles.activeTab,
+                { borderBottomColor: theme.colors.primary },
+              ],
+            ]}
+            onPress={() => setActiveTab('repos')}
+          >
+            <Text style={[
+              styles.tabText,
+              { color: activeTab === 'repos' ? theme.colors.text : theme.colors.textSecondary },
+              activeTab === 'repos' && styles.activeTabText
+            ]}>
+              Repos
             </Text>
-            <TouchableOpacity
-              style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-              onPress={handleShowTours}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredToursRepos}
-            keyExtractor={(item) => `${item.owner}/${item.name}`}
-            renderItem={renderTourRepoItem}
-            contentContainerStyle={styles.resultsList}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              toursRepos.length > 0 ? (
-                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
-                  {filteredToursRepos.length} of {toursRepos.length} {toursRepos.length === 1 ? 'repository' : 'repositories'}
-                  {toursFilter.trim() && ` matching "${toursFilter}"`}
-                </Text>
-              ) : null
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                  {toursFilter.trim()
-                    ? `No tours matching "${toursFilter}"`
-                    : 'No repositories with tours found'
-                  }
-                </Text>
-              </View>
-            }
-          />
-        )
-      ) : isSearching ? (
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'users' && [
+                styles.activeTab,
+                { borderBottomColor: theme.colors.primary },
+              ],
+            ]}
+            onPress={() => setActiveTab('users')}
+          >
+            <Text style={[
+              styles.tabText,
+              { color: activeTab === 'users' ? theme.colors.text : theme.colors.textSecondary },
+              activeTab === 'users' && styles.activeTabText
+            ]}>
+              Users
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Results */}
+      {isSearching && !hasSearched ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
             Searching...
           </Text>
         </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <WarningIcon color={theme.colors.error} size={48} />
-          <Text style={[styles.errorText, { color: theme.colors.error }]}>
-            {error}
-          </Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={handleSearch}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
       ) : hasSearched ? (
-        searchType === 'repos' ? (
-          <FlatList
-            data={repoResults}
-            keyExtractor={(item) => `${item.owner}/${item.name}`}
-            renderItem={renderRepoItem}
-            contentContainerStyle={styles.resultsList}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              totalCount > 0 ? (
-                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
-                  {totalCount.toLocaleString()} repositories found
-                </Text>
-              ) : null
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                  No repositories found for "{query}"
-                </Text>
-              </View>
-            }
-          />
-        ) : (
-          <FlatList
-            data={userResults}
-            keyExtractor={(item) => item.login}
-            renderItem={renderUserItem}
-            contentContainerStyle={styles.resultsList}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              totalCount > 0 ? (
-                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
-                  {totalCount.toLocaleString()} users found
-                </Text>
-              ) : null
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                  No users found for "{query}"
-                </Text>
-              </View>
-            }
-          />
-        )
+        <>
+          {/* All Tab - Combined results */}
+          {activeTab === 'all' && (
+            <SectionList
+              sections={[
+                repoResults.length > 0 && {
+                  title: 'Repositories',
+                  data: repoResults,
+                  type: 'repo' as const
+                },
+                userResults.length > 0 && {
+                  title: 'Users',
+                  data: userResults,
+                  type: 'user' as const
+                }
+              ].filter(Boolean) as Array<{
+                title: string;
+                data: (GitHubRepo | GitHubUser)[];
+                type: 'repo' | 'user';
+              }>}
+              renderSectionHeader={({ section }) => (
+                <View style={[styles.sectionHeader, { backgroundColor: theme.colors.background }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+                    {section.title}
+                  </Text>
+                </View>
+              )}
+              renderItem={({ item, section }) =>
+                section.type === 'repo'
+                  ? renderRepoItem({ item: item as GitHubRepo })
+                  : renderUserItem({ item: item as GitHubUser })
+              }
+              keyExtractor={(item) =>
+                'login' in item ? item.login : `${(item as GitHubRepo).owner}/${(item as GitHubRepo).name}`
+              }
+              contentContainerStyle={styles.resultsList}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  {repoError && <Text style={[styles.partialError, { color: theme.colors.error }]}>
+                    Repos: {repoError}
+                  </Text>}
+                  {userError && <Text style={[styles.partialError, { color: theme.colors.error }]}>
+                    Users: {userError}
+                  </Text>}
+                  {!repoError && !userError && (
+                    <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                      No results found for "{query}"
+                    </Text>
+                  )}
+                </View>
+              }
+            />
+          )}
+
+          {/* Repos Tab */}
+          {activeTab === 'repos' && (
+            <FlatList
+              data={repoResults}
+              keyExtractor={(item) => `${item.owner}/${item.name}`}
+              renderItem={renderRepoItem}
+              contentContainerStyle={styles.resultsList}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  {repoError ? (
+                    <Text style={[styles.emptyText, { color: theme.colors.error }]}>
+                      {repoError}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                      No repositories found for "{query}"
+                    </Text>
+                  )}
+                </View>
+              }
+            />
+          )}
+
+          {/* Users Tab */}
+          {activeTab === 'users' && (
+            <FlatList
+              data={userResults}
+              keyExtractor={(item) => item.login}
+              renderItem={renderUserItem}
+              contentContainerStyle={styles.resultsList}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  {userError ? (
+                    <Text style={[styles.emptyText, { color: theme.colors.error }]}>
+                      {userError}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                      No users found for "{query}"
+                    </Text>
+                  )}
+                </View>
+              }
+            />
+          )}
+        </>
       ) : (
         <View style={styles.emptyStateContainer}>
           <CityIcon color={theme.colors.textSecondary} size={80} />
           <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>
-            {searchType === 'repos' ? 'Explore Code Cities' : 'Find GitHub Users'}
+            Search Repositories & Users
           </Text>
           <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
-            {searchType === 'repos'
-              ? 'Search for a repository to visualize its file structure as a city'
-              : 'Search for GitHub users to view their profiles and activity'}
+            Search for repositories and users on GitHub. Results will appear as you type.
           </Text>
         </View>
       )}
@@ -740,13 +659,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  headerLeft: {
+  headerContent: {
     flex: 1,
   },
   title: {
@@ -757,40 +673,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 4,
   },
-  toursButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  toursButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  segmentedControlContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 12,
   },
-  filterContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
   searchInputContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    height: 48,
-  },
-  filterInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
@@ -808,18 +698,6 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 4,
-  },
-  searchButton: {
-    paddingHorizontal: 20,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -854,6 +732,7 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   resultsCount: {
@@ -865,14 +744,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-  },
-  tourBadgeInline: {
-    fontSize: 11,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
   },
   repoHeader: {
     flexDirection: 'row',
@@ -985,6 +856,99 @@ const styles = StyleSheet.create({
   },
   warningDot: {
     position: 'absolute',
+  },
+  // Search History
+  historyContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  historyTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  clearHistory: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  historyChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  historyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  historyChipText: {
+    fontSize: 14,
+  },
+  // Tabs
+  tabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    // borderBottomColor set dynamically
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    fontWeight: '600',
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Section headers (for "All" tab)
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Partial error styling
+  partialError: {
+    fontSize: 13,
+    marginBottom: 8,
+    paddingHorizontal: 16,
   },
 });
 

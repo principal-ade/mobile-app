@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import SwipeFeedScreen from './SwipeFeedScreen';
@@ -8,6 +8,7 @@ import { fetchActivityFeed } from '../services/ActivityFeedService';
 import { getFollows } from '../services/FeedApiService';
 import { summariesToCards } from '../utils/feedTransforms';
 import { useAuthContext } from '../context/AuthContext';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { RepoActivitySummary } from '../types/activity';
 
 /**
@@ -82,7 +83,7 @@ export default function FeedTabScreen() {
   if (isAuthenticated && needsOnboarding === null) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
       </View>
     );
   }

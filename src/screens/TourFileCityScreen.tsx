@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   Dimensions,
   Image,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -178,7 +178,7 @@ export default function TourFileCityScreen() {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={[styles.loadingContainer]}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.text }]}>
             Loading tour...
           </Text>

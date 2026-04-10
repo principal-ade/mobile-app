@@ -10,7 +10,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Pressable,
@@ -23,6 +22,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { ActivityRepoCard } from '../components/ActivityFeed/ActivityRepoCard';
 import { UserCard } from '../components/ActivityFeed/UserCard';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
   getActivityHeatmap,
   getFollows,
@@ -269,7 +269,7 @@ export function ActivityTabScreen() {
           },
         ]}
       >
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
         <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
           Loading activity...
         </Text>

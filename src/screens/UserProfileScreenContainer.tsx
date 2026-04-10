@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { UserProfileScreen, type HourlyActivityGroup } from './UserProfileScreen';
@@ -117,7 +118,7 @@ export function UserProfileScreenContainer() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -154,7 +155,7 @@ export function UserProfileScreenContainer() {
   if (!userData) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingSpinner size="large" color={theme.colors.primary} />
       </View>
     );
   }

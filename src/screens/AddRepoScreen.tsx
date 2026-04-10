@@ -6,10 +6,10 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
   Keyboard,
   SectionList,
 } from 'react-native';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -314,7 +314,7 @@ export function AddRepoScreen() {
       {/* Results or Suggestions */}
       {isSearching ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
@@ -336,7 +336,7 @@ export function AddRepoScreen() {
         </View>
       ) : isLoadingSuggestions ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingSpinner size="large" color={theme.colors.primary} />
         </View>
       ) : suggestions.length > 0 ? (
         <SectionList
