@@ -69,6 +69,10 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const { watchedUsers, watchedRepos } = useFeedPreferences();
   const { height } = useWindowDimensions();
 
+  // Account for tab bar height (56px + adjusted safe area)
+  const TAB_BAR_HEIGHT = 56 + (insets.bottom > 0 ? insets.bottom - 8 : 8);
+  const availableHeight = height - TAB_BAR_HEIGHT;
+
   const [isLoading, setIsLoading] = useState(isGuest ? !initialCards : true);
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<CommitActivityCard[]>(initialCards || []);
@@ -246,10 +250,10 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
           }
         }}
       >
-        <View style={[styles.cardWrapper, { height }]}>
+        <View style={[styles.cardWrapper, { height: availableHeight }]}>
           <MobileRepoCard
             summary={summary}
-            containerHeight={height}
+            containerHeight={availableHeight}
             skipTopInset={false}
           />
           {/* Heart animation overlay */}
@@ -269,7 +273,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         </View>
       </TapGestureHandler>
     );
-  }, [height, handleDoubleTap, savedCardId, heartScale]);
+  }, [availableHeight, handleDoubleTap, savedCardId, heartScale]);
 
   // Loading state
   if (isLoading) {
@@ -427,7 +431,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         keyExtractor={(item) => item.itemId}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={height}
+        snapToInterval={availableHeight}
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged.current}
         viewabilityConfig={viewabilityConfig}

@@ -39,7 +39,7 @@ interface RepoActivityData {
   owner: string;
   name: string;
   commitCount: number;
-  latestCommitTime: string;
+  latestCommitTime?: string;
   latestCommitAuthor?: {
     login: string;
     avatarUrl?: string;
@@ -51,7 +51,7 @@ interface UserActivityData {
   login: string;
   avatarUrl?: string;
   commitCount: number;
-  latestCommitTime: string;
+  latestCommitTime?: string;
   reposContributedTo: string[];
 }
 
@@ -59,7 +59,7 @@ export function ActivityTabScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, token } = useAuth();
-  const { version } = useFeedPreferences();
+  const { version, watchedUsers, watchedRepos } = useFeedPreferences();
 
   const [activeTab, setActiveTab] = useState<Tab>('repos');
   const [commits, setCommits] = useState<HeatmapCommit[]>([]);
@@ -111,22 +111,18 @@ export function ActivityTabScreen() {
     }
   }, [token, version]);
 
-  // Only fetch on initial mount
+  // Fetch on initial mount and when returning to screen if version changed
   useFocusEffect(
     useCallback(() => {
       if (!hasFetched.current) {
+        // Initial fetch
         fetchActivity();
+      } else if (versionAtLastFetch.current !== version) {
+        // Refetch if version changed while away
+        fetchActivity(true);
       }
-    }, [fetchActivity])
+    }, [fetchActivity, version])
   );
-
-  // Refetch when feed preferences change (version increments)
-  useEffect(() => {
-    if (hasFetched.current && versionAtLastFetch.current !== version) {
-      fetchActivity(true);
-      versionAtLastFetch.current = version;
-    }
-  }, [version, fetchActivity]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -136,13 +132,6 @@ export function ActivityTabScreen() {
 
   // Process repos data for display
   const repoActivityData: RepoActivityData[] = React.useMemo(() => {
-    if (!follows) return [];
-
-    // Create a set of watched repo IDs for fast lookup
-    const followedRepoIds = new Set(
-      follows.watchedRepos.map(fr => `${fr.owner}/${fr.repo}`)
-    );
-
     // Group commits by repo
     const repoCommitsMap = new Map<string, HeatmapCommit[]>();
     commits.forEach(commit => {
@@ -150,14 +139,33 @@ export function ActivityTabScreen() {
       repoCommitsMap.set(commit.repoId, [...existing, commit]);
     });
 
-    // Create repo activity data - only for followed repos
-    const repoData: RepoActivityData[] = [];
-    repos.forEach(repo => {
-      // Skip repos that are not followed
-      if (!followedRepoIds.has(repo.id)) return;
+    // Create a map of repo metadata from the API response
+    const repoMetadataMap = new Map(repos.map(r => [`${r.owner}/${r.name}`.toLowerCase(), r]));
 
-      const repoCommits = repoCommitsMap.get(repo.id) || [];
-      if (repoCommits.length === 0) return;
+    // Create repo activity data for ALL watched repos
+    const repoData: RepoActivityData[] = watchedRepos.map(watchedRepo => {
+      const repoIdKey = `${watchedRepo.owner}/${watchedRepo.repo}`.toLowerCase();
+      const repoMetadata = repoMetadataMap.get(repoIdKey);
+
+      // Find commits by matching owner/repo from the metadata map
+      const repoCommits: HeatmapCommit[] = [];
+      if (repoMetadata) {
+        const commits = repoCommitsMap.get(repoMetadata.id) || [];
+        repoCommits.push(...commits);
+      }
+
+      if (repoCommits.length === 0) {
+        // Repo has no activity in the time window
+        return {
+          repoId: `${watchedRepo.owner}/${watchedRepo.repo}`,
+          owner: watchedRepo.owner,
+          name: watchedRepo.repo,
+          commitCount: 0,
+          latestCommitTime: undefined,
+          latestCommitAuthor: undefined,
+          latestCommitMessage: undefined,
+        };
+      }
 
       // Sort commits by timestamp (most recent first)
       const sortedCommits = [...repoCommits].sort(
@@ -165,10 +173,10 @@ export function ActivityTabScreen() {
       );
       const latestCommit = sortedCommits[0];
 
-      repoData.push({
-        repoId: repo.id,
-        owner: repo.owner,
-        name: repo.name,
+      return {
+        repoId: repoMetadata?.id || `${watchedRepo.owner}/${watchedRepo.repo}`,
+        owner: watchedRepo.owner,
+        name: watchedRepo.repo,
         commitCount: repoCommits.length,
         latestCommitTime: latestCommit.timestamp,
         latestCommitAuthor: latestCommit.authorLogin ? {
@@ -176,39 +184,54 @@ export function ActivityTabScreen() {
           avatarUrl: latestCommit.authorAvatarUrl,
         } : undefined,
         latestCommitMessage: undefined,
-      });
+      };
     });
 
-    // Sort by most recent activity
-    return repoData.sort(
-      (a, b) => new Date(b.latestCommitTime).getTime() - new Date(a.latestCommitTime).getTime()
-    );
-  }, [commits, repos, follows]);
+    // Sort by most recent activity (repos without activity go to the end)
+    return repoData.sort((a, b) => {
+      // Repos without activity go to the end
+      if (a.commitCount === 0 && b.commitCount === 0) {
+        return `${a.owner}/${a.name}`.localeCompare(`${b.owner}/${b.name}`); // Alphabetical for repos without activity
+      }
+      if (a.commitCount === 0) return 1;
+      if (b.commitCount === 0) return -1;
+
+      // Sort by most recent activity
+      const aTime = a.latestCommitTime ? new Date(a.latestCommitTime).getTime() : 0;
+      const bTime = b.latestCommitTime ? new Date(b.latestCommitTime).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [commits, repos, watchedRepos]);
 
   // Process users data for display
   const userActivityData: UserActivityData[] = React.useMemo(() => {
-    if (!follows) return [];
-
-    // Create a set of watched user logins for fast lookup
-    const followedUserLogins = new Set(
-      follows.watchedUsers.map(fu => fu.login)
-    );
-
-    // Group commits by author
+    // Group commits by author (use lowercase for case-insensitive matching)
     const authorCommitsMap = new Map<string, HeatmapCommit[]>();
     commits.forEach(commit => {
-      const existing = authorCommitsMap.get(commit.authorLogin) || [];
-      authorCommitsMap.set(commit.authorLogin, [...existing, commit]);
+      const loginKey = commit.authorLogin.toLowerCase();
+      const existing = authorCommitsMap.get(loginKey) || [];
+      authorCommitsMap.set(loginKey, [...existing, commit]);
     });
 
-    // Create user activity data - only for followed users
-    const userData: UserActivityData[] = [];
-    authors.forEach(author => {
-      // Skip users that are not followed
-      if (!followedUserLogins.has(author.login)) return;
+    // Create a map of author metadata from the API response (use lowercase keys)
+    const authorMetadataMap = new Map(authors.map(a => [a.login.toLowerCase(), a]));
 
-      const authorCommits = authorCommitsMap.get(author.login) || [];
-      if (authorCommits.length === 0) return;
+    // Create user activity data for ALL watched users
+    const userData: UserActivityData[] = watchedUsers.map(watchedUser => {
+      const loginKey = watchedUser.login.toLowerCase();
+      const authorCommits = authorCommitsMap.get(loginKey) || [];
+      const authorMetadata = authorMetadataMap.get(loginKey);
+
+      if (authorCommits.length === 0) {
+        // User has no activity in the time window
+        return {
+          login: watchedUser.login,
+          avatarUrl: watchedUser.avatarUrl || `https://github.com/${watchedUser.login}.png`,
+          commitCount: 0,
+          latestCommitTime: '', // No activity
+          reposContributedTo: [],
+        };
+      }
 
       // Sort commits by timestamp (most recent first)
       const sortedCommits = [...authorCommits].sort(
@@ -219,20 +242,30 @@ export function ActivityTabScreen() {
       // Get unique repos this user contributed to
       const uniqueRepos = Array.from(new Set(authorCommits.map(c => c.repoId)));
 
-      userData.push({
-        login: author.login,
-        avatarUrl: author.avatarUrl,
+      return {
+        login: watchedUser.login,
+        avatarUrl: authorMetadata?.avatarUrl || watchedUser.avatarUrl || `https://github.com/${watchedUser.login}.png`,
         commitCount: authorCommits.length,
         latestCommitTime: latestCommit.timestamp,
         reposContributedTo: uniqueRepos,
-      });
+      };
     });
 
-    // Sort by most recent activity
-    return userData.sort(
-      (a, b) => new Date(b.latestCommitTime).getTime() - new Date(a.latestCommitTime).getTime()
-    );
-  }, [commits, authors, follows]);
+    // Sort by most recent activity (users without activity go to the end)
+    return userData.sort((a, b) => {
+      // Users without activity go to the end
+      if (a.commitCount === 0 && b.commitCount === 0) {
+        return a.login.localeCompare(b.login); // Alphabetical for users without activity
+      }
+      if (a.commitCount === 0) return 1;
+      if (b.commitCount === 0) return -1;
+
+      // Sort by most recent activity
+      const aTime = a.latestCommitTime ? new Date(a.latestCommitTime).getTime() : 0;
+      const bTime = b.latestCommitTime ? new Date(b.latestCommitTime).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [commits, authors, watchedUsers]);
 
   // Not authenticated state
   if (!isAuthenticated) {
@@ -297,7 +330,7 @@ export function ActivityTabScreen() {
   }
 
   // Empty state (no follows)
-  if (commits.length === 0 && authors.length === 0 && repos.length === 0) {
+  if (watchedUsers.length === 0 && watchedRepos.length === 0) {
     return (
       <ScrollView
         style={[styles.container, { backgroundColor: theme.colors.background }]}
@@ -445,7 +478,7 @@ export function ActivityTabScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No repository activity in the last 24 hours
+                No repositories being watched
               </Text>
             </View>
           }
@@ -473,7 +506,7 @@ export function ActivityTabScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No user activity in the last 24 hours
+                No users being watched
               </Text>
             </View>
           }

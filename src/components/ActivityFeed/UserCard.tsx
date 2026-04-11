@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../../navigation/types';
 
 export interface UserCardProps {
   login: string;
   avatarUrl?: string;
   commitCount: number;
-  latestCommitTime: string;
+  latestCommitTime?: string;
   reposContributedTo: string[];
 }
 
@@ -18,6 +21,11 @@ export function UserCard({
   reposContributedTo,
 }: UserCardProps) {
   const { theme } = useTheme();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const handleAvatarPress = () => {
+    navigation.navigate('UserProfile', { username: login });
+  };
 
   const formatTime = (isoString: string) => {
     const date = new Date(isoString);
@@ -39,24 +47,31 @@ export function UserCard({
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
       <View style={styles.leftSection}>
-        <Image
-          source={{ uri: avatarUrl || `https://github.com/${login}.png` }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity onPress={handleAvatarPress}>
+          <Image
+            source={{ uri: avatarUrl || `https://github.com/${login}.png` }}
+            style={styles.avatar}
+          />
+        </TouchableOpacity>
         <View style={styles.userInfo}>
           <Text style={[styles.username, { color: theme.colors.text }]}>
             {login}
           </Text>
           <Text style={[styles.commitCount, { color: theme.colors.textSecondary }]}>
-            {commitCount} commit{commitCount !== 1 ? 's' : ''}
+            {commitCount === 0
+              ? 'No recent activity'
+              : `${commitCount} commit${commitCount !== 1 ? 's' : ''}`
+            }
           </Text>
         </View>
       </View>
 
       <View style={styles.rightSection}>
-        <Text style={[styles.time, { color: theme.colors.textSecondary }]}>
-          {formatTime(latestCommitTime)}
-        </Text>
+        {latestCommitTime && (
+          <Text style={[styles.time, { color: theme.colors.textSecondary }]}>
+            {formatTime(latestCommitTime)}
+          </Text>
+        )}
         {reposContributedTo.length > 0 && (
           <View style={styles.reposContainer}>
             {reposContributedTo.slice(0, 3).map((repo, _idx) => (

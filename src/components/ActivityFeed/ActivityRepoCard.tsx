@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../../navigation/types';
 
 export interface ActivityRepoCardProps {
   repoId: string;
   owner: string;
   name: string;
   commitCount: number;
-  latestCommitTime: string;
+  latestCommitTime?: string;
   latestCommitAuthor?: {
     login: string;
     avatarUrl?: string;
@@ -25,6 +28,15 @@ export function ActivityRepoCard({
   latestCommitMessage,
 }: ActivityRepoCardProps) {
   const { theme } = useTheme();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const handleRepoPress = () => {
+    navigation.navigate('RepoFileCity', {
+      owner,
+      name,
+      fullName: `${owner}/${name}`,
+    });
+  };
 
   const formatTime = (isoString: string) => {
     const date = new Date(isoString);
@@ -46,10 +58,12 @@ export function ActivityRepoCard({
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
       <View style={styles.header}>
-        <Image
-          source={{ uri: `https://github.com/${owner}.png` }}
-          style={styles.ownerAvatar}
-        />
+        <TouchableOpacity onPress={handleRepoPress}>
+          <Image
+            source={{ uri: `https://github.com/${owner}.png` }}
+            style={styles.ownerAvatar}
+          />
+        </TouchableOpacity>
         <View style={styles.repoInfo}>
           <Text style={[styles.repoName, { color: theme.colors.text }]}>
             {name}
@@ -59,11 +73,16 @@ export function ActivityRepoCard({
           </Text>
         </View>
         <View style={styles.statsContainer}>
-          <Text style={[styles.time, { color: theme.colors.textSecondary }]}>
-            {formatTime(latestCommitTime)}
-          </Text>
+          {latestCommitTime && (
+            <Text style={[styles.time, { color: theme.colors.textSecondary }]}>
+              {formatTime(latestCommitTime)}
+            </Text>
+          )}
           <Text style={[styles.commitCount, { color: theme.colors.textSecondary }]}>
-            {commitCount} commit{commitCount !== 1 ? 's' : ''}
+            {commitCount === 0
+              ? 'No recent activity'
+              : `${commitCount} commit${commitCount !== 1 ? 's' : ''}`
+            }
           </Text>
         </View>
       </View>
@@ -117,14 +136,17 @@ const styles = StyleSheet.create({
   },
   repoInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   repoName: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
+    textAlign: 'left',
   },
   repoOwner: {
     fontSize: 13,
+    textAlign: 'left',
   },
   statsContainer: {
     alignItems: 'flex-end',
@@ -139,7 +161,8 @@ const styles = StyleSheet.create({
   },
   commitInfo: {
     flexDirection: 'row',
-    paddingTop: 12,
+    alignItems: 'flex-start',
+    paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(0,0,0,0.1)',
   },
@@ -155,7 +178,7 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 13,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   commitMessage: {
     fontSize: 13,
