@@ -856,7 +856,7 @@ export function RepoFileCityScreen() {
                               style={styles.contributorAvatar}
                               onPress={() => {
                                 navigation.navigate('UserProfile', {
-                                  login: contributor.login,
+                                  username: contributor.login,
                                 });
                               }}
                             >
