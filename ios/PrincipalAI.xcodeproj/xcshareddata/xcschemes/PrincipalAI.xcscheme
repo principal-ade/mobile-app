@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "PrincipalADE.app"
-               BlueprintName = "PrincipalADE"
-               ReferencedContainer = "container:PrincipalADE.xcodeproj">
+               BuildableName = "PrincipalAI.app"
+               BlueprintName = "PrincipalAI"
+               ReferencedContainer = "container:PrincipalAI.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "PrincipalADETests.xctest"
-               BlueprintName = "PrincipalADETests"
-               ReferencedContainer = "container:PrincipalADE.xcodeproj">
+               BuildableName = "PrincipalAITests.xctest"
+               BlueprintName = "PrincipalAITests"
+               ReferencedContainer = "container:PrincipalAI.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "PrincipalADE.app"
-            BlueprintName = "PrincipalADE"
-            ReferencedContainer = "container:PrincipalADE.xcodeproj">
+            BuildableName = "PrincipalAI.app"
+            BlueprintName = "PrincipalAI"
+            ReferencedContainer = "container:PrincipalAI.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "PrincipalADE.app"
-            BlueprintName = "PrincipalADE"
-            ReferencedContainer = "container:PrincipalADE.xcodeproj">
+            BuildableName = "PrincipalAI.app"
+            BlueprintName = "PrincipalAI"
+            ReferencedContainer = "container:PrincipalAI.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

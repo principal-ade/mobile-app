@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		133E13DDCA3C7ED5A0958668 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6FCA08AF78BC917A066E384A /* PrivacyInfo.xcprivacy */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		29E9804380A4516531688377 /* libPods-PrincipalADE.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19B1C46F311CC599581773D6 /* libPods-PrincipalADE.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		6FB9730D9FEF2F0874FAD09B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F9EC44D28D9E4B7B03B19275 /* PrivacyInfo.xcprivacy */; };
-		781A8811024308F486832FBA /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E404303175A96CC3514E1E /* ExpoModulesProvider.swift */; };
+		9925F1EF44517E370240AE64 /* libPods-PrincipalAI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59BD7381298695CC95D655CE /* libPods-PrincipalAI.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		F79FDF0B02CA109F6187FDBB /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB2F357000F8C6A652229F6C /* ExpoModulesProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* PrincipalADE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrincipalADE.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PrincipalADE/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PrincipalADE/Info.plist; sourceTree = "<group>"; };
-		19B1C46F311CC599581773D6 /* libPods-PrincipalADE.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrincipalADE.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7E5FF2CB2F140D62F3E90720 /* Pods-PrincipalADE.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalADE.release.xcconfig"; path = "Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE.release.xcconfig"; sourceTree = "<group>"; };
-		8939CF20EB1CFAC28BB51992 /* Pods-PrincipalADE.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalADE.debug.xcconfig"; path = "Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE.debug.xcconfig"; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = PrincipalADE/SplashScreen.storyboard; sourceTree = "<group>"; };
+		0D3345C6C17F47E261CD270D /* Pods-PrincipalAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalAI.release.xcconfig"; path = "Target Support Files/Pods-PrincipalAI/Pods-PrincipalAI.release.xcconfig"; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* PrincipalAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrincipalAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PrincipalAI/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PrincipalAI/Info.plist; sourceTree = "<group>"; };
+		59BD7381298695CC95D655CE /* libPods-PrincipalAI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrincipalAI.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6FCA08AF78BC917A066E384A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = PrincipalAI/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = PrincipalAI/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		D6E404303175A96CC3514E1E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PrincipalADE/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		DBB33B2F034F1B1B743B5B67 /* Pods-PrincipalAI.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrincipalAI.debug.xcconfig"; path = "Target Support Files/Pods-PrincipalAI/Pods-PrincipalAI.debug.xcconfig"; sourceTree = "<group>"; };
+		EB2F357000F8C6A652229F6C /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PrincipalAI/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = PrincipalADE/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* PrincipalADE-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "PrincipalADE-Bridging-Header.h"; path = "PrincipalADE/PrincipalADE-Bridging-Header.h"; sourceTree = "<group>"; };
-		F9EC44D28D9E4B7B03B19275 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = PrincipalADE/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = PrincipalAI/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* PrincipalAI-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "PrincipalAI-Bridging-Header.h"; path = "PrincipalAI/PrincipalAI-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,42 +37,34 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				29E9804380A4516531688377 /* libPods-PrincipalADE.a in Frameworks */,
+				9925F1EF44517E370240AE64 /* libPods-PrincipalAI.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* PrincipalADE */ = {
+		13B07FAE1A68108700A75B9A /* PrincipalAI */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* PrincipalADE-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* PrincipalAI-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				F9EC44D28D9E4B7B03B19275 /* PrivacyInfo.xcprivacy */,
+				6FCA08AF78BC917A066E384A /* PrivacyInfo.xcprivacy */,
 			);
-			name = PrincipalADE;
+			name = PrincipalAI;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				19B1C46F311CC599581773D6 /* libPods-PrincipalADE.a */,
+				59BD7381298695CC95D655CE /* libPods-PrincipalAI.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		613BD2530BD5642D63BC36EC /* PrincipalADE */ = {
-			isa = PBXGroup;
-			children = (
-				D6E404303175A96CC3514E1E /* ExpoModulesProvider.swift */,
-			);
-			name = PrincipalADE;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -85,12 +77,12 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* PrincipalADE */,
+				13B07FAE1A68108700A75B9A /* PrincipalAI */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				C6C0A5907A1D1283182C83A0 /* Pods */,
-				F8A5038AC630747EC8701C13 /* ExpoModulesProviders */,
+				DCC9DEB60E7E3E6687EC6F33 /* Pods */,
+				EB43B01BFD1AD2A2B4FB3B7D /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -100,7 +92,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* PrincipalADE.app */,
+				13B07F961A680F5B00A75B9A /* PrincipalAI.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -111,50 +103,58 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = PrincipalADE/Supporting;
+			path = PrincipalAI/Supporting;
 			sourceTree = "<group>";
 		};
-		C6C0A5907A1D1283182C83A0 /* Pods */ = {
+		DCC9DEB60E7E3E6687EC6F33 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				8939CF20EB1CFAC28BB51992 /* Pods-PrincipalADE.debug.xcconfig */,
-				7E5FF2CB2F140D62F3E90720 /* Pods-PrincipalADE.release.xcconfig */,
+				DBB33B2F034F1B1B743B5B67 /* Pods-PrincipalAI.debug.xcconfig */,
+				0D3345C6C17F47E261CD270D /* Pods-PrincipalAI.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		F8A5038AC630747EC8701C13 /* ExpoModulesProviders */ = {
+		EB43B01BFD1AD2A2B4FB3B7D /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				613BD2530BD5642D63BC36EC /* PrincipalADE */,
+				EF2DB7E8805C02F02EEAD51A /* PrincipalAI */,
 			);
 			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		EF2DB7E8805C02F02EEAD51A /* PrincipalAI */ = {
+			isa = PBXGroup;
+			children = (
+				EB2F357000F8C6A652229F6C /* ExpoModulesProvider.swift */,
+			);
+			name = PrincipalAI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* PrincipalADE */ = {
+		13B07F861A680F5B00A75B9A /* PrincipalAI */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PrincipalADE" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PrincipalAI" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				3DA3F5EDD2A74D61A7B97801 /* [Expo] Configure project */,
+				0C792D686A4CAD409957262E /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				0D4E18681BFAC7E11784A250 /* [CP] Embed Pods Frameworks */,
+				09D81FBD9604709B3C10CB83 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = PrincipalADE;
-			productName = PrincipalADE;
-			productReference = 13B07F961A680F5B00A75B9A /* PrincipalADE.app */;
+			name = PrincipalAI;
+			productName = PrincipalAI;
+			productReference = 13B07F961A680F5B00A75B9A /* PrincipalAI.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -166,13 +166,11 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = 4TNFXHR5WN;
 						LastSwiftMigration = 1250;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "PrincipalADE" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "PrincipalAI" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -185,7 +183,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* PrincipalADE */,
+				13B07F861A680F5B00A75B9A /* PrincipalAI */,
 			);
 		};
 /* End PBXProject section */
@@ -198,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				6FB9730D9FEF2F0874FAD09B /* PrivacyInfo.xcprivacy in Resources */,
+				133E13DDCA3C7ED5A0958668 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -237,20 +235,20 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-PrincipalADE-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-PrincipalAI-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		0D4E18681BFAC7E11784A250 /* [CP] Embed Pods Frameworks */ = {
+		09D81FBD9604709B3C10CB83 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-frameworks.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-PrincipalAI/Pods-PrincipalAI-frameworks.sh",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermesvm.framework/hermesvm",
@@ -263,10 +261,10 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalAI/Pods-PrincipalAI-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		3DA3F5EDD2A74D61A7B97801 /* [Expo] Configure project */ = {
+		0C792D686A4CAD409957262E /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -277,18 +275,18 @@
 			inputPaths = (
 				"$(SRCROOT)/.xcode.env",
 				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/PrincipalADE/PrincipalADE.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-PrincipalADE/expo-configure-project.sh",
+				"$(SRCROOT)/PrincipalAI/PrincipalAI.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-PrincipalAI/expo-configure-project.sh",
 			);
 			name = "[Expo] Configure project";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-PrincipalADE/ExpoModulesProvider.swift",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-PrincipalAI/ExpoModulesProvider.swift",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-PrincipalADE/expo-configure-project.sh\"\n";
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-PrincipalAI/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -296,11 +294,12 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-PrincipalAI/Pods-PrincipalAI-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
@@ -311,13 +310,14 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalADE/Pods-PrincipalADE-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrincipalAI/Pods-PrincipalAI-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -328,7 +328,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				781A8811024308F486832FBA /* ExpoModulesProvider.swift in Sources */,
+				F79FDF0B02CA109F6187FDBB /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -337,21 +337,18 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8939CF20EB1CFAC28BB51992 /* Pods-PrincipalADE.debug.xcconfig */;
+			baseConfigurationReference = DBB33B2F034F1B1B743B5B67 /* Pods-PrincipalAI.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = PrincipalADE/PrincipalADE.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = PrincipalAI/PrincipalAI.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 4TNFXHR5WN;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = PrincipalADE/Info.plist;
+				INFOPLIST_FILE = PrincipalAI/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -365,8 +362,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.noetic-labs.principal-ai-mobile";
-				PRODUCT_NAME = PrincipalADE;
-				SWIFT_OBJC_BRIDGING_HEADER = "PrincipalADE/PrincipalADE-Bridging-Header.h";
+				PRODUCT_NAME = PrincipalAI;
+				SWIFT_OBJC_BRIDGING_HEADER = "PrincipalAI/PrincipalAI-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -376,16 +373,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E5FF2CB2F140D62F3E90720 /* Pods-PrincipalADE.release.xcconfig */;
+			baseConfigurationReference = 0D3345C6C17F47E261CD270D /* Pods-PrincipalAI.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = PrincipalADE/PrincipalADE.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = PrincipalAI/PrincipalAI.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 4TNFXHR5WN;
-				INFOPLIST_FILE = PrincipalADE/Info.plist;
+				INFOPLIST_FILE = PrincipalAI/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -399,8 +393,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.noetic-labs.principal-ai-mobile";
-				PRODUCT_NAME = PrincipalADE;
-				SWIFT_OBJC_BRIDGING_HEADER = "PrincipalADE/PrincipalADE-Bridging-Header.h";
+				PRODUCT_NAME = PrincipalAI;
+				SWIFT_OBJC_BRIDGING_HEADER = "PrincipalAI/PrincipalAI-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -532,7 +526,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PrincipalADE" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PrincipalAI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -541,7 +535,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "PrincipalADE" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "PrincipalAI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

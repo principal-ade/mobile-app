@@ -20,7 +20,7 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
-target 'PrincipalADE' do
+target 'PrincipalAI' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -59,17 +59,5 @@ target 'PrincipalADE' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    # Fix Swift 6 concurrency errors with Xcode 16+
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['SWIFT_VERSION'] = '5.0'
-        config.build_settings['SWIFT_STRICT_CONCURRENCY'] = 'minimal'
-        # Disable Swift 6 features that cause issues with expo-modules-core
-        config.build_settings['SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY'] = 'NO'
-        config.build_settings['SWIFT_UPCOMING_FEATURE_CONCURRENCY'] = 'NO'
-        config.build_settings['SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES'] = 'NO'
-      end
-    end
   end
 end
