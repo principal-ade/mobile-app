@@ -75,10 +75,30 @@ export function FeedPreferencesProvider({
   });
   const [isLoading, setIsLoading] = useState(!(initialUsers || initialRepos));
 
-  // Bootstrap: Load from storage on mount (only if no initial data provided)
+  // Update state when parent provides new initial data (multi-account mode)
+  useEffect(() => {
+    if (onUsersChange || onReposChange) {
+      // In multi-account mode, update state when parent provides new data
+      if (initialUsers !== undefined || initialRepos !== undefined) {
+        setState((prev) => ({
+          watchedUsers: initialUsers ?? prev.watchedUsers,
+          watchedRepos: initialRepos ?? prev.watchedRepos,
+          version: prev.version,
+        }));
+      }
+    }
+  }, [initialUsers, initialRepos, onUsersChange, onReposChange]);
+
+  // Bootstrap: Load from storage on mount (only if no initial data provided AND not in multi-account mode)
   useEffect(() => {
     // Skip bootstrap if initial data was provided
     if (initialUsers || initialRepos) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Skip bootstrap if we have parent callbacks (multi-account mode) - parent will provide data
+    if (onUsersChange || onReposChange) {
       setIsLoading(false);
       return;
     }
@@ -121,7 +141,7 @@ export function FeedPreferencesProvider({
     return () => {
       isMounted = false;
     };
-  }, [initialUsers, initialRepos]);
+  }, []);
 
   // User mutations
   const addUser = useCallback((user: WatchedUser) => {
