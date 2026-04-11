@@ -84,7 +84,8 @@ import { getContributors, type Contributor } from '../services/ContributorsServi
 import { useAuthContext } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../components/DailyActivityHeatmap';
-import { getRepoActivity, checkTourAvailability, getWatches, watchRepo, unwatchRepo } from '../services/FeedApiService';
+import { getRepoActivity, checkTourAvailability } from '../services/FeedApiService';
+import { useFeedPreferences } from '../context/FeedPreferencesContext';
 
 type RouteProps = RouteProp<RootStackParamList, 'RepoFileCity'>;
 
@@ -275,6 +276,7 @@ export function RepoFileCityScreen() {
 
   const { owner, name, fullName } = route.params;
   const { isAuthenticated, token } = useAuthContext();
+  const { watchedRepos, addRepo, removeRepo } = useFeedPreferences();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarred, setIsStarred] = useState(false);
@@ -297,8 +299,14 @@ export function RepoFileCityScreen() {
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
 
   const [isTourAvailable, setIsTourAvailable] = useState(false);
-  const [isRepoFollowed, setIsRepoFollowed] = useState(false);
-  const [repoFollowToggling, setRepoFollowToggling] = useState(false);
+
+  // Check if repo is being watched
+  const isRepoWatching = React.useMemo(() => {
+    return watchedRepos.some((r) =>
+      r.owner.toLowerCase() === owner.toLowerCase() &&
+      r.repo.toLowerCase() === name.toLowerCase()
+    );
+  }, [watchedRepos, owner, name]);
 
   useEffect(() => {
     let cancelled = false;
@@ -462,47 +470,28 @@ export function RepoFileCityScreen() {
     };
   }, [isAuthenticated, token, owner, name]);
 
-  // Fetch tour availability and repo follow status
+  // Fetch tour availability
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchTourAndFollowStatus() {
+    async function fetchTourAvailability() {
       try {
-        // Fetch tour availability (works for all users)
-        const tourPromise = checkTourAvailability(owner, name);
-
-        // Fetch repo follow status (requires authentication)
-        const followsPromise = isAuthenticated && token
-          ? getWatches(token)
-          : Promise.resolve(null);
-
-        const [tourResult, followsResult] = await Promise.all([
-          tourPromise,
-          followsPromise,
-        ]);
+        const tourResult = await checkTourAvailability(owner, name);
 
         if (!cancelled) {
           setIsTourAvailable(tourResult.hasTour);
-
-          if (followsResult) {
-            const repoKey = `${owner}/${name}`.toLowerCase();
-            const isFollowed = followsResult.watchedRepos.some(
-              (r) => `${r.owner}/${r.repo}`.toLowerCase() === repoKey
-            );
-            setIsRepoFollowed(isFollowed);
-          }
         }
       } catch (err) {
-        console.error('Error fetching tour/follow status:', err);
+        console.error('Error fetching tour availability:', err);
       }
     }
 
-    fetchTourAndFollowStatus();
+    fetchTourAvailability();
 
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, token, owner, name]);
+  }, [owner, name]);
 
   const handleToggleStar = async () => {
     if (!token || starToggling) return;
@@ -524,22 +513,16 @@ export function RepoFileCityScreen() {
     }
   };
 
-  const handleToggleRepoFollow = async () => {
-    if (!token || repoFollowToggling) return;
-
-    setRepoFollowToggling(true);
-    try {
-      if (isRepoFollowed) {
-        await unwatchRepo(token, owner, name);
-        setIsRepoFollowed(false);
-      } else {
-        await watchRepo(token, owner, name);
-        setIsRepoFollowed(true);
-      }
-    } catch (err) {
-      console.error('Error toggling repo follow:', err);
-    } finally {
-      setRepoFollowToggling(false);
+  // Toggle watch state
+  const handleToggleRepoWatch = () => {
+    if (isRepoWatching) {
+      removeRepo(owner, name);
+    } else {
+      addRepo({
+        owner,
+        repo: name,
+        watchedAt: new Date().toISOString(),
+      });
     }
   };
 
@@ -833,16 +816,15 @@ export function RepoFileCityScreen() {
                         style={[
                           styles.actionButton,
                           { borderColor: theme.colors.primary },
-                          isRepoFollowed && { backgroundColor: theme.colors.primary },
+                          isRepoWatching && { backgroundColor: theme.colors.primary },
                         ]}
-                        onPress={handleToggleRepoFollow}
-                        disabled={repoFollowToggling}
+                        onPress={handleToggleRepoWatch}
                       >
                         <Text style={[
                           styles.actionButtonText,
-                          { color: isRepoFollowed ? '#fff' : theme.colors.primary },
+                          { color: isRepoWatching ? '#fff' : theme.colors.primary },
                         ]}>
-                          {repoFollowToggling ? '...' : isRepoFollowed ? 'Tracking' : 'Track'}
+                          {isRepoWatching ? 'Watching' : 'Watch'}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -869,15 +851,20 @@ export function RepoFileCityScreen() {
                           contentContainerStyle={styles.contributorsScrollContent}
                         >
                           {contributors.map((contributor) => (
-                            <View
+                            <TouchableOpacity
                               key={contributor.login}
                               style={styles.contributorAvatar}
+                              onPress={() => {
+                                navigation.navigate('UserProfile', {
+                                  login: contributor.login,
+                                });
+                              }}
                             >
                               <Image
                                 source={{ uri: contributor.avatarUrl }}
                                 style={styles.contributorImage}
                               />
-                            </View>
+                            </TouchableOpacity>
                           ))}
                         </ScrollView>
                       </>
