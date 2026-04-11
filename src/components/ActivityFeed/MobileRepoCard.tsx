@@ -8,8 +8,10 @@ import {
   ViewToken,
   LayoutChangeEvent,
   Pressable,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
@@ -63,6 +65,7 @@ const TIMELINE_LINE_HEIGHT = 2;
 
 export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopInset = false }: MobileRepoCardProps) {
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const topInset = skipTopInset ? 0 : insets.top;
   const [avatarError, setAvatarError] = useState(false);
@@ -132,11 +135,19 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
       >
         {/* Author row */}
         <View style={styles.authorRow}>
-          {commit.authorAvatarUrl && (
-            <Image
-              source={{ uri: commit.authorAvatarUrl }}
-              style={styles.commitAvatar}
-            />
+          {commit.authorAvatarUrl && commit.authorLogin && (
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate('UserProfile', {
+                  username: commit.authorLogin,
+                });
+              }}
+            >
+              <Image
+                source={{ uri: commit.authorAvatarUrl }}
+                style={styles.commitAvatar}
+              />
+            </TouchableOpacity>
           )}
           <Text style={[styles.authorName, { color: theme.colors.text }]}>
             {commit.author}
