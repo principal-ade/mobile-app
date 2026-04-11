@@ -117,19 +117,19 @@ export function UserProfileScreenContainer() {
       setError(null);
 
       try {
-        // Fetch profile and activity in parallel
+        // Fetch profile first to show UI immediately
+        const profile = await getUserProfile(username);
+        setUserData(profile);
+        setIsLoading(false);
+
+        // Then fetch activity data in the background
         // Request 150 days (5 months) of contribution data for the heatmap
         // Request 1 day of activity events for recent activity section
-        const [profile, activity] = await Promise.all([
-          getUserProfile(username),
-          getUserActivity(username, 150, 1),
-        ]);
-        setUserData(profile);
+        const activity = await getUserActivity(username, 150, 1);
         setActivityData(activity);
       } catch (err) {
         console.error('Error fetching user profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load user profile');
-      } finally {
         setIsLoading(false);
       }
     }
@@ -147,15 +147,14 @@ export function UserProfileScreenContainer() {
             setError(null);
             setIsLoading(true);
             try {
-              const [profile, activity] = await Promise.all([
-                getUserProfile(username),
-                getUserActivity(username, 150, 1),
-              ]);
+              const profile = await getUserProfile(username);
               setUserData(profile);
+              setIsLoading(false);
+
+              const activity = await getUserActivity(username, 150, 1);
               setActivityData(activity);
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Failed to load');
-            } finally {
               setIsLoading(false);
             }
           }}
@@ -168,18 +167,11 @@ export function UserProfileScreenContainer() {
 
   return (
     <UserProfileScreen
-      loading={isLoading || !userData}
+      loading={!userData}
       avatarUrl={userData?.avatar_url}
       name={userData?.name || userData?.login}
       username={userData?.login}
       bio={userData?.bio || undefined}
-      location={userData?.location || undefined}
-      website={userData?.blog || undefined}
-      stats={userData ? {
-        repositories: userData.public_repos,
-        followers: userData.followers,
-        following: userData.following,
-      } : undefined}
       contributions={activityData?.contributions || []}
       recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}
       onClose={() => navigation.goBack()}

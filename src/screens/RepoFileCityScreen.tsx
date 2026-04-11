@@ -86,6 +86,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../components/DailyActivityHeatmap';
 import { getRepoActivity, checkTourAvailability } from '../services/FeedApiService';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
+import { ContributionCalendar, type DailyContribution } from '../components/ContributionCalendar';
+import { getRepoContributions } from '../services/GitHubSearchService';
 
 type RouteProps = RouteProp<RootStackParamList, 'RepoFileCity'>;
 
@@ -299,6 +301,8 @@ export function RepoFileCityScreen() {
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
 
   const [isTourAvailable, setIsTourAvailable] = useState(false);
+  const [contributions, setContributions] = useState<DailyContribution[]>([]);
+  const [contributionsLoading, setContributionsLoading] = useState(true);
 
   // Check if repo is being watched
   const isRepoWatching = React.useMemo(() => {
@@ -307,6 +311,25 @@ export function RepoFileCityScreen() {
       r.repo.toLowerCase() === name.toLowerCase()
     );
   }, [watchedRepos, owner, name]);
+
+  // Fetch contribution data for header background
+  useEffect(() => {
+    async function fetchContributions() {
+      try {
+        setContributionsLoading(true);
+        const response = await getRepoContributions(owner, name);
+        setContributions(response.contributions);
+      } catch (error) {
+        console.error('Error fetching repo contributions:', error);
+        // Keep empty contributions on error
+        setContributions([]);
+      } finally {
+        setContributionsLoading(false);
+      }
+    }
+
+    fetchContributions();
+  }, [owner, name]);
 
   useEffect(() => {
     let cancelled = false;
@@ -567,7 +590,20 @@ export function RepoFileCityScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        {/* Heatmap background */}
+        <View style={styles.headerBackground}>
+          <View style={styles.headerCalendarWrapper}>
+            <ContributionCalendar
+              contributions={contributions}
+              months={5}
+              showLabels={false}
+              loading={contributionsLoading}
+            />
+          </View>
+        </View>
+
+        {/* Header content */}
         <TouchableOpacity
           style={styles.avatarButton}
           onPress={() => {/* TODO: navigate to owner profile */}}
@@ -590,7 +626,7 @@ export function RepoFileCityScreen() {
             style={[styles.title, { color: theme.colors.text }]}
             numberOfLines={1}
           >
-            {fullName}
+            {name}
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -605,7 +641,7 @@ export function RepoFileCityScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={styles.closeButton}
+            style={[styles.closeButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
             onPress={() => navigation.goBack()}
           >
             <Text style={[styles.closeIcon, { color: theme.colors.textSecondary }]}>
@@ -1013,31 +1049,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 100,
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 12,
+    left: -16,
+    right: -16,
+    bottom: 0,
+    opacity: 0.3,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    zIndex: 0,
+  },
+  headerCalendarWrapper: {
+    width: '100%',
+    height: 200,
   },
   avatarButton: {
     padding: 4,
+    zIndex: 1,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
   avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: '600',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    zIndex: 1,
   },
   tourButton: {
     paddingHorizontal: 12,
@@ -1050,8 +1106,12 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 8,
-    width: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   closeIcon: {
     fontSize: 18,
@@ -1059,11 +1119,20 @@ const styles = StyleSheet.create({
   },
   headerCenter: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    marginLeft: 12,
+    zIndex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    textAlign: 'left',
+  },
+  subtitle: {
+    fontSize: 15,
+    textAlign: 'left',
+    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,

@@ -6,8 +6,8 @@
  * with color intensity based on contribution count.
  */
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 
 export interface DailyContribution {
@@ -19,6 +19,7 @@ export interface ContributionCalendarProps {
   contributions: DailyContribution[];
   months?: number; // Number of months to show (default 5)
   showLabels?: boolean; // Show month and day labels (default true)
+  loading?: boolean; // Show shimmer loading state
 }
 
 interface WeekData {
@@ -40,8 +41,25 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
   contributions,
   months = 5,
   showLabels = true,
+  loading = false,
 }) => {
   const { theme } = useTheme();
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (loading) {
+      shimmerAnim.setValue(0);
+      const animation = Animated.loop(
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        })
+      );
+      animation.start();
+      return () => animation.stop();
+    }
+  }, [loading, shimmerAnim]);
 
   const { weeks, maxCount, monthLabels, monthBoundaries } = useMemo(() => {
     const now = new Date();
@@ -165,6 +183,116 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
 
     return primaryColor;
   };
+
+  // Generate skeleton weeks for loading state
+  const skeletonWeeks = useMemo(() => {
+    const numWeeks = Math.floor((months * 30) / 7);
+    return Array.from({ length: numWeeks }, (_, i) => ({
+      days: Array.from({ length: 7 }, (_, j) => ({ weekIdx: i, dayIdx: j }))
+    }));
+  }, [months]);
+
+  // Get a lighter version of the primary color for shimmer
+  const getShimmerColor = () => {
+    const rgb = hexToRgb(theme.colors.primary);
+    if (rgb) {
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`;
+    }
+    return theme.colors.border;
+  };
+
+  // Create wave shimmer opacity for each block based on position
+  const getWaveOpacity = (weekIdx: number, dayIdx: number) => {
+    const totalBlocks = skeletonWeeks.length;
+    const blockPosition = weekIdx / Math.max(totalBlocks - 1, 1);
+
+    return shimmerAnim.interpolate({
+      inputRange: [0, blockPosition, Math.min(blockPosition + 0.3, 1), 1],
+      outputRange: [0.2, 0.7, 0.2, 0.2],
+      extrapolate: 'clamp',
+    });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.calendar}>
+          <View style={styles.grid}>
+            {/* Day labels column */}
+            {showLabels && (
+              <View style={styles.dayLabelsColumn}>
+                <View style={styles.monthLabelSpacer} />
+                {DAYS_OF_WEEK.map((day, idx) => (
+                  <View key={idx} style={styles.dayLabelCell}>
+                    {idx % 2 === 1 && (
+                      <Text style={[styles.dayLabel, { color: theme.colors.textTertiary }]}>
+                        {day}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Skeleton grid */}
+            <View style={styles.weeksContainer}>
+              {showLabels && <View style={styles.monthLabelsRow} />}
+              <View style={styles.weeksGrid}>
+                {skeletonWeeks.map((week, weekIdx) => (
+                  <View key={weekIdx} style={styles.week}>
+                    {week.days.map((_, dayIdx) => (
+                      <Animated.View
+                        key={dayIdx}
+                        style={[
+                          styles.day,
+                          {
+                            backgroundColor: getShimmerColor(),
+                            opacity: getWaveOpacity(weekIdx, dayIdx),
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Legend */}
+          {showLabels && (
+            <View style={styles.legend}>
+              <Text style={[styles.legendLabel, { color: theme.colors.textTertiary }]}>
+                Less
+              </Text>
+              {[0, 1, 2, 3, 4].map((level) => {
+                const legendOpacity = shimmerAnim.interpolate({
+                  inputRange: [0, level / 4, Math.min(level / 4 + 0.3, 1), 1],
+                  outputRange: [0.2, 0.7, 0.2, 0.2],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <Animated.View
+                    key={level}
+                    style={[
+                      styles.legendBlock,
+                      {
+                        backgroundColor: getShimmerColor(),
+                        opacity: legendOpacity,
+                      },
+                    ]}
+                  />
+                );
+              })}
+              <Text style={[styles.legendLabel, { color: theme.colors.textTertiary }]}>
+                More
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

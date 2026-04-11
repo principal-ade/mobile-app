@@ -14,12 +14,6 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { ContributionCalendar, DailyContribution } from '../components/ContributionCalendar';
 import { Logo } from '../components/Logo';
 
-interface UserStats {
-  repositories: number;
-  followers: number;
-  following: number;
-}
-
 export interface ActivityCommit {
   sha: string;
   message: string;
@@ -47,9 +41,6 @@ export interface UserProfileScreenProps {
   name?: string;
   username?: string;
   bio?: string;
-  location?: string;
-  website?: string;
-  stats?: UserStats;
   onWatchPress?: () => void;
   onClose?: () => void;
   isWatching?: boolean;
@@ -63,9 +54,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   name,
   username,
   bio,
-  location,
-  website,
-  stats,
   onWatchPress,
   onClose,
   isWatching = false,
@@ -123,7 +111,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const userAvatarUrl = avatarUrl!;
   const userName = name!;
   const userUsername = username!;
-  const userStats = stats!;
 
   // Define header collapse threshold
   const HEADER_MAX_HEIGHT = 300 + insets.top;
@@ -256,13 +243,16 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           ]}
         >
           {/* Heatmap background behind avatar */}
-          {contributions.length > 0 && (
-            <View style={styles.contributionBackground}>
-              <View style={styles.calendarWrapper}>
-                <ContributionCalendar contributions={contributions} months={5} showLabels={false} />
-              </View>
+          <View style={styles.contributionBackground}>
+            <View style={styles.calendarWrapper}>
+              <ContributionCalendar
+                contributions={contributions}
+                months={5}
+                showLabels={false}
+                loading={contributions.length === 0}
+              />
             </View>
-          )}
+          </View>
 
           {/* Avatar on top */}
           <View style={styles.avatarContainer}>
@@ -349,79 +339,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           </Text>
         </View>
       )}
-
-      {/* Info Section */}
-      <View style={styles.infoSection}>
-        {location && (
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: theme.colors.textTertiary }]}>
-              Location
-            </Text>
-            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-              {location}
-            </Text>
-          </View>
-        )}
-        {website && (
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: theme.colors.textTertiary }]}>
-              Website
-            </Text>
-            <Text
-              style={[
-                styles.infoValue,
-                styles.link,
-                { color: theme.colors.accent },
-              ]}
-            >
-              {website}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Stats Section */}
-      <View
-        style={[
-          styles.statsContainer,
-          { backgroundColor: theme.colors.surface },
-        ]}
-      >
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {userStats.repositories}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Repositories
-          </Text>
-        </View>
-
-        <View
-          style={[styles.statDivider, { backgroundColor: theme.colors.border }]}
-        />
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {userStats.followers}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Followers
-          </Text>
-        </View>
-
-        <View
-          style={[styles.statDivider, { backgroundColor: theme.colors.border }]}
-        />
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {userStats.following}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Following
-          </Text>
-        </View>
-      </View>
 
       {/* Recent Activity - Last 24 Hours */}
       <View style={styles.activitySection}>
@@ -612,52 +529,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
-  },
-  infoSection: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '400',
-  },
-  link: {
-    textDecorationLine: 'underline',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    marginTop: 24,
-    marginHorizontal: 16,
-    padding: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '400',
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
   },
   activitySection: {
     paddingHorizontal: 16,

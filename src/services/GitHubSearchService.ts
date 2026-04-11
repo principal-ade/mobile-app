@@ -319,3 +319,38 @@ export function formatStars(count: number): string {
   }
   return count.toString();
 }
+
+export interface RepoContributionsResponse {
+  contributions: DailyContribution[];
+  timeRange: {
+    start: string;
+    end: string;
+  };
+  totalCommits: number;
+  pagesFetched: number;
+  contributorsUsed: number;
+}
+
+/**
+ * Get repository contribution calendar
+ * Fetches aggregated commit counts by day from repo creation (max 365 days back)
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ */
+export async function getRepoContributions(
+  owner: string,
+  repo: string
+): Promise<RepoContributionsResponse> {
+  const url = `${API_BASE}/github/repo/${owner}/${repo}/contributions`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Repository not found');
+    }
+    throw new Error(`Failed to fetch repository contributions: ${response.statusText}`);
+  }
+
+  return response.json();
+}
