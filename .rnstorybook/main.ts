@@ -1,4 +1,4 @@
-import type { StorybookConfig } from '@storybook/react-native-web-vite';
+import type { StorybookConfig } from '@storybook/react-native';
 
 const config: StorybookConfig = {
   stories: [
@@ -6,9 +6,9 @@ const config: StorybookConfig = {
     '../src/screens/**/*.stories.@(js|jsx|ts|tsx)',
   ],
   addons: [
-    '@storybook/addon-a11y',
-    '@storybook/addon-docs',
+    '@storybook/addon-ondevice-controls',
+    '@storybook/addon-ondevice-actions',
   ],
-  framework: '@storybook/react-native-web-vite',
 };
+
 export default config;

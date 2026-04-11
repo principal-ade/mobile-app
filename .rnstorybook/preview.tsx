@@ -24,4 +24,8 @@ const preview: Preview = {
   ],
 };
 
+// Export for native Storybook
+export const decorators = preview.decorators;
+export const parameters = preview.parameters;
+
 export default preview;

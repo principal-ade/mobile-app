@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import React from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
 import { MobileRepoCard } from './MobileRepoCard';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 
@@ -80,6 +81,13 @@ const MobileFrame: React.FC<{ children: React.ReactNode; height?: number }> = ({
 const meta: Meta<typeof MobileRepoCard> = {
   title: 'ActivityFeed/MobileRepoCard',
   component: MobileRepoCard,
+  decorators: [
+    (Story) => (
+      <NavigationContainer>
+        <Story />
+      </NavigationContainer>
+    ),
+  ],
   parameters: {
     layout: 'centered',
   },
