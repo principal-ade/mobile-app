@@ -591,18 +591,6 @@ export function RepoFileCityScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        {/* Heatmap background */}
-        <View style={styles.headerBackground}>
-          <View style={styles.headerCalendarWrapper}>
-            <ContributionCalendar
-              contributions={contributions}
-              months={5}
-              showLabels={false}
-              loading={contributionsLoading}
-            />
-          </View>
-        </View>
-
         {/* Header content */}
         <TouchableOpacity
           style={styles.avatarButton}
@@ -679,13 +667,25 @@ export function RepoFileCityScreen() {
         <>
           {/* Visualization Area */}
           <View style={styles.canvasContainer}>
+            {/* Contribution grid background */}
+            <View style={styles.gridBackground}>
+              <ContributionCalendar
+                contributions={contributions}
+                showLabels={false}
+                loading={contributionsLoading}
+                layout="grid"
+                gridColumns={14}
+                gridRows={14}
+              />
+            </View>
+
             {activeViz === 'city' && (
               <FileCityCanvas
                 cityData={cityData}
                 highlightLayers={highlightLayers}
                 iconMap={iconMap}
                 showFileTypeIcons={true}
-                backgroundColor={theme.colors.background}
+                backgroundColor="transparent"
                 defaultDistrictColor="#4B5155"
                 buildingBorderRadius={0}
                 showDirectoryLabels={false}
@@ -715,7 +715,7 @@ export function RepoFileCityScreen() {
                 highlightLayers={highlightLayers}
                 iconMap={iconMap}
                 showFileTypeIcons={true}
-                backgroundColor={theme.colors.background}
+                backgroundColor="transparent"
                 defaultDistrictColor="#4B5155"
                 buildingBorderRadius={0}
                 showDirectoryLabels={false}
@@ -1056,18 +1056,18 @@ const styles = StyleSheet.create({
   },
   headerBackground: {
     position: 'absolute',
-    top: 12,
+    top: 0,
     left: -16,
     right: -16,
     bottom: 0,
     opacity: 0.3,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     zIndex: 0,
   },
   headerCalendarWrapper: {
     width: '100%',
-    height: 200,
+    height: '100%',
   },
   avatarButton: {
     padding: 4,
@@ -1177,6 +1177,16 @@ const styles = StyleSheet.create({
     width: CANVAS_SIZE,
     height: CANVAS_SIZE,
     alignSelf: 'center',
+    position: 'relative',
+  },
+  gridBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.3,
+    zIndex: 0,
   },
   starChartContainer: {
     flex: 1,

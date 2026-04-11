@@ -20,6 +20,10 @@ export interface ContributionCalendarProps {
   months?: number; // Number of months to show (default 5)
   showLabels?: boolean; // Show month and day labels (default true)
   loading?: boolean; // Show shimmer loading state
+  maxHeight?: number; // Maximum height to fit within (overrides months if set)
+  layout?: 'weeks' | 'grid'; // Layout mode: weeks (default) or grid
+  gridColumns?: number; // Number of columns for grid layout (default 14)
+  gridRows?: number; // Number of rows for grid layout (default 14)
 }
 
 interface WeekData {
@@ -42,9 +46,53 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
   months = 5,
   showLabels = true,
   loading = false,
+  maxHeight,
+  layout = 'weeks',
+  gridColumns = 14,
+  gridRows = 14,
 }) => {
   const { theme } = useTheme();
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const [measuredHeight, setMeasuredHeight] = React.useState<number | null>(null);
+  const [measuredWidth, setMeasuredWidth] = React.useState<number | null>(null);
+
+  // Calculate day size based on layout mode
+  const daySize = useMemo(() => {
+    const gap = 1.5;
+
+    if (layout === 'grid') {
+      // Grid layout: fit gridRows × gridColumns
+      const heightToUse = measuredHeight || maxHeight;
+      const widthToUse = measuredWidth;
+
+      if (heightToUse && widthToUse) {
+        const verticalGaps = (gridRows - 1) * gap;
+        const horizontalGaps = (gridColumns - 1) * gap;
+        const availableHeight = heightToUse - verticalGaps;
+        const availableWidth = widthToUse - horizontalGaps;
+
+        // Use the smaller dimension to ensure squares fit
+        const heightBasedSize = Math.floor(availableHeight / gridRows);
+        const widthBasedSize = Math.floor(availableWidth / gridColumns);
+        return Math.min(heightBasedSize, widthBasedSize);
+      }
+
+      return 12; // Default
+    }
+
+    // Weeks layout: fit 7 days vertically
+    const totalGaps = 6 * gap; // 6 gaps between 7 days
+    const heightToUse = measuredHeight || maxHeight;
+
+    if (heightToUse) {
+      const availableHeight = heightToUse - totalGaps;
+      const size = Math.floor(availableHeight / 7);
+      return size;
+    }
+
+    // Default size when no height constraint
+    return 12;
+  }, [layout, measuredHeight, measuredWidth, maxHeight, gridRows, gridColumns]);
 
   useEffect(() => {
     if (loading) {
@@ -61,9 +109,71 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
     }
   }, [loading, shimmerAnim]);
 
-  const { weeks, maxCount, monthLabels, monthBoundaries } = useMemo(() => {
+  // Calculate how many weeks to show (for weeks layout)
+  const weeksToShow = useMemo(() => {
+    if (layout === 'grid') {
+      return 0; // Not used in grid mode
+    }
+
+    if (maxHeight) {
+      // When maxHeight is set, show ALL available contribution data
+      // We'll fit the data horizontally with scroll
+      if (contributions.length === 0) {
+        // Default to 5 months worth for skeleton
+        return Math.floor((5 * 30) / 7);
+      }
+      // Calculate from the actual contribution data range
+      return Math.ceil(contributions.length / 7) + 4; // Add extra weeks for padding
+    }
+
+    // Normal mode: use months parameter
+    return Math.floor((months * 30) / 7);
+  }, [layout, maxHeight, contributions.length, months]);
+
+  // Calculate grid data (for grid layout)
+  const { gridData, maxCount: gridMaxCount } = useMemo(() => {
+    if (layout !== 'grid') {
+      return { gridData: [], maxCount: 0 };
+    }
+
+    const totalCells = gridRows * gridColumns;
     const now = new Date();
-    const daysToShow = months * 30; // Approximate
+
+    // Create a map of contributions by date
+    const contribMap = new Map<string, number>();
+    let max = 0;
+
+    contributions.forEach(({ date, count }) => {
+      contribMap.set(date, count);
+      max = Math.max(max, count);
+    });
+
+    // Build grid array (most recent dates first, filling from bottom-right)
+    const grid: (DailyContribution | null)[][] = [];
+
+    for (let row = 0; row < gridRows; row++) {
+      grid[row] = [];
+      for (let col = 0; col < gridColumns; col++) {
+        const cellIndex = row * gridColumns + col;
+        const daysAgo = totalCells - cellIndex - 1;
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        const dateStr = date.toISOString().split('T')[0];
+        const count = contribMap.get(dateStr) || 0;
+
+        grid[row][col] = { date: dateStr, count };
+      }
+    }
+
+    return { gridData: grid, maxCount: max };
+  }, [layout, contributions, gridRows, gridColumns]);
+
+  const { weeks, maxCount, monthLabels, monthBoundaries } = useMemo(() => {
+    if (layout === 'grid') {
+      return { weeks: [], maxCount: gridMaxCount, monthLabels: [], monthBoundaries: new Set<number>() };
+    }
+    const now = new Date();
+    const daysToShow = weeksToShow * 7;
 
     // Start from the beginning of the week containing the start date
     const startDate = new Date(now);
@@ -161,7 +271,7 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
       monthLabels: monthLabelsData,
       monthBoundaries: monthBoundaryIndices,
     };
-  }, [contributions, months]);
+  }, [contributions, weeksToShow]);
 
   const getColor = (count: number): string => {
     if (count === 0) {
@@ -186,11 +296,10 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
 
   // Generate skeleton weeks for loading state
   const skeletonWeeks = useMemo(() => {
-    const numWeeks = Math.floor((months * 30) / 7);
-    return Array.from({ length: numWeeks }, (_, i) => ({
+    return Array.from({ length: weeksToShow }, (_, i) => ({
       days: Array.from({ length: 7 }, (_, j) => ({ weekIdx: i, dayIdx: j }))
     }));
-  }, [months]);
+  }, [weeksToShow]);
 
   // Get a lighter version of the primary color for shimmer
   const getShimmerColor = () => {
@@ -215,7 +324,24 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View
+        style={[
+          styles.container,
+          // Fill available space when we need to measure (no maxHeight prop)
+          !maxHeight && { flex: 1, marginVertical: 0, paddingHorizontal: 0 },
+          // Remove padding for grid layout
+          layout === 'grid' && { paddingHorizontal: 0, marginVertical: 0 }
+        ]}
+        onLayout={(e) => {
+          const { height, width } = e.nativeEvent.layout;
+          if (height > 0 && height !== measuredHeight) {
+            setMeasuredHeight(height);
+          }
+          if (width > 0 && width !== measuredWidth) {
+            setMeasuredWidth(width);
+          }
+        }}
+      >
         <View style={styles.calendar}>
           <View style={styles.grid}>
             {/* Day labels column */}
@@ -237,14 +363,19 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
             {/* Skeleton grid */}
             <View style={styles.weeksContainer}>
               {showLabels && <View style={styles.monthLabelsRow} />}
-              <View style={styles.weeksGrid}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.weeksGrid, { justifyContent: 'flex-end', flexGrow: 1 }]}
+              >
                 {skeletonWeeks.map((week, weekIdx) => (
-                  <View key={weekIdx} style={styles.week}>
+                  <View key={weekIdx} style={[styles.week, { width: daySize }]}>
                     {week.days.map((_, dayIdx) => (
                       <Animated.View
                         key={dayIdx}
                         style={[
                           styles.day,
+                          { width: daySize, height: daySize },
                           {
                             backgroundColor: getShimmerColor(),
                             opacity: getWaveOpacity(weekIdx, dayIdx),
@@ -254,7 +385,7 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
                     ))}
                   </View>
                 ))}
-              </View>
+              </ScrollView>
             </View>
           </View>
 
@@ -295,28 +426,67 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        // Fill available space when we need to measure (no maxHeight prop)
+        !maxHeight && { flex: 1, marginVertical: 0, paddingHorizontal: 0 },
+        // Remove padding for grid layout
+        layout === 'grid' && { paddingHorizontal: 0, marginVertical: 0 }
+      ]}
+      onLayout={(e) => {
+        const { height, width } = e.nativeEvent.layout;
+        if (height > 0 && height !== measuredHeight) {
+          setMeasuredHeight(height);
+        }
+        if (width > 0 && width !== measuredWidth) {
+          setMeasuredWidth(width);
+        }
+      }}
+    >
       <View style={styles.calendar}>
-          <View style={styles.grid}>
-            {/* Day labels column */}
-            {showLabels && (
-              <View style={styles.dayLabelsColumn}>
-                {/* Spacer to align with month labels */}
-                <View style={styles.monthLabelSpacer} />
-                {DAYS_OF_WEEK.map((day, idx) => (
-                  <View key={idx} style={styles.dayLabelCell}>
-                    {idx % 2 === 1 && (
-                      <Text style={[styles.dayLabel, { color: theme.colors.textTertiary }]}>
-                        {day}
-                      </Text>
-                    )}
-                  </View>
-                ))}
-              </View>
-            )}
+          {layout === 'grid' ? (
+            // Grid layout: 2D grid of squares
+            <View style={styles.gridContainer}>
+              {gridData.map((row, rowIdx) => (
+                <View key={rowIdx} style={[styles.gridRow, { gap: 1.5 }]}>
+                  {row.map((day, colIdx) => (
+                    <View
+                      key={colIdx}
+                      style={[
+                        styles.day,
+                        { width: daySize, height: daySize },
+                        {
+                          backgroundColor: day ? getColor(day.count) : 'transparent',
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : (
+            // Weeks layout: traditional horizontal scrolling weeks
+            <View style={styles.grid}>
+              {/* Day labels column */}
+              {showLabels && (
+                <View style={styles.dayLabelsColumn}>
+                  {/* Spacer to align with month labels */}
+                  <View style={styles.monthLabelSpacer} />
+                  {DAYS_OF_WEEK.map((day, idx) => (
+                    <View key={idx} style={styles.dayLabelCell}>
+                      {idx % 2 === 1 && (
+                        <Text style={[styles.dayLabel, { color: theme.colors.textTertiary }]}>
+                          {day}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
 
-            {/* Contribution grid */}
-            <View style={styles.weeksContainer}>
+              {/* Contribution grid */}
+              <View style={styles.weeksContainer}>
               {/* Month labels positioned above weeks */}
               {showLabels && (
                 <View style={styles.monthLabelsRow}>
@@ -344,17 +514,25 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
               )}
 
               {/* Weeks grid */}
-              <View style={styles.weeksGrid}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.weeksGrid, { justifyContent: 'flex-end', flexGrow: 1 }]}
+              >
               {weeks.map((week, weekIdx) => (
                 <View
                   key={weekIdx}
-                  style={styles.week}
+                  style={[
+                    styles.week,
+                    { width: daySize }
+                  ]}
                 >
                   {week.days.map((day, dayIdx) => (
                     <View
                       key={dayIdx}
                       style={[
                         styles.day,
+                        { width: daySize, height: daySize },
                         {
                           backgroundColor: day ? getColor(day.count) : 'transparent',
                         },
@@ -363,9 +541,10 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
                   ))}
                 </View>
               ))}
-              </View>
+              </ScrollView>
             </View>
           </View>
+          )}
 
           {/* Legend */}
           {showLabels && (
@@ -410,6 +589,16 @@ const styles = StyleSheet.create({
   },
   calendar: {
     paddingTop: 4,
+    flex: 1,
+  },
+  gridContainer: {
+    flex: 1,
+    gap: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridRow: {
+    flexDirection: 'row',
   },
   monthLabelsRow: {
     height: 18,
@@ -430,6 +619,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     flexDirection: 'row',
+    flex: 1,
   },
   dayLabelsColumn: {
     width: 16,
@@ -456,11 +646,8 @@ const styles = StyleSheet.create({
   },
   week: {
     gap: 1.5,
-    flex: 1,
   },
   day: {
-    width: '100%',
-    aspectRatio: 1,
     borderRadius: 1.5,
   },
   legend: {
