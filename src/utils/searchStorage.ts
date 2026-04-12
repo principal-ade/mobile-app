@@ -1,10 +1,22 @@
 import * as SecureStore from 'expo-secure-store';
 
 const SEARCH_HISTORY_KEY = 'search_history';
-const MAX_HISTORY_ENTRIES = 10;
+const CLICKED_RESULTS_KEY = 'clicked_results';
+const MAX_HISTORY_ENTRIES = 3;
+const MAX_CLICKED_RESULTS = 5;
 
 export interface SearchHistoryEntry {
   query: string;
+  timestamp: string;
+}
+
+export interface ClickedResult {
+  type: 'repo' | 'user';
+  id: string;
+  name: string;
+  owner?: string; // For repos
+  login?: string; // For users
+  avatarUrl: string;
   timestamp: string;
 }
 
@@ -91,5 +103,57 @@ export async function clearSearchHistory(): Promise<void> {
   }
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem(SEARCH_HISTORY_KEY);
+  }
+}
+
+/**
+ * Get clicked results history
+ * Returns most recent clicks first (sorted by timestamp descending)
+ */
+export async function getClickedResults(): Promise<ClickedResult[]> {
+  const data = await getItem(CLICKED_RESULTS_KEY);
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save a clicked result to history
+ * - Deduplicates: if result already exists, updates timestamp and moves to front
+ * - FIFO: removes oldest entry when exceeding MAX_CLICKED_RESULTS
+ */
+export async function saveClickedResult(result: Omit<ClickedResult, 'timestamp'>): Promise<void> {
+  const history = await getClickedResults();
+
+  // Remove existing entry if present (by id)
+  const filtered = history.filter(entry => entry.id !== result.id);
+
+  // Add new entry at the front
+  const newEntry: ClickedResult = {
+    ...result,
+    timestamp: new Date().toISOString(),
+  };
+
+  const updated = [newEntry, ...filtered];
+
+  // Keep only MAX_CLICKED_RESULTS (FIFO)
+  const limited = updated.slice(0, MAX_CLICKED_RESULTS);
+
+  await setItem(CLICKED_RESULTS_KEY, JSON.stringify(limited));
+}
+
+/**
+ * Clear all clicked results
+ */
+export async function clearClickedResults(): Promise<void> {
+  if (await isSecureStoreAvailable()) {
+    await SecureStore.deleteItemAsync(CLICKED_RESULTS_KEY);
+    return;
+  }
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(CLICKED_RESULTS_KEY);
   }
 }

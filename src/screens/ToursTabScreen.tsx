@@ -14,12 +14,12 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { formatStars } from '../services/GitHubSearchService';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 import { getReposWithTours, type RepoWithTour } from '../services/FeedApiService';
 import { getCompletedTours } from './TourFileCityScreen';
 import { LucideIcon } from '../components/LucideIcon';
 
-type NavigationProp = StackNavigationProp<RootStackParamList>;
+type NavigationProp = StackNavigationProp<FeedStackParamList>;
 
 // Custom icon components
 function ClearIcon({ color, size = 14 }: { color: string; size?: number }) {
@@ -178,7 +178,11 @@ function getLanguageColor(language: string): string {
   return colors[language] || '#808080';
 }
 
-export function ToursTabScreen() {
+export interface ToursTabScreenProps {
+  hideHeader?: boolean;
+}
+
+export function ToursTabScreen({ hideHeader = false }: ToursTabScreenProps = {}) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -333,16 +337,18 @@ export function ToursTabScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            Tours
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            Guided tours of repositories
-          </Text>
+      {!hideHeader && (
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>
+              Tours
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+              Guided tours of repositories
+            </Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Filter Input */}
       {!isLoading && toursRepos.length > 0 && (
@@ -419,10 +425,11 @@ export function ToursTabScreen() {
           contentContainerStyle={styles.resultsList}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
-              {filteredToursRepos.length} of {toursRepos.length} {toursRepos.length === 1 ? 'tour' : 'tours'}
-              {filter.trim() && ` matching "${filter}"`}
-            </Text>
+            filter.trim() ? (
+              <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
+                {filteredToursRepos.length} of {toursRepos.length} {toursRepos.length === 1 ? 'tour' : 'tours'} matching "{filter}"
+              </Text>
+            ) : null
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -535,7 +542,7 @@ const styles = StyleSheet.create({
   ownerAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
   },
   repoInfo: {
     flex: 1,

@@ -5,7 +5,15 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import { RootStackParamList, MainTabParamList } from './types';
+import {
+  RootStackParamList,
+  MainTabParamList,
+  FeedStackParamList,
+  WatchStackParamList,
+  SearchStackParamList,
+  StarredStackParamList,
+  AboutStackParamList,
+} from './types';
 import AboutScreen from '../screens/AboutScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
@@ -17,6 +25,7 @@ import SwipeFeedScreen from '../screens/SwipeFeedScreen';
 import FeedTabScreen from '../screens/FeedTabScreen';
 import ActivityTabScreen from '../screens/ActivityTabScreen';
 import ToursTabScreen from '../screens/ToursTabScreen';
+import StarredTabScreen from '../screens/StarredTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
@@ -43,19 +52,69 @@ const linking: LinkingOptions<RootStackParamList> = {
       },
       MainTabs: {
         screens: {
-          Feed: 'feed',
-          Activity: 'activity',
-          Search: 'search',
-          Tours: 'tours',
-          About: 'about',
+          Feed: {
+            path: 'feed',
+            screens: {
+              FeedHome: '',
+              SwipeFeed: 'swipe',
+              CardDetail: 'card/:owner/:repo',
+              SavedCards: 'saved',
+              RepoFileCity: 'repo/:owner/:name',
+              TourFileCity: 'tour/:owner/:name',
+              UserProfile: 'user/:username',
+            },
+          },
+          Watch: {
+            path: 'watch',
+            screens: {
+              WatchHome: '',
+              RepoFileCity: 'repo/:owner/:name',
+              TourFileCity: 'tour/:owner/:name',
+              UserProfile: 'user/:username',
+            },
+          },
+          Search: {
+            path: 'search',
+            screens: {
+              SearchHome: '',
+              RepoFileCity: 'repo/:owner/:name',
+              TourFileCity: 'tour/:owner/:name',
+              UserProfile: 'user/:username',
+            },
+          },
+          Starred: {
+            path: 'starred',
+            screens: {
+              StarredHome: '',
+              RepoFileCity: 'repo/:owner/:name',
+              TourFileCity: 'tour/:owner/:name',
+              UserProfile: 'user/:username',
+            },
+          },
+          About: {
+            path: 'about',
+            screens: {
+              AboutHome: '',
+              RepositoryList: 'repositories',
+              Document: 'document/:owner/:repo',
+              FeedCustomization: 'customize',
+              AddUser: 'add-user',
+              AddRepo: 'add-repo',
+            },
+          },
         },
       },
     },
   },
 };
 
-const Stack = createStackNavigator<RootStackParamList>();
+const RootStack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const FeedStack = createStackNavigator<FeedStackParamList>();
+const WatchStack = createStackNavigator<WatchStackParamList>();
+const SearchStack = createStackNavigator<SearchStackParamList>();
+const StarredStack = createStackNavigator<StarredStackParamList>();
+const AboutStack = createStackNavigator<AboutStackParamList>();
 
 
 function UserAvatarIcon({ avatarUrl, color }: { avatarUrl: string; color: string }) {
@@ -64,6 +123,261 @@ function UserAvatarIcon({ avatarUrl, color }: { avatarUrl: string; color: string
       source={{ uri: avatarUrl }}
       style={[styles.userAvatarIcon, { borderColor: color }]}
     />
+  );
+}
+
+// Feed Stack Navigator
+function FeedStackNavigator() {
+  const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <FeedStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+        },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <FeedStack.Screen
+        name="FeedHome"
+        component={FeedTabScreen}
+        options={{ headerShown: false }}
+      />
+      {isAuthenticated && (
+        <>
+          <FeedStack.Screen
+            name="SwipeFeed"
+            component={SwipeFeedScreen}
+            options={{ headerShown: false }}
+          />
+          <FeedStack.Screen
+            name="CardDetail"
+            component={CardDetailScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <FeedStack.Screen
+            name="SavedCards"
+            component={SavedCardsScreen}
+            options={{ title: 'Saved Cards' }}
+          />
+          <FeedStack.Screen
+            name="FeedCustomization"
+            component={FeedCustomizationScreen}
+            options={{ headerShown: false }}
+          />
+          <FeedStack.Screen
+            name="AddUser"
+            component={AddUserScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <FeedStack.Screen
+            name="AddRepo"
+            component={AddRepoScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+        </>
+      )}
+      <FeedStack.Screen
+        name="RepoFileCity"
+        component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <FeedStack.Screen
+        name="TourFileCity"
+        component={TourFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <FeedStack.Screen
+        name="UserProfile"
+        component={UserProfileScreenContainer}
+        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+    </FeedStack.Navigator>
+  );
+}
+
+// Watch Stack Navigator
+function WatchStackNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <WatchStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+        },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <WatchStack.Screen
+        name="WatchHome"
+        component={ActivityTabScreen}
+        options={{ headerShown: false }}
+      />
+      <WatchStack.Screen
+        name="RepoFileCity"
+        component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <WatchStack.Screen
+        name="TourFileCity"
+        component={TourFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <WatchStack.Screen
+        name="UserProfile"
+        component={UserProfileScreenContainer}
+        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+    </WatchStack.Navigator>
+  );
+}
+
+// Search Stack Navigator
+function SearchStackNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <SearchStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+        },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <SearchStack.Screen
+        name="SearchHome"
+        component={SearchTabScreen}
+        options={{ headerShown: false }}
+      />
+      <SearchStack.Screen
+        name="RepoFileCity"
+        component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <SearchStack.Screen
+        name="TourFileCity"
+        component={TourFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <SearchStack.Screen
+        name="UserProfile"
+        component={UserProfileScreenContainer}
+        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+    </SearchStack.Navigator>
+  );
+}
+
+// Starred Stack Navigator
+function StarredStackNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <StarredStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+        },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <StarredStack.Screen
+        name="StarredHome"
+        component={StarredTabScreen}
+        options={{ headerShown: false }}
+      />
+      <StarredStack.Screen
+        name="RepoFileCity"
+        component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <StarredStack.Screen
+        name="TourFileCity"
+        component={TourFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <StarredStack.Screen
+        name="UserProfile"
+        component={UserProfileScreenContainer}
+        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+    </StarredStack.Navigator>
+  );
+}
+
+// About Stack Navigator
+function AboutStackNavigator() {
+  const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <AboutStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+        },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <AboutStack.Screen
+        name="AboutHome"
+        component={AboutScreen}
+        options={{ headerShown: false }}
+      />
+      {isAuthenticated && (
+        <>
+          <AboutStack.Screen
+            name="RepositoryList"
+            component={RepositoryListScreen}
+            options={{ title: 'Repositories' }}
+          />
+          <AboutStack.Screen
+            name="Document"
+            component={DocumentScreen}
+            options={({ route }) => ({ title: route.params.fileName })}
+          />
+          <AboutStack.Screen
+            name="FeedCustomization"
+            component={FeedCustomizationScreen}
+            options={{ headerShown: false }}
+          />
+          <AboutStack.Screen
+            name="AddUser"
+            component={AddUserScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <AboutStack.Screen
+            name="AddRepo"
+            component={AddRepoScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <AboutStack.Screen
+            name="SavedCards"
+            component={SavedCardsScreen}
+            options={{ title: 'Saved Cards' }}
+          />
+        </>
+      )}
+    </AboutStack.Navigator>
   );
 }
 
@@ -93,35 +407,35 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Feed"
-        component={FeedTabScreen}
+        component={FeedStackNavigator}
         options={{
           tabBarIcon: ({ color }) => <LucideIcon name="List" size={24} color={color} />,
         }}
       />
       <Tab.Screen
-        name="Activity"
-        component={ActivityTabScreen}
+        name="Watch"
+        component={WatchStackNavigator}
         options={{
           tabBarIcon: ({ color }) => <LucideIcon name="Grid3x3" size={24} color={color} />,
         }}
       />
       <Tab.Screen
         name="Search"
-        component={SearchTabScreen}
+        component={SearchStackNavigator}
         options={{
           tabBarIcon: ({ color }) => <LucideIcon name="Search" size={24} color={color} />,
         }}
       />
       <Tab.Screen
-        name="Tours"
-        component={ToursTabScreen}
+        name="Starred"
+        component={StarredStackNavigator}
         options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Map" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <LucideIcon name="Star" size={24} color={color} />,
         }}
       />
       <Tab.Screen
         name="About"
-        component={AboutScreen}
+        component={AboutStackNavigator}
         options={{
           tabBarLabel: isAuthenticated && user ? 'You' : 'About',
           tabBarIcon: ({ color }) =>
@@ -153,7 +467,7 @@ export default function AppNavigator() {
       key={pendingVerification ? 'verification' : 'main'}
       linking={pendingVerification ? undefined : linking}
     >
-      <Stack.Navigator
+      <RootStack.Navigator
         screenOptions={{
           headerStyle: {
             backgroundColor: theme.colors.surface,
@@ -165,7 +479,7 @@ export default function AppNavigator() {
         }}
       >
         {pendingVerification ? (
-          <Stack.Screen
+          <RootStack.Screen
             name="EmailVerification"
             component={EmailVerificationScreen}
             initialParams={{
@@ -176,12 +490,12 @@ export default function AppNavigator() {
           />
         ) : (
           <>
-            <Stack.Screen
+            <RootStack.Screen
               name="MainTabs"
               component={MainTabs}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
+            <RootStack.Screen
               name="EmailVerification"
               component={EmailVerificationScreen}
               options={{
@@ -190,68 +504,9 @@ export default function AppNavigator() {
                 presentation: 'modal',
               }}
             />
-            <Stack.Screen
-              name="RepoFileCity"
-              component={RepoFileCityScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="TourFileCity"
-              component={TourFileCityScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="UserProfile"
-              component={UserProfileScreenContainer}
-              options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
-            />
-            {isAuthenticated && (
-              <>
-                <Stack.Screen
-                  name="RepositoryList"
-                  component={RepositoryListScreen}
-                  options={{ title: 'Repositories' }}
-                />
-                <Stack.Screen
-                  name="Document"
-                  component={DocumentScreen}
-                  options={({ route }) => ({ title: route.params.fileName })}
-                />
-                <Stack.Screen
-                  name="FeedCustomization"
-                  component={FeedCustomizationScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="AddUser"
-                  component={AddUserScreen}
-                  options={{ headerShown: false, presentation: 'modal' }}
-                />
-                <Stack.Screen
-                  name="AddRepo"
-                  component={AddRepoScreen}
-                  options={{ headerShown: false, presentation: 'modal' }}
-                />
-                <Stack.Screen
-                  name="SwipeFeed"
-                  component={SwipeFeedScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="CardDetail"
-                  component={CardDetailScreen}
-                  options={{ headerShown: false, presentation: 'modal' }}
-                />
-                <Stack.Screen
-                  name="SavedCards"
-                  component={SavedCardsScreen}
-                  options={{ title: 'Saved Cards' }}
-                />
-              </>
-            )}
           </>
         )}
-      </Stack.Navigator>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }

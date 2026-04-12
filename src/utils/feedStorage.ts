@@ -1,7 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
+import type { Collection } from '../types/collections';
 
 const WATCHED_USERS_KEY = 'feed_followed_users';
 const WATCHED_REPOS_KEY = 'feed_followed_repos';
+const COLLECTIONS_KEY = 'collections';
 
 export interface WatchedUser {
   login: string;
@@ -79,4 +81,24 @@ export async function getWatchedRepos(): Promise<WatchedRepo[] | null> {
 export async function hasCustomizedFeed(): Promise<boolean> {
   const repos = await getItem(WATCHED_REPOS_KEY);
   return repos !== null;
+}
+
+// Collections
+export async function saveCollections(collections: Collection[]): Promise<void> {
+  try {
+    await setItem(COLLECTIONS_KEY, JSON.stringify(collections));
+  } catch (error) {
+    console.warn('Failed to save collections to storage:', error);
+  }
+}
+
+export async function getCollections(): Promise<Collection[] | null> {
+  try {
+    const data = await getItem(COLLECTIONS_KEY);
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch (error) {
+    console.warn('Failed to get collections from storage:', error);
+    return null;
+  }
 }

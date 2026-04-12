@@ -213,7 +213,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
       </Animated.View>
       <Animated.ScrollView
         style={{ backgroundColor: theme.colors.background }}
-        contentContainerStyle={[styles.contentContainer, { paddingBottom: 32 + insets.bottom }]}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 32 }]}
         scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],

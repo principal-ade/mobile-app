@@ -74,7 +74,7 @@ const warningStyles = StyleSheet.create({
   },
 });
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { FileCityCanvas } from '../components/FileCity';
 import { Canvas, Path, Line, Text as SkiaText, vec, Skia, matchFont } from '@shopify/react-native-skia';
@@ -83,14 +83,14 @@ import { getFileCityForRepo, type RepoInfo } from '../services/FileCityService';
 import { getStargazers, type Stargazer } from '../services/StargazersService';
 import { getContributors, type Contributor } from '../services/ContributorsService';
 import { useAuthContext } from '../context/AuthContext';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../components/DailyActivityHeatmap';
 import { getRepoActivity, checkTourAvailability } from '../services/FeedApiService';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { ContributionCalendar, type DailyContribution } from '../components/ContributionCalendar';
 import { getRepoContributions } from '../services/GitHubSearchService';
 
-type RouteProps = RouteProp<RootStackParamList, 'RepoFileCity'>;
+type RouteProps = RouteProp<FeedStackParamList, 'RepoFileCity'>;
 
 const fontStyle = {
   fontFamily: 'System',
@@ -287,7 +287,7 @@ const CANVAS_SIZE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT * 0.4);
 export function RepoFileCityScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<FeedStackParamList>>();
   const route = useRoute<RouteProps>();
 
   const { owner, name, fullName } = route.params;
@@ -617,7 +617,7 @@ export function RepoFileCityScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         {/* Header content */}
         <TouchableOpacity
           style={styles.avatarButton}
@@ -802,7 +802,7 @@ export function RepoFileCityScreen() {
           </View>
 
           {/* Bottom Section */}
-          <View style={[styles.bottomSection, { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom + 16 }]}>
+          <View style={[styles.bottomSection, { backgroundColor: theme.colors.surface, paddingBottom: 16 }]}>
             {/* Tab Bar */}
             <View style={styles.tabBar}>
               <TouchableOpacity
@@ -1094,7 +1094,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
     position: 'relative',
     overflow: 'hidden',
     minHeight: 100,

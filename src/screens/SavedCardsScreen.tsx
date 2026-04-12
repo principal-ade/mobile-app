@@ -19,9 +19,9 @@ import {
 } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 
-type NavigationProp = StackNavigationProp<RootStackParamList, 'SavedCards'>;
+type NavigationProp = StackNavigationProp<FeedStackParamList, 'SavedCards'>;
 
 function BookmarkIcon({ color, size = 64 }: { color: string; size?: number }) {
   const width = size * 0.6;

@@ -18,11 +18,11 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { searchRepos, searchUsers, formatStars } from '../services/GitHubSearchService';
 import type { GitHubRepo, GitHubUser } from '../services/GitHubSearchService';
-import type { RootStackParamList } from '../navigation/types';
+import type { SearchStackParamList } from '../navigation/types';
 import { LucideIcon } from '../components/LucideIcon';
-import { saveSearchQuery, getSearchHistory, clearSearchHistory, type SearchHistoryEntry } from '../utils/searchStorage';
+import { saveSearchQuery, getSearchHistory, clearSearchHistory, type SearchHistoryEntry, saveClickedResult, getClickedResults, type ClickedResult } from '../utils/searchStorage';
 
-type NavigationProp = StackNavigationProp<RootStackParamList>;
+type NavigationProp = StackNavigationProp<SearchStackParamList>;
 
 // Custom icon components (no emojis)
 function ClearIcon({ color, size = 14 }: { color: string; size?: number }) {
@@ -200,16 +200,21 @@ export function SearchTabScreen() {
   // UI state
   const [activeTab, setActiveTab] = useState<'all' | 'repos' | 'users'>('all');
   const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([]);
+  const [clickedResults, setClickedResults] = useState<ClickedResult[]>([]);
 
   // Error state (support partial failures)
   const [repoError, setRepoError] = useState<string | null>(null);
   const [userError, setUserError] = useState<string | null>(null);
 
-  // Load search history on mount
+  // Load search history and clicked results on mount
   useEffect(() => {
     async function loadHistory() {
-      const history = await getSearchHistory();
+      const [history, clicked] = await Promise.all([
+        getSearchHistory(),
+        getClickedResults()
+      ]);
       setSearchHistory(history);
+      setClickedResults(clicked);
     }
     loadHistory();
   }, []);
@@ -269,7 +274,20 @@ export function SearchTabScreen() {
   }, [query]);
 
   const handleRepoPress = useCallback(
-    (repo: GitHubRepo) => {
+    async (repo: GitHubRepo) => {
+      // Save clicked result
+      await saveClickedResult({
+        type: 'repo',
+        id: `${repo.owner}/${repo.name}`,
+        name: repo.name,
+        owner: repo.owner,
+        avatarUrl: repo.owner_avatar_url,
+      });
+
+      // Update local state
+      const updated = await getClickedResults();
+      setClickedResults(updated);
+
       navigation.navigate('RepoFileCity', {
         owner: repo.owner,
         name: repo.name,
@@ -280,7 +298,20 @@ export function SearchTabScreen() {
   );
 
   const handleUserPress = useCallback(
-    (user: GitHubUser) => {
+    async (user: GitHubUser) => {
+      // Save clicked result
+      await saveClickedResult({
+        type: 'user',
+        id: user.login,
+        name: user.name || user.login,
+        login: user.login,
+        avatarUrl: user.avatar_url,
+      });
+
+      // Update local state
+      const updated = await getClickedResults();
+      setClickedResults(updated);
+
       navigation.navigate('UserProfile', {
         username: user.login,
       });
@@ -430,39 +461,99 @@ export function SearchTabScreen() {
         </View>
       </View>
 
-      {/* Search History - shown when input is empty and not searching */}
-      {!query && searchHistory.length > 0 && !hasSearched && (
+      {/* Search History and Clicked Results - shown when input is empty and not searching */}
+      {!query && (searchHistory.length > 0 || clickedResults.length > 0) && !hasSearched && (
         <View style={styles.historyContainer}>
-          <View style={styles.historyHeader}>
-            <Text style={[styles.historyTitle, { color: theme.colors.textSecondary }]}>
-              RECENT SEARCHES
-            </Text>
-            <TouchableOpacity onPress={async () => {
-              await clearSearchHistory();
-              setSearchHistory([]);
-            }}>
-              <Text style={[styles.clearHistory, { color: theme.colors.primary }]}>
-                Clear
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.historyChips}>
-            {searchHistory.map((entry) => (
-              <TouchableOpacity
-                key={entry.timestamp}
-                style={[styles.historyChip, {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border
-                }]}
-                onPress={() => setQuery(entry.query)}
-              >
-                <LucideIcon name="Clock" size={14} color={theme.colors.textSecondary} />
-                <Text style={[styles.historyChipText, { color: theme.colors.text }]}>
-                  {entry.query}
+          {/* Recent Searches */}
+          {searchHistory.length > 0 && (
+            <>
+              <View style={styles.historyHeader}>
+                <Text style={[styles.historyTitle, { color: theme.colors.textSecondary }]}>
+                  RECENT SEARCHES
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                <TouchableOpacity onPress={async () => {
+                  await clearSearchHistory();
+                  setSearchHistory([]);
+                }}>
+                  <Text style={[styles.clearHistory, { color: theme.colors.primary }]}>
+                    Clear
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.historyChips}>
+                {searchHistory.map((entry) => (
+                  <TouchableOpacity
+                    key={entry.timestamp}
+                    style={[styles.historyChip, {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border
+                    }]}
+                    onPress={() => setQuery(entry.query)}
+                  >
+                    <LucideIcon name="Clock" size={14} color={theme.colors.textSecondary} />
+                    <Text style={[styles.historyChipText, { color: theme.colors.text }]}>
+                      {entry.query}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Clicked Results */}
+          {clickedResults.length > 0 && (
+            <>
+              <View style={[styles.historyHeader, searchHistory.length > 0 && { marginTop: 16 }]}>
+                <Text style={[styles.historyTitle, { color: theme.colors.textSecondary }]}>
+                  RECENTLY VIEWED
+                </Text>
+              </View>
+              <View style={styles.clickedResultsList}>
+                {clickedResults.map((result) => (
+                  <TouchableOpacity
+                    key={result.id}
+                    style={[styles.clickedResultItem, {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border
+                    }]}
+                    onPress={async () => {
+                      if (result.type === 'repo') {
+                        navigation.navigate('RepoFileCity', {
+                          owner: result.owner!,
+                          name: result.name,
+                          fullName: result.id,
+                        });
+                      } else {
+                        navigation.navigate('UserProfile', {
+                          username: result.login!,
+                        });
+                      }
+                    }}
+                  >
+                    <Image
+                      source={{ uri: result.avatarUrl }}
+                      style={styles.clickedResultAvatar}
+                    />
+                    <View style={styles.clickedResultInfo}>
+                      <Text style={[styles.clickedResultName, { color: theme.colors.text }]}>
+                        {result.name}
+                      </Text>
+                      {result.owner && (
+                        <Text style={[styles.clickedResultOwner, { color: theme.colors.textSecondary }]}>
+                          {result.owner}
+                        </Text>
+                      )}
+                    </View>
+                    <LucideIcon
+                      name={result.type === 'repo' ? 'FileCode2' : 'User'}
+                      size={16}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
         </View>
       )}
 
@@ -896,6 +987,34 @@ const styles = StyleSheet.create({
   },
   historyChipText: {
     fontSize: 14,
+  },
+  // Clicked Results
+  clickedResultsList: {
+    gap: 8,
+  },
+  clickedResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  clickedResultAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  clickedResultInfo: {
+    flex: 1,
+  },
+  clickedResultName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  clickedResultOwner: {
+    fontSize: 12,
+    marginTop: 2,
   },
   // Tabs
   tabsContainer: {

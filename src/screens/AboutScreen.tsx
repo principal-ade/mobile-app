@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
+import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import { Logo } from '../components/Logo';
@@ -19,7 +19,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
 import { AccountSwitcherSheet } from '../components/AccountSwitcherSheet';
-import type { RootStackParamList } from '../navigation/types';
+import type { AboutStackParamList } from '../navigation/types';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -61,12 +61,10 @@ function LinkRow({ title, subtitle, url, theme }: LinkRowProps) {
   );
 }
 
-type NavigationProp = StackNavigationProp<RootStackParamList>;
-
 export function AboutScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<NavigationProp<AboutStackParamList>>();
   const { isAuthenticated, user, signIn, demoSignIn, signOut } = useAuth();
   const { accounts } = useMultiAccount();
   const [showDemoLogin, setShowDemoLogin] = useState(false);

@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/types';
+import { AboutStackParamList } from '../navigation/types';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { fetchMarkdownFileContent } from '../services/GithubService';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
-type DocumentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Document'>;
-type DocumentScreenRouteProp = RouteProp<RootStackParamList, 'Document'>;
+type DocumentScreenNavigationProp = StackNavigationProp<AboutStackParamList, 'Document'>;
+type DocumentScreenRouteProp = RouteProp<AboutStackParamList, 'Document'>;
 
 interface Props {
   navigation: DocumentScreenNavigationProp;

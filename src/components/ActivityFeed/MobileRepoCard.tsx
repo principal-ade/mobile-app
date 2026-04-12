@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { Logo } from '../Logo';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
+import type { FeedStackParamList } from '../../navigation/types';
 import { apiConfig } from '../../utils/config';
 
 interface MobileRepoCardProps {
@@ -65,7 +67,7 @@ const TIMELINE_LINE_HEIGHT = 2;
 
 export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopInset = false }: MobileRepoCardProps) {
   const { theme } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<FeedStackParamList>>();
   const insets = useSafeAreaInsets();
   const topInset = skipTopInset ? 0 : insets.top;
   const [avatarError, setAvatarError] = useState(false);

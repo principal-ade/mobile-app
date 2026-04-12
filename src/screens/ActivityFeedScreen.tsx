@@ -12,14 +12,21 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@principal-ade/industry-theme';
 import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
 import { groupSummariesByHour, HourlyRepoCard } from '../utils/activityGrouping';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { RepoActivitySummary } from '../types/activity';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList, MainTabParamList } from '../navigation/types';
+
+type ActivityFeedNavigationProp = CompositeNavigationProp<
+  StackNavigationProp<FeedStackParamList>,
+  BottomTabNavigationProp<MainTabParamList>
+>;
 
 interface ActivityFeedScreenProps {
   summaries: RepoActivitySummary[];
@@ -36,7 +43,7 @@ export function ActivityFeedScreen({
 }: ActivityFeedScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<ActivityFeedNavigationProp>();
   const { isAuthenticated } = useAuth();
   const [activeIndex, setActiveIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -214,7 +221,7 @@ export function ActivityFeedScreen({
                 style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
                 onPress={() => {
                   setShowLoginPrompt(false);
-                  navigation.navigate('MainTabs', { screen: 'About' });
+                  navigation.navigate('About', { screen: 'AboutHome' });
                 }}
               >
                 <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>

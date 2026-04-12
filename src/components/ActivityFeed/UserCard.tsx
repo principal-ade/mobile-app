@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../../navigation/types';
+import type { WatchStackParamList } from '../../navigation/types';
 
 export interface UserCardProps {
   login: string;
@@ -21,7 +21,7 @@ export function UserCard({
   reposContributedTo,
 }: UserCardProps) {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NavigationProp<WatchStackParamList>>();
 
   const handleAvatarPress = () => {
     navigation.navigate('UserProfile', { username: login });

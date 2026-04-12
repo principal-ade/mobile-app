@@ -22,9 +22,9 @@ import {
   unwatchRepo as apiUnwatchRepo,
 } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 
-type NavigationProp = StackNavigationProp<RootStackParamList, 'FeedCustomization'>;
+type NavigationProp = StackNavigationProp<FeedStackParamList, 'FeedCustomization'>;
 
 export function FeedCustomizationScreen() {
   const { theme } = useTheme();

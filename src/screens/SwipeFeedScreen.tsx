@@ -14,6 +14,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@principal-ade/industry-theme';
 import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
 import {
@@ -24,11 +26,14 @@ import {
 } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList, MainTabParamList } from '../navigation/types';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { TapGestureHandler, State } from 'react-native-gesture-handler';
 
-type NavigationProp = StackNavigationProp<RootStackParamList, 'SwipeFeed'>;
+type NavigationProp = CompositeNavigationProp<
+  StackNavigationProp<FeedStackParamList, 'SwipeFeed'>,
+  BottomTabNavigationProp<MainTabParamList>
+>;
 
 interface SwipeFeedScreenProps {
   /** Pre-loaded cards for guest mode (skips auth and API fetch) */
@@ -392,7 +397,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
             <>
               <TouchableOpacity
                 style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
-                onPress={() => navigation.navigate('MainTabs', { screen: 'About' })}
+                onPress={() => navigation.navigate('About', { screen: 'AboutHome' })}
               >
                 <Text style={styles.primaryButtonText}>Sign In</Text>
               </TouchableOpacity>

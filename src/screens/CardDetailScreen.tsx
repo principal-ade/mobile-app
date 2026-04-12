@@ -12,11 +12,11 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 import type { RepoActivitySummary } from '../types/activity';
 
-type NavigationProp = StackNavigationProp<RootStackParamList, 'CardDetail'>;
-type ScreenRouteProp = RouteProp<RootStackParamList, 'CardDetail'>;
+type NavigationProp = StackNavigationProp<FeedStackParamList, 'CardDetail'>;
+type ScreenRouteProp = RouteProp<FeedStackParamList, 'CardDetail'>;
 
 export function CardDetailScreen() {
   const { theme } = useTheme();

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/types';
+import { AboutStackParamList } from '../navigation/types';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { GitHubContentItem, GitHubRepository } from '../types/github';
@@ -21,7 +21,7 @@ import {
 const MARKDOWN_EXTENSIONS = ['.md', '.markdown'];
 
 type RepositoryListScreenNavigationProp = StackNavigationProp<
-  RootStackParamList,
+  AboutStackParamList,
   'RepositoryList'
 >;
 

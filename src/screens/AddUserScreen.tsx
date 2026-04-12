@@ -24,9 +24,9 @@ import { watchUser } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 
-type NavigationProp = StackNavigationProp<RootStackParamList, 'AddUser'>;
+type NavigationProp = StackNavigationProp<FeedStackParamList, 'AddUser'>;
 
 interface SuggestionSection {
   title: string;

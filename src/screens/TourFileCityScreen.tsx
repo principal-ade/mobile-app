@@ -18,10 +18,10 @@ import { FileCityCanvas } from '../components/FileCity';
 import type { CityData, HighlightLayer, FileTypeIconConfig } from '../components/FileCity';
 import { getFileCityForRepo } from '../services/FileCityService';
 import { getTour } from '../services/FeedApiService';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 import type { IntroductionTour } from '@principal-ai/file-city-builder';
 
-type RouteProps = RouteProp<RootStackParamList, 'TourFileCity'>;
+type RouteProps = RouteProp<FeedStackParamList, 'TourFileCity'>;
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const FILE_CITY_HEIGHT = SCREEN_HEIGHT * 0.5; // 50% for File City
@@ -57,7 +57,7 @@ export async function getCompletedTours(): Promise<Set<string>> {
 
 export default function TourFileCityScreen() {
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<FeedStackParamList>>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -232,7 +232,7 @@ export default function TourFileCityScreen() {
       </View>
 
       {/* Tour Player Section */}
-      <View style={[styles.tourPlayerSection, { height: TOUR_PLAYER_HEIGHT, paddingBottom: insets.bottom }]}>
+      <View style={[styles.tourPlayerSection, { height: TOUR_PLAYER_HEIGHT }]}>
         {!tourStarted ? (
           /* Tour Introduction */
           <>

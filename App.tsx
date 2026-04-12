@@ -5,6 +5,7 @@ import { iceTangerineDarkTheme } from './src/themes/iceTangerineDark';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { FeedPreferencesProvider } from './src/context/FeedPreferencesContext';
+import { CollectionsProvider } from './src/context/CollectionsContext';
 import { MultiAccountProvider, useMultiAccount } from './src/context/MultiAccountContext';
 import { saveAccountFeedUsers, saveAccountFeedRepos } from './src/utils/accountStorage';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -159,7 +160,9 @@ function MultiAccountAwareProviders({ children }: PropsWithChildren) {
           prevReposRef.current = repos;
         }}
       >
-        {children}
+        <CollectionsProvider>
+          {children}
+        </CollectionsProvider>
       </FeedPreferencesProvider>
     </AuthProvider>
   );

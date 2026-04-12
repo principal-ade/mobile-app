@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../../navigation/types';
+import type { WatchStackParamList } from '../../navigation/types';
 
 export interface ActivityRepoCardProps {
   repoId: string;
@@ -28,7 +28,7 @@ export function ActivityRepoCard({
   latestCommitMessage,
 }: ActivityRepoCardProps) {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NavigationProp<WatchStackParamList>>();
 
   const handleRepoPress = () => {
     navigation.navigate('RepoFileCity', {

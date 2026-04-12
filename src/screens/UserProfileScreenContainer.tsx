@@ -10,7 +10,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { UserProfileScreen, type HourlyActivityGroup } from './UserProfileScreen';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 import {
   getUserProfile,
   getUserActivity,
@@ -20,7 +20,7 @@ import {
 } from '../services/GitHubSearchService';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 
-type UserProfileRouteProp = RouteProp<RootStackParamList, 'UserProfile'>;
+type UserProfileRouteProp = RouteProp<FeedStackParamList, 'UserProfile'>;
 
 /**
  * Transform activity events into hourly groups for display
