@@ -22,7 +22,7 @@ const buildNumber = appJson.expo.ios?.buildNumber || '1';
 console.log(`Syncing version ${version} (build ${buildNumber}) to native projects...`);
 
 // Update iOS Info.plist
-const infoPlistPath = resolve(rootDir, 'ios/PrincipalADE/Info.plist');
+const infoPlistPath = resolve(rootDir, 'ios/PrincipalAI/Info.plist');
 let infoPlist = readFileSync(infoPlistPath, 'utf8');
 
 // Update CFBundleShortVersionString
@@ -38,6 +38,6 @@ infoPlist = infoPlist.replace(
 );
 
 writeFileSync(infoPlistPath, infoPlist);
-console.log('✓ Updated ios/PrincipalADE/Info.plist');
+console.log('✓ Updated ios/PrincipalAI/Info.plist');
 
 console.log('Version sync complete!');
