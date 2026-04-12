@@ -16,6 +16,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import { Logo } from '../components/Logo';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { DiscordIcon } from '../components/DiscordIcon';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
 import { AccountSwitcherSheet } from '../components/AccountSwitcherSheet';
@@ -103,6 +104,12 @@ export function AboutScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Fixed Header */}
       <View style={[styles.header, { paddingTop: insets.top + 80 }]}>
+        <TouchableOpacity
+          style={[styles.discordButton, { top: insets.top + 16 }]}
+          onPress={() => Linking.openURL(LINKS.discord)}
+        >
+          <DiscordIcon size={28} color="#5865F2" />
+        </TouchableOpacity>
         <Logo width={100} height={100} color={theme.colors.primary} />
         <Text style={[styles.appName, { color: theme.colors.text }]}>
           Principal <Text style={{ color: theme.colors.primary }}>AI</Text>
@@ -342,13 +349,6 @@ export function AboutScreen() {
         </View>
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
           <LinkRow
-            title="Discord"
-            subtitle="Join our community"
-            url={LINKS.discord}
-            theme={theme}
-          />
-          <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
-          <LinkRow
             title="Website"
             subtitle="principal-ade.com"
             url={LINKS.website}
@@ -384,6 +384,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingBottom: 24,
+  },
+  discordButton: {
+    position: 'absolute',
+    right: 35,
+    padding: 8,
+    zIndex: 1,
   },
   scrollView: {
     flex: 1,
