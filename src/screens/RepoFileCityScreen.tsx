@@ -7,6 +7,7 @@ import {
   Image,
   Dimensions,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -266,6 +267,19 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
+function formatRepoAge(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+
+  if (diffDays < 30) return `Created ${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  if (diffMonths < 12) return `Created ${diffMonths} ${diffMonths === 1 ? 'month' : 'months'} ago`;
+  return `Created ${diffYears} ${diffYears === 1 ? 'year' : 'years'} ago`;
+}
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Canvas is a square, capped at 50% of screen height
 const CANVAS_SIZE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT * 0.4);
@@ -412,8 +426,8 @@ export function RepoFileCityScreen() {
     async function fetchContributorsData() {
       setContributorsLoading(true);
       try {
-        // Always fetch contributors
-        const contribs = await getContributors(owner, name, 30);
+        // Always fetch contributors (100 is GitHub API max per page)
+        const contribs = await getContributors(owner, name, 100);
 
         if (!cancelled) {
           setContributors(contribs);
@@ -555,6 +569,18 @@ export function RepoFileCityScreen() {
     console.log('Tour button pressed');
   };
 
+  const handleRepoNamePress = async () => {
+    const url = `https://github.com/${owner}/${name}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch (error) {
+      console.error('Error opening GitHub URL:', error);
+    }
+  };
+
   const handleBuildingPress = (building: CityBuilding) => {
     setSelectedFileName(building.path);
   };
@@ -610,14 +636,34 @@ export function RepoFileCityScreen() {
             </View>
           )}
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
+        <TouchableOpacity
+          style={styles.headerCenter}
+          onPress={handleRepoNamePress}
+          activeOpacity={0.7}
+        >
           <Text
             style={[styles.title, { color: theme.colors.text }]}
             numberOfLines={1}
           >
             {name}
           </Text>
-        </View>
+          {repoInfo && cityData && (
+            <View style={styles.headerStats}>
+              <View style={styles.headerStat}>
+                <Text style={[styles.headerStatIcon, { color: theme.colors.warning }]}>★</Text>
+                <Text style={[styles.headerStatText, { color: theme.colors.textSecondary }]}>
+                  {formatCount(repoInfo.stargazersCount)}
+                </Text>
+              </View>
+              <View style={styles.headerStatDivider} />
+              <View style={styles.headerStat}>
+                <Text style={[styles.headerStatText, { color: theme.colors.textSecondary }]}>
+                  {formatCount(cityData.metadata.totalFiles)} files
+                </Text>
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           {isTourAvailable && (
             <TouchableOpacity
@@ -629,14 +675,41 @@ export function RepoFileCityScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={[styles.closeIcon, { color: theme.colors.textSecondary }]}>
-              ✕
-            </Text>
-          </TouchableOpacity>
+          {isAuthenticated && (
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  { backgroundColor: theme.colors.surface },
+                  isStarred && { backgroundColor: 'rgba(255, 184, 0, 0.2)' },
+                ]}
+                onPress={handleToggleStar}
+                disabled={starToggling}
+              >
+                <Text style={[
+                  styles.headerIconButtonIcon,
+                  { color: isStarred ? theme.colors.warning : theme.colors.textSecondary },
+                ]}>
+                  {isStarred ? '★' : '☆'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  { backgroundColor: theme.colors.surface },
+                  isRepoWatching && { backgroundColor: 'rgba(0, 122, 255, 0.2)' },
+                ]}
+                onPress={handleToggleRepoWatch}
+              >
+                <Text style={[
+                  styles.headerIconButtonIcon,
+                  { color: isRepoWatching ? theme.colors.primary : theme.colors.textSecondary },
+                ]}>
+                  {isRepoWatching ? '◉' : '○'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
@@ -746,7 +819,7 @@ export function RepoFileCityScreen() {
                     { color: activeViz === 'city' ? theme.colors.primary : theme.colors.textSecondary },
                   ]}
                 >
-                  Repo
+                  About
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -792,6 +865,14 @@ export function RepoFileCityScreen() {
                   style={styles.repoTabScroll}
                   showsVerticalScrollIndicator={false}
                 >
+                  {/* Age and Owner */}
+                  {repoInfo?.createdAt && (
+                    <Text style={[styles.repoMeta, { color: theme.colors.textSecondary }]}>
+                      {formatRepoAge(repoInfo.createdAt)} by{' '}
+                      <Text style={{ color: theme.colors.primary }}>{owner}</Text>
+                    </Text>
+                  )}
+
                   {/* Description */}
                   {repoInfo?.description && (
                     <Text
@@ -814,91 +895,16 @@ export function RepoFileCityScreen() {
                     </View>
                   )}
 
-                  {/* Stats Grid */}
-                  <View style={styles.statsGrid}>
-                    <View style={[styles.statCard, { backgroundColor: theme.colors.background }]}>
-                      <Text style={[styles.statIcon, { color: theme.colors.warning }]}>★</Text>
-                      <Text style={[styles.statCardValue, { color: theme.colors.text }]}>
-                        {formatCount(repoInfo?.stargazersCount)}
-                      </Text>
-                      <Text style={[styles.statCardLabel, { color: theme.colors.textSecondary }]}>
-                        Stars
-                      </Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: theme.colors.background }]}>
-                      <Text style={[styles.statCardValue, { color: theme.colors.text }]}>
-                        {formatCount(cityData.metadata.totalFiles)}
-                      </Text>
-                      <Text style={[styles.statCardLabel, { color: theme.colors.textSecondary }]}>
-                        Files
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Star & Track toggles (when signed in) */}
-                  {isAuthenticated && (
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { borderColor: theme.colors.warning },
-                          isStarred && { backgroundColor: theme.colors.warning },
-                        ]}
-                        onPress={handleToggleStar}
-                        disabled={starToggling}
-                      >
-                        <Text style={[
-                          styles.actionButtonIcon,
-                          { color: isStarred ? '#000' : theme.colors.warning },
-                        ]}>
-                          {isStarred ? '★' : '☆'}
-                        </Text>
-                        <Text style={[
-                          styles.actionButtonText,
-                          { color: isStarred ? '#000' : theme.colors.warning },
-                        ]}>
-                          {starToggling ? '...' : isStarred ? 'Starred' : 'Star'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { borderColor: theme.colors.primary },
-                          isRepoWatching && { backgroundColor: theme.colors.primary },
-                        ]}
-                        onPress={handleToggleRepoWatch}
-                      >
-                        <Text style={[
-                          styles.actionButtonText,
-                          { color: isRepoWatching ? '#fff' : theme.colors.primary },
-                        ]}>
-                          {isRepoWatching ? 'Watching' : 'Watch'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
                   {/* Contributors Section */}
                   <View style={styles.contributorsSection}>
                     {contributorsLoading ? (
                       <LoadingSpinner size="small" color={theme.colors.primary} />
                     ) : contributors.length > 0 ? (
                       <>
-                        <View style={styles.contributorsHeader}>
-                          <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
-                            Contributors
-                          </Text>
-                          <Text style={[styles.contributorsCount, { color: theme.colors.text }]}>
-                            {contributors.length}
-                          </Text>
-                        </View>
-                        <ScrollView
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          style={styles.contributorsScroll}
-                          contentContainerStyle={styles.contributorsScrollContent}
-                        >
+                        <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
+                          Contributors ({contributors.length === 100 ? '100+' : contributors.length})
+                        </Text>
+                        <View style={styles.contributorsGrid}>
                           {contributors.map((contributor) => (
                             <TouchableOpacity
                               key={contributor.login}
@@ -915,7 +921,7 @@ export function RepoFileCityScreen() {
                               />
                             </TouchableOpacity>
                           ))}
-                        </ScrollView>
+                        </View>
                       </>
                     ) : null}
                   </View>
@@ -930,7 +936,16 @@ export function RepoFileCityScreen() {
                         Recent Stargazers
                       </Text>
                       {stargazers.map((star) => (
-                        <View key={star.login} style={styles.stargazerRow}>
+                        <TouchableOpacity
+                          key={star.login}
+                          style={styles.stargazerRow}
+                          onPress={() => {
+                            navigation.navigate('UserProfile', {
+                              username: star.login,
+                            });
+                          }}
+                          activeOpacity={0.7}
+                        >
                           <Image
                             source={{ uri: star.avatarUrl }}
                             style={styles.stargazerAvatar}
@@ -941,7 +956,7 @@ export function RepoFileCityScreen() {
                           <Text style={[styles.stargazerTime, { color: theme.colors.textSecondary }]}>
                             {formatRelativeTime(star.starredAt)}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                       ))}
                     </>
                   ) : !stargazersLoading ? (
@@ -973,13 +988,30 @@ export function RepoFileCityScreen() {
                     <>
                       {/* Active Contributors Row */}
                       <View style={styles.contributorsSection}>
-                        <View style={styles.contributorsHeader}>
+                        <View style={styles.contributorsHeaderRow}>
                           <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
-                            Active This Week
+                            {selectedContributor ? (
+                              <>
+                                Contributions by{' '}
+                                <Text style={{ color: theme.colors.primary }}>{selectedContributor}</Text>
+                              </>
+                            ) : (
+                              `Active This Week (${activeContributors.length})`
+                            )}
                           </Text>
-                          <Text style={[styles.contributorsCount, { color: theme.colors.text }]}>
-                            {activeContributors.length}
-                          </Text>
+                          {selectedContributor && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                navigation.navigate('UserProfile', {
+                                  username: selectedContributor,
+                                });
+                              }}
+                            >
+                              <Text style={[styles.viewProfileText, { color: theme.colors.primary }]}>
+                                View Profile
+                              </Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                         {activeContributors.length > 0 ? (
                           <ScrollView
@@ -1117,18 +1149,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  closeButton: {
+  headerIconButton: {
     padding: 8,
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeIcon: {
+  headerIconButtonIcon: {
     fontSize: 18,
-    fontWeight: '400',
   },
   headerCenter: {
     flex: 1,
@@ -1146,6 +1176,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'left',
     marginTop: 2,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 8,
+  },
+  headerStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerStatIcon: {
+    fontSize: 12,
+  },
+  headerStatText: {
+    fontSize: 12,
+  },
+  headerStatDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   loadingContainer: {
     flex: 1,
@@ -1284,19 +1336,26 @@ const styles = StyleSheet.create({
   contributorsSection: {
     marginBottom: 16,
   },
-  contributorsHeader: {
+  contributorsHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   contributorsLabel: {
-    fontSize: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+    marginBottom: 12,
+  },
+  viewProfileText: {
+    fontSize: 14,
     fontWeight: '600',
   },
-  contributorsCount: {
-    fontSize: 14,
-    fontWeight: '700',
+  contributorsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   contributorsScroll: {
     marginHorizontal: -16,
@@ -1318,64 +1377,19 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
   },
+  repoMeta: {
+    fontSize: 15,
+    marginBottom: 12,
+    fontWeight: '500',
+  },
   description: {
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 20,
     opacity: 0.9,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    gap: 6,
-  },
-  actionButtonIcon: {
-    fontSize: 16,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   repoTabScroll: {
     flex: 1,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  statCardValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  statCardLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   // Stars tab styles
   starsContent: {

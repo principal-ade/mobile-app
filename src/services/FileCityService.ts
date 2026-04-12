@@ -41,6 +41,9 @@ interface GitHubRepoInfoResponse {
   forks_count: number;
   language: string | null;
   default_branch: string;
+  created_at: string;
+  pushed_at: string;
+  updated_at: string;
 }
 
 export interface RepoInfo {
@@ -49,6 +52,9 @@ export interface RepoInfo {
   stargazersCount: number;
   forksCount: number;
   language: string | null;
+  createdAt: string;
+  pushedAt: string;
+  updatedAt: string;
 }
 
 export interface FileCityResult {
@@ -166,6 +172,9 @@ export async function getFileCityForRepo(
     stargazersCount: repoInfoResponse.stargazers_count,
     forksCount: repoInfoResponse.forks_count,
     language: repoInfoResponse.language,
+    createdAt: repoInfoResponse.created_at,
+    pushedAt: repoInfoResponse.pushed_at,
+    updatedAt: repoInfoResponse.updated_at,
   };
 
   return {
