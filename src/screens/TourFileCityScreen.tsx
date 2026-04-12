@@ -12,9 +12,10 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { FileCityCanvas } from '../components/FileCity';
-import type { CityData, HighlightLayer } from '../components/FileCity';
+import type { CityData, HighlightLayer, FileTypeIconConfig } from '../components/FileCity';
 import { getFileCityForRepo } from '../services/FileCityService';
 import { getTour } from '../services/FeedApiService';
 import type { RootStackParamList } from '../navigation/types';
@@ -23,8 +24,8 @@ import type { IntroductionTour } from '@principal-ai/file-city-builder';
 type RouteProps = RouteProp<RootStackParamList, 'TourFileCity'>;
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const FILE_CITY_HEIGHT = SCREEN_HEIGHT * 0.4; // 40% for File City
-const TOUR_PLAYER_HEIGHT = SCREEN_HEIGHT * 0.6; // 60% for tour player
+const FILE_CITY_HEIGHT = SCREEN_HEIGHT * 0.5; // 50% for File City
+const TOUR_PLAYER_HEIGHT = SCREEN_HEIGHT * 0.5; // 50% for tour player
 
 const COMPLETED_TOURS_KEY = '@completed_tours';
 
@@ -56,7 +57,7 @@ export async function getCompletedTours(): Promise<Set<string>> {
 
 export default function TourFileCityScreen() {
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -66,6 +67,8 @@ export default function TourFileCityScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cityData, setCityData] = useState<CityData | null>(null);
   const [ownerAvatarUrl, setOwnerAvatarUrl] = useState<string | null>(null);
+  const [defaultHighlightLayers, setDefaultHighlightLayers] = useState<HighlightLayer[]>([]);
+  const [iconMap, setIconMap] = useState<Map<string, FileTypeIconConfig>>(new Map());
   const [tour, setTour] = useState<IntroductionTour | null>(null);
   const [tourStarted, setTourStarted] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -82,6 +85,8 @@ export default function TourFileCityScreen() {
         const city = await getFileCityForRepo(owner, name);
         setCityData(city.cityData);
         setOwnerAvatarUrl(city.repoInfo.ownerAvatarUrl);
+        setDefaultHighlightLayers(city.highlightLayers);
+        setIconMap(city.iconMap);
 
         // Load tour from the fork
         const tourResult = await getTour(forkOwner, forkRepo, tourPath);
@@ -136,8 +141,8 @@ export default function TourFileCityScreen() {
     navigation.goBack();
   };
 
-  // Convert tour highlight layers to File City format
-  const highlightLayers: HighlightLayer[] = currentStep?.highlightLayers?.map((layer) => ({
+  // Determine which highlight layers to use
+  const tourHighlightLayers: HighlightLayer[] = currentStep?.highlightLayers?.map((layer) => ({
     id: layer.id,
     name: layer.name,
     color: layer.color,
@@ -150,7 +155,7 @@ export default function TourFileCityScreen() {
   })) || [];
 
   // Add implicit highlight for focusDirectory if set
-  if (currentStep?.focusDirectory && currentStep.focusDirectory !== '') {
+  if (tourStarted && currentStep?.focusDirectory && currentStep.focusDirectory !== '') {
     // Normalize path to match district paths (no leading/trailing slashes)
     const normalizedPath = currentStep.focusDirectory.replace(/^\/+|\/+$/g, '');
     const focusLayer: HighlightLayer = {
@@ -169,10 +174,12 @@ export default function TourFileCityScreen() {
       enabled: true,
       priority: 10, // Higher priority so focus directory wins over explicit highlights
     };
-    highlightLayers.push(focusLayer);
+    tourHighlightLayers.push(focusLayer);
   }
 
-  const hasHighlights = highlightLayers.length > 0;
+  // Use default highlight layers when tour hasn't started, tour layers when active
+  const highlightLayers = tourStarted ? tourHighlightLayers : defaultHighlightLayers;
+  const hasHighlights = tourHighlightLayers.length > 0;
 
   if (loading) {
     return (
@@ -211,7 +218,8 @@ export default function TourFileCityScreen() {
       <View style={[styles.fileCitySection, { height: FILE_CITY_HEIGHT, paddingTop: insets.top + 16 }]}>
         <FileCityCanvas
           cityData={cityData}
-          highlightLayers={tourStarted ? highlightLayers : []}
+          highlightLayers={highlightLayers}
+          iconMap={iconMap}
           backgroundColor={theme.colors.background}
           zoomToPath={tourStarted ? (currentStep?.focusDirectory || null) : null}
           isolationMode={tourStarted && hasHighlights ? 'transparent' : 'none'}
@@ -237,9 +245,17 @@ export default function TourFileCityScreen() {
                       style={styles.headerAvatar}
                     />
                   )}
-                  <Text style={[styles.stepCounter, { color: theme.colors.textSecondary }]}>
-                    {cityData.metadata.totalFiles} files
-                  </Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('RepoFileCity', { owner, name })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.repoName, { color: theme.colors.text }]}>
+                      {owner}/{name}
+                    </Text>
+                    <Text style={[styles.stepCounter, { color: theme.colors.textSecondary }]}>
+                      {cityData.metadata.totalFiles} files
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
                   <Text style={[styles.exitButtonText, { color: theme.colors.textSecondary }]}>
@@ -451,9 +467,14 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
   },
+  repoName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   stepCounter: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
+    marginTop: 2,
   },
   focusDirectory: {
     fontSize: 14,
