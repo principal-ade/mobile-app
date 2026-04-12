@@ -303,6 +303,7 @@ export function RepoFileCityScreen() {
   const [isTourAvailable, setIsTourAvailable] = useState(false);
   const [contributions, setContributions] = useState<DailyContribution[]>([]);
   const [contributionsLoading, setContributionsLoading] = useState(true);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
   // Check if repo is being watched
   const isRepoWatching = React.useMemo(() => {
@@ -554,8 +555,8 @@ export function RepoFileCityScreen() {
     console.log('Tour button pressed');
   };
 
-  const handleBuildingPress = (_building: CityBuilding) => {
-    // Currently no action on building press
+  const handleBuildingPress = (building: CityBuilding) => {
+    setSelectedFileName(building.path);
   };
 
   const handleDistrictPress = (_district: CityDistrict) => {
@@ -799,6 +800,18 @@ export function RepoFileCityScreen() {
                     >
                       {repoInfo.description}
                     </Text>
+                  )}
+
+                  {/* Selected File (for testing) */}
+                  {selectedFileName && (
+                    <View style={[styles.selectedFileContainer, { backgroundColor: theme.colors.background }]}>
+                      <Text style={[styles.selectedFileLabel, { color: theme.colors.textSecondary }]}>
+                        Selected File:
+                      </Text>
+                      <Text style={[styles.selectedFileName, { color: theme.colors.primary }]}>
+                        {selectedFileName}
+                      </Text>
+                    </View>
                   )}
 
                   {/* Stats Grid */}
@@ -1396,6 +1409,22 @@ const styles = StyleSheet.create({
   },
   stargazerTime: {
     fontSize: 12,
+  },
+  selectedFileContainer: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  selectedFileLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  selectedFileName: {
+    fontSize: 13,
+    fontFamily: 'monospace',
   },
 });
 

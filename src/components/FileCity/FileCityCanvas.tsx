@@ -194,9 +194,16 @@ export function FileCityCanvas({
       }
     });
 
-    // Pre-compute matches for all districts
+    // Pre-compute matches for all districts (only directory-type items)
     cityData.districts.forEach((district) => {
-      const matches = layerIndex.getItemsForPath(district.path, 'exact');
+      const allMatches = layerIndex.getItemsForPath(district.path, 'exact');
+      const matches = allMatches.filter((match) => match.item.type === 'directory');
+
+      if (allMatches.length > 0 && matches.length === 0) {
+        // Remove any building entry with the same path to prevent districts from using file highlights
+        map.delete(district.path);
+      }
+
       if (matches.length > 0) {
         map.set(district.path, matches);
       }
@@ -659,9 +666,6 @@ export function FileCityCanvas({
         const width = bottomRight.x - topLeft.x;
         const height = bottomRight.y - topLeft.y;
 
-        // Size check will be applied after transform
-        if (width < 1 || height < 1) return null;
-
         const layerMatches = highlightMatchMap.get(district.path) || [];
         const hasHighlight = layerMatches.length > 0;
 
@@ -671,8 +675,11 @@ export function FileCityCanvas({
         const renderStrategy: LayerRenderStrategy = firstMatch?.item.renderStrategy || 'border';
         const layerOpacity = firstMatch?.layer.opacity ?? 1;
 
-        // Ultra-thin border - layout engine assumes borders are minimal
-        const scaledBorderWidth = 0.25;
+        // Border width matches web version
+        const scaledBorderWidth = 1;
+
+        // Inset the rectangle by half the stroke width so stroke stays within bounds
+        const inset = scaledBorderWidth / 2;
 
         // Use animated opacity for isolation modes
         const targetOpacity = getTargetOpacity(hasHighlight, 'district');
@@ -684,10 +691,10 @@ export function FileCityCanvas({
         return {
           key: `district-${district.path}`,
           path: district.path,
-          x: topLeft.x,
-          y: topLeft.y,
-          width,
-          height,
+          x: topLeft.x + inset,
+          y: topLeft.y + inset,
+          width: width - scaledBorderWidth,
+          height: height - scaledBorderWidth,
           borderColor: adjustColorBrightness(defaultDistrictColor, 40),
           borderOpacity,
           districtName,
@@ -723,8 +730,6 @@ export function FileCityCanvas({
           height = size;
         }
 
-        if (width < 1 || height < 1) return null;
-
         const x = pos.x - width / 2;
         const y = pos.y - height / 2;
 
@@ -745,8 +750,8 @@ export function FileCityCanvas({
 
         const actualRadius = Math.min(buildingBorderRadius, Math.min(width, height) / 6);
 
-        // Ultra-thin border - layout engine assumes borders are minimal
-        const scaledBorderWidth = 0.25;
+        // Border width matches web version
+        const scaledBorderWidth = 1;
 
         // Get icon config if enabled
         const icon = showFileTypeIcons ? getFileTypeIcon(building.path, iconMap) : null;

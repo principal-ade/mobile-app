@@ -5,7 +5,7 @@ import { FileCityCanvas } from './FileCityCanvas';
 import { generateMockCityData, generateMockHighlightLayers } from './mockData';
 
 const meta: Meta<typeof FileCityCanvas> = {
-  title: 'Components/FileCity/FileCityCanvas',
+  title: 'Components/FileCityCanvas',
   component: FileCityCanvas,
   parameters: {
     layout: 'fullscreen',
