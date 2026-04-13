@@ -407,7 +407,7 @@ export function ToursTabScreen({ hideHeader = false }: ToursTabScreenProps = {})
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : toursRepos.length === 0 ? (
+      ) : toursRepos.length === 0 && completedTours.size === 0 ? (
         <View style={styles.emptyStateContainer}>
           <CityIcon color={theme.colors.textSecondary} size={80} />
           <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>
