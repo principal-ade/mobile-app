@@ -322,6 +322,8 @@ export function RepoFileCityScreen() {
   const [contributions, setContributions] = useState<DailyContribution[]>([]);
   const [contributionsLoading, setContributionsLoading] = useState(true);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [aboutSubTab, setAboutSubTab] = useState<'contributors' | 'legend'>('contributors');
+  const [selectedLegendLayer, setSelectedLegendLayer] = useState<string | null>(null);
 
   // README state
   const [readme, setReadme] = useState<string>('');
@@ -661,6 +663,16 @@ export function RepoFileCityScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Close button */}
+      <TouchableOpacity
+        style={[styles.closeButton, { top: insets.top + 12 }]}
+        onPress={() => navigation.goBack()}
+      >
+        <View style={[styles.closeButtonCircle, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>×</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -704,7 +716,10 @@ export function RepoFileCityScreen() {
             {activeViz === 'city' && (
               <FileCityCanvas
                 cityData={cityData}
-                highlightLayers={highlightLayers}
+                highlightLayers={selectedLegendLayer
+                  ? highlightLayers.filter(layer => layer.name === selectedLegendLayer)
+                  : highlightLayers
+                }
                 iconMap={iconMap}
                 showFileTypeIcons={true}
                 backgroundColor="transparent"
@@ -713,6 +728,7 @@ export function RepoFileCityScreen() {
                 showDirectoryLabels={false}
                 enableZoom={true}
                 enablePan={true}
+                isolationMode={selectedLegendLayer ? 'transparent' : 'none'}
                 onBuildingPress={handleBuildingPress}
                 onDistrictPress={handleDistrictPress}
               />
@@ -974,10 +990,7 @@ export function RepoFileCityScreen() {
                 {/* Tab Content */}
                 <View style={styles.tabContent}>
               {activeViz === 'city' && (
-                <ScrollView
-                  style={styles.repoTabScroll}
-                  showsVerticalScrollIndicator={false}
-                >
+                <>
                   {/* Description */}
                   {repoInfo?.description && (
                     <Text
@@ -1000,37 +1013,146 @@ export function RepoFileCityScreen() {
                     </View>
                   )}
 
-                  {/* Contributors Section */}
-                  <View style={styles.contributorsSection}>
-                    {contributorsLoading ? (
-                      <LoadingSpinner size="small" color={theme.colors.primary} />
-                    ) : contributors.length > 0 ? (
-                      <>
-                        <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
-                          Contributors ({contributors.length === 100 ? '100+' : contributors.length})
+                  {/* Contributors/Legend Section */}
+                  <View style={styles.aboutSubSection}>
+                    {/* Sub-tab Switcher */}
+                    <View style={styles.subTabBar}>
+                      <TouchableOpacity
+                        style={[
+                          styles.subTab,
+                          aboutSubTab === 'contributors' && styles.subTabActive,
+                        ]}
+                        onPress={() => setAboutSubTab('contributors')}
+                      >
+                        <Text
+                          style={[
+                            styles.subTabText,
+                            { color: aboutSubTab === 'contributors' ? theme.colors.primary : theme.colors.textSecondary },
+                          ]}
+                        >
+                          Contributors
                         </Text>
-                        <View style={styles.contributorsGrid}>
-                          {contributors.map((contributor) => (
-                            <TouchableOpacity
-                              key={contributor.login}
-                              style={styles.contributorAvatar}
-                              onPress={() => {
-                                navigation.navigate('UserProfile', {
-                                  username: contributor.login,
-                                });
-                              }}
-                            >
-                              <Image
-                                source={{ uri: contributor.avatarUrl }}
-                                style={styles.contributorImage}
-                              />
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </>
-                    ) : null}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.subTab,
+                          aboutSubTab === 'legend' && styles.subTabActive,
+                        ]}
+                        onPress={() => setAboutSubTab('legend')}
+                      >
+                        <Text
+                          style={[
+                            styles.subTabText,
+                            { color: aboutSubTab === 'legend' ? theme.colors.primary : theme.colors.textSecondary },
+                          ]}
+                        >
+                          Legend
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Sub-tab Content */}
+                    <ScrollView
+                      style={styles.aboutSubContent}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      {aboutSubTab === 'contributors' ? (
+                        <View style={styles.contributorsSection}>
+                        {contributorsLoading ? (
+                          <LoadingSpinner size="small" color={theme.colors.primary} />
+                        ) : contributors.length > 0 ? (
+                          <>
+                            <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
+                              {contributors.length === 100 ? '100+' : contributors.length} contributors
+                            </Text>
+                            <View style={styles.contributorsGrid}>
+                              {contributors.map((contributor) => (
+                                <TouchableOpacity
+                                  key={contributor.login}
+                                  style={styles.contributorAvatar}
+                                  onPress={() => {
+                                    navigation.navigate('UserProfile', {
+                                      username: contributor.login,
+                                    });
+                                  }}
+                                >
+                                  <Image
+                                    source={{ uri: contributor.avatarUrl }}
+                                    style={styles.contributorImage}
+                                  />
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={[styles.noDataText, { color: theme.colors.textSecondary }]}>
+                            No contributors found
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.legendSection}>
+                        {highlightLayers.length > 0 ? (
+                          <>
+                            <View style={styles.legendGrid}>
+                              {highlightLayers
+                                .filter(layer => !layer.name.toLowerCase().includes('secondary'))
+                                .slice()
+                                .sort((a, b) => {
+                                  // Sort by count (items length) descending
+                                  const countA = (a as any).items?.length || 0;
+                                  const countB = (b as any).items?.length || 0;
+                                  return countB - countA;
+                                })
+                                .map((layer, index) => {
+                                  const iconConfig = iconMap.get(layer.name);
+                                  const count = (layer as any).items?.length || 0;
+                                  const isSelected = selectedLegendLayer === layer.name;
+                                  return (
+                                    <TouchableOpacity
+                                      key={index}
+                                      style={[
+                                        styles.legendItem,
+                                        isSelected && styles.legendItemSelected,
+                                      ]}
+                                      onPress={() => {
+                                        setSelectedLegendLayer(isSelected ? null : layer.name);
+                                      }}
+                                      activeOpacity={0.7}
+                                    >
+                                      <View style={styles.legendIndicator}>
+                                        {iconConfig?.icon && (
+                                          <LucideIcon
+                                            name={iconConfig.icon as any}
+                                            size={16}
+                                            color={layer.color}
+                                          />
+                                        )}
+                                        <View
+                                          style={[
+                                            styles.legendColorBox,
+                                            { backgroundColor: layer.color },
+                                          ]}
+                                        />
+                                      </View>
+                                      <Text style={[styles.legendLabel, { color: theme.colors.text }]}>
+                                        {layer.name} ({count})
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={[styles.placeholderText, { color: theme.colors.textSecondary }]}>
+                            No file type data available
+                          </Text>
+                        )}
+                      </View>
+                      )}
+                    </ScrollView>
                   </View>
-                </ScrollView>
+                </>
               )}
 
               {activeViz === 'stars' && (
@@ -1197,6 +1319,24 @@ export function RepoFileCityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 200,
+  },
+  closeButtonCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 28,
+    fontWeight: '300',
+    lineHeight: 28,
+    marginTop: -2,
   },
   header: {
     flexDirection: 'row',
@@ -1451,20 +1591,85 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+  aboutSubSection: {
+    marginTop: 0,
+    flex: 1,
+  },
+  aboutSubContent: {
+    flex: 1,
+  },
+  subTabBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 16,
+  },
+  subTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+  },
+  subTabActive: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  subTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   contributorsSection: {
     marginTop: 0,
+    marginBottom: 16,
   },
   contributorsLabel: {
     fontSize: 15,
     fontWeight: '600',
-    flex: 1,
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
   contributorsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  legendSection: {
+    paddingTop: 0,
+    paddingBottom: 16,
+  },
+  legendTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    width: '50%',
+    borderRadius: 8,
+  },
+  legendItemSelected: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  legendIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 8,
+  },
+  legendColorBox: {
+    width: 24,
+    height: 12,
+    borderRadius: 3,
+  },
+  legendLabel: {
+    fontSize: 14,
+    flex: 1,
   },
   contributorsScroll: {
     marginHorizontal: -16,
@@ -1498,9 +1703,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     opacity: 0.9,
     textAlign: 'center',
-  },
-  repoTabScroll: {
-    flex: 1,
   },
   // Stars tab styles
   starsContent: {
