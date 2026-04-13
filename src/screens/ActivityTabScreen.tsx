@@ -31,6 +31,7 @@ import {
   HeatmapRepo,
   FeedWatches,
 } from '../services/FeedApiService';
+import { saveWatchedUsers, saveWatchedRepos } from '../utils/feedStorage';
 
 type Tab = 'repos' | 'users';
 
@@ -101,6 +102,11 @@ export function ActivityTabScreen() {
       setAuthors(activityResponse.authors);
       setRepos(activityResponse.repos);
       setFollows(followsResponse);
+
+      // Sync API watches to local storage (without triggering version increment)
+      saveWatchedUsers(followsResponse.watchedUsers).catch(console.error);
+      saveWatchedRepos(followsResponse.watchedRepos).catch(console.error);
+
       hasFetched.current = true;
       lastFetchTime.current = now;
       versionAtLastFetch.current = version;
@@ -132,6 +138,9 @@ export function ActivityTabScreen() {
 
   // Process repos data for display
   const repoActivityData: RepoActivityData[] = React.useMemo(() => {
+    // Use API watches if available, otherwise use context (local storage)
+    const activeWatchedRepos = follows?.watchedRepos ?? watchedRepos;
+
     // Group commits by repo
     const repoCommitsMap = new Map<string, HeatmapCommit[]>();
     commits.forEach(commit => {
@@ -143,7 +152,7 @@ export function ActivityTabScreen() {
     const repoMetadataMap = new Map(repos.map(r => [`${r.owner}/${r.name}`.toLowerCase(), r]));
 
     // Create repo activity data for ALL watched repos
-    const repoData: RepoActivityData[] = watchedRepos.map(watchedRepo => {
+    const repoData: RepoActivityData[] = activeWatchedRepos.map(watchedRepo => {
       const repoIdKey = `${watchedRepo.owner}/${watchedRepo.repo}`.toLowerCase();
       const repoMetadata = repoMetadataMap.get(repoIdKey);
 
@@ -201,10 +210,13 @@ export function ActivityTabScreen() {
       const bTime = b.latestCommitTime ? new Date(b.latestCommitTime).getTime() : 0;
       return bTime - aTime;
     });
-  }, [commits, repos, watchedRepos]);
+  }, [commits, repos, watchedRepos, follows]);
 
   // Process users data for display
   const userActivityData: UserActivityData[] = React.useMemo(() => {
+    // Use API watches if available, otherwise use context (local storage)
+    const activeWatchedUsers = follows?.watchedUsers ?? watchedUsers;
+
     // Group commits by author (use lowercase for case-insensitive matching)
     const authorCommitsMap = new Map<string, HeatmapCommit[]>();
     commits.forEach(commit => {
@@ -217,7 +229,7 @@ export function ActivityTabScreen() {
     const authorMetadataMap = new Map(authors.map(a => [a.login.toLowerCase(), a]));
 
     // Create user activity data for ALL watched users
-    const userData: UserActivityData[] = watchedUsers.map(watchedUser => {
+    const userData: UserActivityData[] = activeWatchedUsers.map(watchedUser => {
       const loginKey = watchedUser.login.toLowerCase();
       const authorCommits = authorCommitsMap.get(loginKey) || [];
       const authorMetadata = authorMetadataMap.get(loginKey);
@@ -265,7 +277,7 @@ export function ActivityTabScreen() {
       const bTime = b.latestCommitTime ? new Date(b.latestCommitTime).getTime() : 0;
       return bTime - aTime;
     });
-  }, [commits, authors, watchedUsers]);
+  }, [commits, authors, watchedUsers, follows]);
 
   // Not authenticated state
   if (!isAuthenticated) {
@@ -330,7 +342,9 @@ export function ActivityTabScreen() {
   }
 
   // Empty state (no follows)
-  if (watchedUsers.length === 0 && watchedRepos.length === 0) {
+  const activeWatchedUsers = follows?.watchedUsers ?? watchedUsers;
+  const activeWatchedRepos = follows?.watchedRepos ?? watchedRepos;
+  if (activeWatchedUsers.length === 0 && activeWatchedRepos.length === 0) {
     return (
       <ScrollView
         style={[styles.container, { backgroundColor: theme.colors.background }]}

@@ -246,7 +246,7 @@ export default function TourFileCityScreen() {
                     />
                   )}
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('RepoFileCity', { owner, name })}
+                    onPress={() => navigation.navigate('RepoFileCity', { owner, name, fullName: `${owner}/${name}` })}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.repoName, { color: theme.colors.text }]}>
