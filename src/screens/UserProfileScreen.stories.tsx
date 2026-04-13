@@ -162,15 +162,8 @@ export const Default: Story = {
         avatarUrl="https://avatars.githubusercontent.com/u/1?v=4"
         name="Sarah Chen"
         username="sarahchen"
+        twitterHandle="sarahchen_dev"
         bio="Full-stack developer passionate about open source and building delightful user experiences. Coffee enthusiast and occasional blogger."
-        location="San Francisco, CA"
-        website="https://sarahchen.dev"
-        stats={{
-          repositories: 42,
-          followers: 1234,
-          following: 89,
-        }}
-        isFollowing={false}
         recentActivity={generateHourlyActivity('moderate')}
         contributions={generateMockContributions('moderate')}
       />

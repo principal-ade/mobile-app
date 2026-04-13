@@ -25,6 +25,7 @@ export interface GitHubUserProfile {
   bio: string | null;
   location: string | null;
   blog: string | null;
+  twitter_username: string | null;
   public_repos: number;
   followers: number;
   following: number;

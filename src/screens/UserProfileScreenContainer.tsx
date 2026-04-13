@@ -171,6 +171,7 @@ export function UserProfileScreenContainer() {
       avatarUrl={userData?.avatar_url}
       name={userData?.name || userData?.login}
       username={userData?.login}
+      twitterHandle={userData?.twitter_username || undefined}
       bio={userData?.bio || undefined}
       contributions={activityData?.contributions || []}
       recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}

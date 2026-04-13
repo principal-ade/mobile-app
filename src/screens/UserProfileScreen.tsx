@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
-import { ContributionCalendar, DailyContribution } from '../components/ContributionCalendar';
+import { ContributionGrid, DailyContribution } from '../components/ContributionGrid';
 import { Logo } from '../components/Logo';
+import { LucideIcon } from '../components/LucideIcon';
 
 export interface ActivityCommit {
   sha: string;
@@ -40,6 +42,7 @@ export interface UserProfileScreenProps {
   avatarUrl?: string;
   name?: string;
   username?: string;
+  twitterHandle?: string;
   bio?: string;
   onWatchPress?: () => void;
   onClose?: () => void;
@@ -53,6 +56,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   avatarUrl,
   name,
   username,
+  twitterHandle,
   bio,
   onWatchPress,
   onClose,
@@ -64,6 +68,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const { width } = Dimensions.get('window');
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [headerContentHeight, setHeaderContentHeight] = React.useState<number | null>(null);
 
   // Render skeleton loading state
   if (loading) {
@@ -112,8 +117,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const userName = name!;
   const userUsername = username!;
 
-  // Define header collapse threshold
-  const HEADER_MAX_HEIGHT = 300 + insets.top;
+  // Define header collapse threshold - use measured content height or fallback to 240
+  const HEADER_MAX_HEIGHT = (headerContentHeight || 240) + insets.top;
   const HEADER_MIN_HEIGHT = 60 + insets.top;
   const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
@@ -205,9 +210,33 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             <Text style={[styles.stickyName, { color: theme.colors.text }]} numberOfLines={1}>
               {userName}
             </Text>
-            <Text style={[styles.stickyUsername, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-              @{userUsername}
-            </Text>
+            <View style={styles.stickySocialHandles}>
+              <TouchableOpacity
+                style={[styles.socialHandle, { backgroundColor: theme.colors.background }]}
+                onPress={() => Linking.openURL(`https://github.com/${userUsername}`)}
+                activeOpacity={0.7}
+              >
+                <LucideIcon name="Github" size={12} color={theme.colors.textSecondary} />
+                <Text style={[styles.stickyHandleText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                  {userUsername}
+                </Text>
+              </TouchableOpacity>
+              {twitterHandle && (
+                <>
+                  <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary, fontSize: 10 }]}>•</Text>
+                  <TouchableOpacity
+                    style={[styles.socialHandle, { backgroundColor: theme.colors.background }]}
+                    onPress={() => Linking.openURL(`https://twitter.com/${twitterHandle}`)}
+                    activeOpacity={0.7}
+                  >
+                    <LucideIcon name="Twitter" size={12} color={theme.colors.textSecondary} />
+                    <Text style={[styles.stickyHandleText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                      {twitterHandle}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
         </View>
       </Animated.View>
@@ -229,12 +258,42 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             },
           ]}
         >
+        {/* Measure content height (excluding background) */}
+        <View
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+          onLayout={(e) => {
+            const { height } = e.nativeEvent.layout;
+            if (height > 0 && !headerContentHeight) {
+              setHeaderContentHeight(height);
+            }
+          }}
+        >
+          <View style={[styles.avatarSection, { marginTop: insets.top }]}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar} />
+            </View>
+          </View>
+          <View style={styles.nameContainer}>
+            <Text style={styles.name}>{userName}</Text>
+            <View style={styles.socialHandles}>
+              <View style={styles.socialHandle}>
+                <Text style={styles.handleText}>{userUsername}</Text>
+              </View>
+              {twitterHandle && (
+                <View style={styles.socialHandle}>
+                  <Text style={styles.handleText}>{twitterHandle}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
         {/* Avatar with contribution calendar background */}
         <Animated.View
           style={[
             styles.avatarSection,
             {
-              marginTop: 32 + insets.top,
+              marginTop: insets.top,
               transform: [
                 { scale: avatarScale },
                 { translateY: avatarTranslateY },
@@ -245,10 +304,10 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           {/* Heatmap background behind avatar */}
           <View style={styles.contributionBackground}>
             <View style={styles.calendarWrapper}>
-              <ContributionCalendar
+              <ContributionGrid
                 contributions={contributions}
+                layout="weeks"
                 months={5}
-                showLabels={false}
                 loading={contributions.length === 0}
               />
             </View>
@@ -283,53 +342,70 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           >
             {userName}
           </Animated.Text>
-          <Animated.Text
+          <Animated.View
             style={[
-              styles.username,
+              styles.socialHandles,
               {
-                color: theme.colors.textSecondary,
                 opacity: headerOpacity,
               },
             ]}
           >
-            @{userUsername}
-          </Animated.Text>
+            <TouchableOpacity
+              style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
+              onPress={() => Linking.openURL(`https://github.com/${userUsername}`)}
+              activeOpacity={0.7}
+            >
+              <LucideIcon name="Github" size={14} color={theme.colors.textSecondary} />
+              <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
+                {userUsername}
+              </Text>
+            </TouchableOpacity>
+            {twitterHandle && (
+              <>
+                <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary }]}>•</Text>
+                <TouchableOpacity
+                  style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
+                  onPress={() => Linking.openURL(`https://twitter.com/${twitterHandle}`)}
+                  activeOpacity={0.7}
+                >
+                  <LucideIcon name="Twitter" size={14} color={theme.colors.textSecondary} />
+                  <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
+                    {twitterHandle}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Animated.View>
         </Animated.View>
 
-        {/* Action Button */}
-        <Animated.View
+      </Animated.View>
+
+      {/* Action Button */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
           style={[
-            styles.actionButtons,
+            styles.watchButton,
             {
-              opacity: headerOpacity,
+              backgroundColor: isWatching
+                ? theme.colors.surface
+                : theme.colors.primary,
+              borderColor: theme.colors.primary,
             },
           ]}
+          onPress={onWatchPress}
         >
-          <TouchableOpacity
+          <Text
             style={[
-              styles.watchButton,
+              styles.watchButtonText,
               {
-                backgroundColor: isWatching
-                  ? theme.colors.surface
-                  : theme.colors.primary,
-                borderColor: theme.colors.primary,
+                color: isWatching ? theme.colors.primary : theme.colors.text,
               },
             ]}
-            onPress={onWatchPress}
           >
-            <Text
-              style={[
-                styles.watchButtonText,
-                {
-                  color: isWatching ? theme.colors.primary : theme.colors.text,
-                },
-              ]}
-            >
-              {isWatching ? 'Watching' : 'Watch'}
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Animated.View>
+            {isWatching ? 'Watching' : 'Watch'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Bio Section */}
       {bio && (
@@ -460,16 +536,19 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 0,
     width: '100%',
+    flex: 1,
+    paddingVertical: 5,
   },
   contributionBackground: {
     position: 'absolute',
-    top: -15, // Center heatmap with avatar
+    top: 0, // Anchor to top (needed when avatarSection is centered)
     left: -16, // Extend beyond header's paddingHorizontal
     right: -16, // Extend beyond header's paddingHorizontal
-    height: 180,
+    height: 160,
     opacity: 0.3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -477,7 +556,7 @@ const styles = StyleSheet.create({
   },
   calendarWrapper: {
     width: '100%',
-    height: 180,
+    height: 160,
   },
   avatarContainer: {
     zIndex: 1,
@@ -491,6 +570,7 @@ const styles = StyleSheet.create({
   },
   nameContainer: {
     alignItems: 'center',
+    marginTop: 8,
     marginBottom: 20,
     zIndex: 1,
   },
@@ -498,9 +578,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
   },
-  username: {
-    fontSize: 16,
-    fontWeight: '400',
+  socialHandles: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  socialHandle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+  },
+  handleText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  handleSeparator: {
+    fontSize: 14,
+    marginHorizontal: 2,
+  },
+  stickySocialHandles: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stickyHandleText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -628,7 +736,7 @@ const styles = StyleSheet.create({
     height: 28,
   },
   skeletonUsername: {
-    width: 120,
+    width: 200,
     height: 18,
   },
   skeletonButton: {
