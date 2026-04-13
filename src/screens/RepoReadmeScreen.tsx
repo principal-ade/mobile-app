@@ -31,10 +31,6 @@ export default function RepoReadmeScreen({ route }: Props) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
-  console.log('=== RepoReadmeScreen loaded ===');
-  console.log('Route params:', { owner, name, fullName });
-  console.log('Theme background color:', theme.colors.background);
-
   const [readme, setReadme] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +39,6 @@ export default function RepoReadmeScreen({ route }: Props) {
     let isMounted = true;
 
     const loadReadme = async () => {
-      console.log('loadReadme called, token exists:', !!token);
-
       if (!token) {
         setError('Authentication required');
         setIsLoading(false);
@@ -52,10 +46,7 @@ export default function RepoReadmeScreen({ route }: Props) {
       }
 
       try {
-        console.log('Fetching README for:', owner, name);
         const content = await fetchRepoReadme(token, owner, name);
-        console.log('README loaded, length:', content.length);
-        console.log('First 500 chars:', content.substring(0, 500));
         if (isMounted) {
           setReadme(content);
         }
@@ -83,8 +74,6 @@ export default function RepoReadmeScreen({ route }: Props) {
                  theme.colors.background === '#000' ||
                  theme.colors.background.toLowerCase().startsWith('#0') ||
                  theme.colors.background.toLowerCase().startsWith('#1');
-
-  console.log('Dark mode:', isDark, 'Background:', theme.colors.background);
 
   // Load GitHub's markdown CSS
   const htmlContent = readme ? `
