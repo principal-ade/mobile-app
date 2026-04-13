@@ -119,16 +119,7 @@ const MobileFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       insets: { top: 44, left: 0, right: 0, bottom: 34 },
     }}
   >
-    <View
-      style={{
-        width: 375,
-        height: 812,
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 8,
-        overflow: 'hidden',
-      }}
-    >
+    <View style={{ flex: 1 }}>
       {children}
     </View>
   </SafeAreaProvider>
@@ -138,7 +129,7 @@ const meta: Meta<typeof UserProfileScreen> = {
   title: 'Screens/UserProfileScreen',
   component: UserProfileScreen,
   parameters: {
-    layout: 'centered',
+    layout: 'fullscreen',
   },
   argTypes: {
     name: { control: 'text' },

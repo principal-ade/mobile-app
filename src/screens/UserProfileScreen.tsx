@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Animated,
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,8 +66,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const { theme } = useTheme();
   const { width } = Dimensions.get('window');
   const insets = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [headerContentHeight, setHeaderContentHeight] = React.useState<number | null>(null);
 
   // Render skeleton loading state
   if (loading) {
@@ -92,7 +89,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             {/* Logo as avatar - match exact size and position */}
             <View style={styles.avatarContainer}>
               <View style={styles.skeletonAvatarCircle}>
-                <Logo width={112} height={112} animated={true} />
+                <Logo width={152} height={152} animated={true} />
               </View>
             </View>
           </View>
@@ -117,61 +114,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const userName = name!;
   const userUsername = username!;
 
-  // Define header collapse threshold - use measured content height or fallback to 240
-  const HEADER_MAX_HEIGHT = (headerContentHeight || 240) + insets.top;
-  const HEADER_MIN_HEIGHT = 60 + insets.top;
-  const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
-
-  // Animated values
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
-    extrapolate: 'clamp',
-  });
-
-  const avatarScale = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [1, 0.4],
-    extrapolate: 'clamp',
-  });
-
-  const avatarTranslateY = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
-
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
-    outputRange: [1, 0.5, 0],
-    extrapolate: 'clamp',
-  });
-
-  const nameTranslateY = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 10],
-    extrapolate: 'clamp',
-  });
-
-  const nameFontSize = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [28, 16],
-    extrapolate: 'clamp',
-  });
-
-  // Sticky header animations
-  const stickyHeaderOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 0, 1],
-    extrapolate: 'clamp',
-  });
-
-  const stickyHeaderTranslateY = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [-60, 0],
-    extrapolate: 'clamp',
-  });
-
   return (
     <View style={styles.container}>
       {/* Close button */}
@@ -186,170 +128,41 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* Sticky Header Bar */}
-      <Animated.View
-        style={[
-          styles.stickyHeader,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-            opacity: stickyHeaderOpacity,
-            transform: [{ translateY: stickyHeaderTranslateY }],
-            paddingTop: insets.top,
-            height: 60 + insets.top,
-          },
-        ]}
-      >
-        <View style={styles.stickyHeaderContent}>
-          <Image
-            source={{ uri: userAvatarUrl }}
-            style={styles.stickyAvatar}
-            resizeMode="cover"
-          />
-          <View style={styles.stickyNameContainer}>
-            <Text style={[styles.stickyName, { color: theme.colors.text }]} numberOfLines={1}>
-              {userName}
-            </Text>
-            <View style={styles.stickySocialHandles}>
-              <TouchableOpacity
-                style={[styles.socialHandle, { backgroundColor: theme.colors.background }]}
-                onPress={() => Linking.openURL(`https://github.com/${userUsername}`)}
-                activeOpacity={0.7}
-              >
-                <LucideIcon name="Github" size={12} color={theme.colors.textSecondary} />
-                <Text style={[styles.stickyHandleText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                  {userUsername}
-                </Text>
-              </TouchableOpacity>
-              {twitterHandle && (
-                <>
-                  <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary, fontSize: 10 }]}>•</Text>
-                  <TouchableOpacity
-                    style={[styles.socialHandle, { backgroundColor: theme.colors.background }]}
-                    onPress={() => Linking.openURL(`https://twitter.com/${twitterHandle}`)}
-                    activeOpacity={0.7}
-                  >
-                    <LucideIcon name="Twitter" size={12} color={theme.colors.textSecondary} />
-                    <Text style={[styles.stickyHandleText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                      {twitterHandle}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-      <Animated.ScrollView
+      <ScrollView
         style={{ backgroundColor: theme.colors.background }}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: 32 }]}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
       >
-        {/* Collapsing Header Section */}
-        <Animated.View
-          style={[
-            styles.header,
-            {
-              height: headerHeight,
-            },
-          ]}
-        >
-        {/* Measure content height (excluding background) */}
-        <View
-          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-          onLayout={(e) => {
-            const { height } = e.nativeEvent.layout;
-            if (height > 0 && !headerContentHeight) {
-              setHeaderContentHeight(height);
-            }
-          }}
-        >
+        {/* Header Section */}
+        <View style={styles.header}>
+          {/* Avatar with contribution calendar background */}
           <View style={[styles.avatarSection, { marginTop: insets.top }]}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar} />
-            </View>
-          </View>
-          <View style={styles.nameContainer}>
-            <Text style={styles.name}>{userName}</Text>
-            <View style={styles.socialHandles}>
-              <View style={styles.socialHandle}>
-                <Text style={styles.handleText}>{userUsername}</Text>
+            {/* Heatmap background behind avatar */}
+            <View style={styles.contributionBackground}>
+              <View style={styles.calendarWrapper}>
+                <ContributionGrid
+                  contributions={contributions}
+                  layout="weeks"
+                  months={5}
+                  loading={contributions.length === 0}
+                />
               </View>
-              {twitterHandle && (
-                <View style={styles.socialHandle}>
-                  <Text style={styles.handleText}>{twitterHandle}</Text>
-                </View>
-              )}
             </View>
-          </View>
-        </View>
 
-        {/* Avatar with contribution calendar background */}
-        <Animated.View
-          style={[
-            styles.avatarSection,
-            {
-              marginTop: insets.top,
-              transform: [
-                { scale: avatarScale },
-                { translateY: avatarTranslateY },
-              ],
-            },
-          ]}
-        >
-          {/* Heatmap background behind avatar */}
-          <View style={styles.contributionBackground}>
-            <View style={styles.calendarWrapper}>
-              <ContributionGrid
-                contributions={contributions}
-                layout="weeks"
-                months={5}
-                loading={contributions.length === 0}
+            {/* Avatar on top */}
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{ uri: userAvatarUrl }}
+                style={styles.avatar}
+                resizeMode="cover"
               />
             </View>
           </View>
 
-          {/* Avatar on top */}
-          <View style={styles.avatarContainer}>
-            <Image
-              source={{ uri: userAvatarUrl }}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
-          </View>
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.nameContainer,
-            {
-              transform: [{ translateY: nameTranslateY }],
-            },
-          ]}
-        >
-          <Animated.Text
-            style={[
-              styles.name,
-              {
-                color: theme.colors.text,
-                fontSize: nameFontSize,
-              },
-            ]}
-          >
-            {userName}
-          </Animated.Text>
-          <Animated.View
-            style={[
-              styles.socialHandles,
-              {
-                opacity: headerOpacity,
-              },
-            ]}
-          >
+          <View style={styles.nameContainer}>
+            <Text style={[styles.name, { color: theme.colors.text }]}>
+              {userName}
+            </Text>
+            <View style={styles.socialHandles}>
             <TouchableOpacity
               style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
               onPress={() => Linking.openURL(`https://github.com/${userUsername}`)}
@@ -375,10 +188,18 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
                 </TouchableOpacity>
               </>
             )}
-          </Animated.View>
-        </Animated.View>
+            </View>
+          </View>
+        </View>
 
-      </Animated.View>
+      {/* Bio Section */}
+      {bio && (
+        <View style={styles.bioSection}>
+          <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
+            {bio}
+          </Text>
+        </View>
+      )}
 
       {/* Action Button */}
       <View style={styles.actionButtons}>
@@ -406,15 +227,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Bio Section */}
-      {bio && (
-        <View style={styles.bioSection}>
-          <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
-            {bio}
-          </Text>
-        </View>
-      )}
 
       {/* Recent Activity - Last 24 Hours */}
       <View style={styles.activitySection}>
@@ -482,7 +294,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
           </View>
         )}
       </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 };
@@ -491,57 +303,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  stickyHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    zIndex: 100,
-    borderBottomWidth: 1,
-    justifyContent: 'center',
-  },
-  stickyHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  stickyAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#ff6b35',
-  },
-  stickyNameContainer: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  stickyName: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  stickyUsername: {
-    fontSize: 12,
-    fontWeight: '400',
-  },
   contentContainer: {
     // paddingBottom is applied dynamically with safe area insets
   },
   header: {
     alignItems: 'center',
     paddingHorizontal: 16,
-    overflow: 'hidden',
     position: 'relative',
   },
   avatarSection: {
     alignItems: 'center',
-    justifyContent: 'center',
     position: 'relative',
     marginBottom: 0,
     width: '100%',
-    flex: 1,
-    paddingVertical: 5,
   },
   contributionBackground: {
     position: 'absolute',
@@ -560,21 +334,24 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     zIndex: 1,
+    paddingTop: 16,
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     borderWidth: 4,
     borderColor: '#ff6b35',
   },
   nameContainer: {
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: 4,
+    marginBottom: 0,
+    paddingBottom: 16,
     zIndex: 1,
   },
   name: {
+    fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
   },
@@ -601,15 +378,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginHorizontal: 2,
   },
-  stickySocialHandles: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  stickyHandleText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -631,7 +399,7 @@ const styles = StyleSheet.create({
   },
   bioSection: {
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingBottom: 16,
   },
   bio: {
     fontSize: 16,
@@ -719,9 +487,9 @@ const styles = StyleSheet.create({
     height: 300, // Fixed height to prevent layout shift
   },
   skeletonAvatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     borderWidth: 4,
     borderColor: '#ff6b35',
     justifyContent: 'center',
