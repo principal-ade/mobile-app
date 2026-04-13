@@ -9,6 +9,7 @@ import {
   ScrollView,
   Linking,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LucideIcon } from '../components/LucideIcon';
 
@@ -83,6 +84,7 @@ import type { CityBuilding, CityDistrict, CityData, HighlightLayer, FileTypeIcon
 import { getFileCityForRepo, type RepoInfo } from '../services/FileCityService';
 import { getStargazers, type Stargazer } from '../services/StargazersService';
 import { getContributors, type Contributor } from '../services/ContributorsService';
+import { fetchRepoReadme } from '../services/GithubService';
 import { useAuthContext } from '../context/AuthContext';
 import type { FeedStackParamList } from '../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../components/DailyActivityHeatmap';
@@ -282,8 +284,8 @@ function formatRepoAge(dateString: string): string {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-// Canvas is a square, capped at 50% of screen height
-const CANVAS_SIZE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT * 0.4);
+// Canvas is a square, using full width but capped at 30% of screen height
+const CANVAS_SIZE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT * 0.3, 400);
 
 export function RepoFileCityScreen() {
   const { theme } = useTheme();
@@ -304,6 +306,7 @@ export function RepoFileCityScreen() {
   const [iconMap, setIconMap] = useState<Map<string, FileTypeIconConfig>>(new Map());
   const [activeViz, setActiveViz] = useState<'city' | 'stars' | 'heatmap'>('city');
   const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null);
+  const [showReadme, setShowReadme] = useState(false);
   const [stargazers, setStargazers] = useState<Stargazer[]>([]);
   const [stargazersTotalCount, setStargazersTotalCount] = useState(0);
   const [stargazersLoading, setStargazersLoading] = useState(false);
@@ -319,6 +322,12 @@ export function RepoFileCityScreen() {
   const [contributions, setContributions] = useState<DailyContribution[]>([]);
   const [contributionsLoading, setContributionsLoading] = useState(true);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
+  // README state
+  const [readme, setReadme] = useState<string>('');
+  const [readmeLoading, setReadmeLoading] = useState(false);
+  const [readmeFetched, setReadmeFetched] = useState(false);
+  const [readmeError, setReadmeError] = useState<string | null>(null);
 
   // Check if repo is being watched
   const isRepoWatching = React.useMemo(() => {
@@ -532,6 +541,41 @@ export function RepoFileCityScreen() {
     };
   }, [owner, name]);
 
+  // Fetch README when README is shown
+  useEffect(() => {
+    if (!showReadme || readmeFetched || !token) return;
+
+    let cancelled = false;
+
+    async function loadReadme() {
+      setReadmeLoading(true);
+      setReadmeError(null);
+
+      try {
+        const content = await fetchRepoReadme(token, owner, name);
+        if (!cancelled) {
+          setReadme(content);
+          setReadmeFetched(true);
+        }
+      } catch (err) {
+        console.error('Failed to load README', err);
+        if (!cancelled) {
+          setReadmeError(err instanceof Error ? err.message : 'Failed to load README');
+        }
+      } finally {
+        if (!cancelled) {
+          setReadmeLoading(false);
+        }
+      }
+    }
+
+    loadReadme();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showReadme, owner, name, token, readmeFetched]);
+
   const handleToggleStar = async () => {
     if (!token || starToggling) return;
 
@@ -617,118 +661,6 @@ export function RepoFileCityScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        {/* Header content */}
-        <TouchableOpacity
-          style={styles.avatarButton}
-          onPress={() => {/* TODO: navigate to owner profile */}}
-        >
-          {repoInfo?.ownerAvatarUrl ? (
-            <Image
-              source={{ uri: repoInfo.ownerAvatarUrl }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.colors.surface }]}>
-              <Text style={[styles.avatarInitial, { color: theme.colors.textSecondary }]}>
-                {owner.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.headerCenter}
-          onPress={handleRepoNamePress}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[styles.title, { color: theme.colors.text }]}
-            numberOfLines={1}
-          >
-            {name}
-          </Text>
-          {repoInfo && cityData && (
-            <View style={styles.headerStats}>
-              <View style={styles.headerStat}>
-                <Text style={[styles.headerStatIcon, { color: theme.colors.warning }]}>★</Text>
-                <Text style={[styles.headerStatText, { color: theme.colors.textSecondary }]}>
-                  {formatCount(repoInfo.stargazersCount)}
-                </Text>
-              </View>
-              <View style={styles.headerStatDivider} />
-              <View style={styles.headerStat}>
-                <Text style={[styles.headerStatText, { color: theme.colors.textSecondary }]}>
-                  {formatCount(cityData.metadata.totalFiles)} files
-                </Text>
-              </View>
-            </View>
-          )}
-        </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[
-              styles.headerIconButton,
-              { backgroundColor: theme.colors.surface },
-            ]}
-            onPress={() => {
-              navigation.navigate('RepoReadme', {
-                owner,
-                name,
-                fullName,
-              });
-            }}
-          >
-            <LucideIcon name="FileText" size={16} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-          {isTourAvailable && (
-            <TouchableOpacity
-              style={styles.tourButton}
-              onPress={handleTourPress}
-            >
-              <Text style={[styles.tourButtonText, { color: theme.colors.primary }]}>
-                Tour
-              </Text>
-            </TouchableOpacity>
-          )}
-          {isAuthenticated && (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.headerIconButton,
-                  { backgroundColor: theme.colors.surface },
-                  isStarred && { backgroundColor: 'rgba(255, 184, 0, 0.2)' },
-                ]}
-                onPress={handleToggleStar}
-                disabled={starToggling}
-              >
-                <Text style={[
-                  styles.headerIconButtonIcon,
-                  { color: isStarred ? theme.colors.warning : theme.colors.textSecondary },
-                ]}>
-                  {isStarred ? '★' : '☆'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.headerIconButton,
-                  { backgroundColor: theme.colors.surface },
-                  isRepoWatching && { backgroundColor: 'rgba(0, 122, 255, 0.2)' },
-                ]}
-                onPress={handleToggleRepoWatch}
-              >
-                <Text style={[
-                  styles.headerIconButtonIcon,
-                  { color: isRepoWatching ? theme.colors.primary : theme.colors.textSecondary },
-                ]}>
-                  {isRepoWatching ? '◉' : '○'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </View>
-
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -756,7 +688,7 @@ export function RepoFileCityScreen() {
       ) : cityData ? (
         <>
           {/* Visualization Area */}
-          <View style={styles.canvasContainer}>
+          <View style={[styles.canvasContainer, { marginTop: insets.top }]}>
             {/* Contribution grid background */}
             <View style={styles.gridBackground}>
               <ContributionCalendar
@@ -817,78 +749,235 @@ export function RepoFileCityScreen() {
             )}
           </View>
 
-          {/* Bottom Section */}
-          <View style={[styles.bottomSection, { backgroundColor: theme.colors.surface, paddingBottom: 16 }]}>
-            {/* Tab Bar */}
-            <View style={styles.tabBar}>
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: 8 }]}>
+            {/* Header content */}
+            <TouchableOpacity
+              style={styles.avatarButton}
+              onPress={() => {
+                navigation.navigate('UserProfile', {
+                  username: owner,
+                });
+              }}
+            >
+              {repoInfo?.ownerAvatarUrl ? (
+                <Image
+                  source={{ uri: repoInfo.ownerAvatarUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: theme.colors.surface }]}>
+                  <Text style={[styles.avatarInitial, { color: theme.colors.textSecondary }]}>
+                    {owner.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerCenter}
+              onPress={handleRepoNamePress}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[styles.title, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
+                {name}
+              </Text>
+              {repoInfo && cityData && (
+                <View style={styles.headerStats}>
+                  <View style={styles.headerStat}>
+                    <Text style={[styles.headerStatIcon, { color: theme.colors.warning }]}>★</Text>
+                    <Text style={[styles.headerStatText, { color: theme.colors.textSecondary }]}>
+                      {formatCount(repoInfo.stargazersCount)}
+                    </Text>
+                  </View>
+                  <View style={styles.headerStatDivider} />
+                  <View style={styles.headerStat}>
+                    <Text style={[styles.headerStatText, { color: theme.colors.textSecondary }]}>
+                      {formatCount(cityData.metadata.totalFiles)} files
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
+            <View style={styles.headerRight}>
               <TouchableOpacity
                 style={[
-                  styles.tab,
-                  activeViz === 'city' && styles.tabActive,
-                  activeViz === 'city' && { borderBottomColor: theme.colors.primary },
+                  styles.headerIconButton,
+                  { backgroundColor: theme.colors.surface },
+                  showReadme && { backgroundColor: 'rgba(0, 122, 255, 0.2)' },
                 ]}
-                onPress={() => setActiveViz('city')}
+                onPress={() => setShowReadme(!showReadme)}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: activeViz === 'city' ? theme.colors.primary : theme.colors.textSecondary },
-                  ]}
-                >
-                  About
-                </Text>
+                <LucideIcon
+                  name="FileText"
+                  size={16}
+                  color={showReadme ? theme.colors.primary : theme.colors.textSecondary}
+                />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  activeViz === 'stars' && styles.tabActive,
-                  activeViz === 'stars' && { borderBottomColor: theme.colors.primary },
-                ]}
-                onPress={() => setActiveViz('stars')}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: activeViz === 'stars' ? theme.colors.primary : theme.colors.textSecondary },
-                  ]}
+              {isTourAvailable && (
+                <TouchableOpacity
+                  style={styles.tourButton}
+                  onPress={handleTourPress}
                 >
-                  Stars
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
-                  activeViz === 'heatmap' && styles.tabActive,
-                  activeViz === 'heatmap' && { borderBottomColor: theme.colors.primary },
-                ]}
-                onPress={() => setActiveViz('heatmap')}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: activeViz === 'heatmap' ? theme.colors.primary : theme.colors.textSecondary },
-                  ]}
-                >
-                  Devs
-                </Text>
-              </TouchableOpacity>
+                  <Text style={[styles.tourButtonText, { color: theme.colors.primary }]}>
+                    Tour
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {isAuthenticated && (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.headerIconButton,
+                      { backgroundColor: theme.colors.surface },
+                      isStarred && { backgroundColor: 'rgba(255, 184, 0, 0.2)' },
+                    ]}
+                    onPress={handleToggleStar}
+                    disabled={starToggling}
+                  >
+                    <Text style={[
+                      styles.headerIconButtonIcon,
+                      { color: isStarred ? theme.colors.warning : theme.colors.textSecondary },
+                    ]}>
+                      {isStarred ? '★' : '☆'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.headerIconButton,
+                      { backgroundColor: theme.colors.surface },
+                      isRepoWatching && { backgroundColor: 'rgba(0, 122, 255, 0.2)' },
+                    ]}
+                    onPress={handleToggleRepoWatch}
+                  >
+                    <Text style={[
+                      styles.headerIconButtonIcon,
+                      { color: isRepoWatching ? theme.colors.primary : theme.colors.textSecondary },
+                    ]}>
+                      {isRepoWatching ? '◉' : '○'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
+          </View>
 
-            {/* Tab Content */}
-            <View style={styles.tabContent}>
+          {/* Bottom Section */}
+          <View style={[styles.bottomSection, { backgroundColor: theme.colors.surface }]}>
+            {showReadme ? (
+              /* README Content - Full Screen */
+              <View style={styles.readmeFullContent}>
+                {readmeLoading ? (
+                  <View style={styles.readmeLoading}>
+                    <LoadingSpinner size="large" color={theme.colors.primary} />
+                    <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+                      Loading README...
+                    </Text>
+                  </View>
+                ) : readmeError ? (
+                  <View style={styles.readmeError}>
+                    <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                      {readmeError}
+                    </Text>
+                    {readmeError.includes('No README') && (
+                      <Text style={[styles.errorHint, { color: theme.colors.textSecondary }]}>
+                        This repository doesn't have a README file.
+                      </Text>
+                    )}
+                  </View>
+                ) : readme ? (
+                  <WebView
+                    source={{
+                      html: `
+                        <!DOCTYPE html>
+                        <html data-color-mode="${theme.colors.background === '#000000' || theme.colors.background === '#000' || theme.colors.background.toLowerCase().startsWith('#0') || theme.colors.background.toLowerCase().startsWith('#1') ? 'dark' : 'light'}" data-dark-theme="dark">
+                          <head>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown${theme.colors.background === '#000000' || theme.colors.background === '#000' || theme.colors.background.toLowerCase().startsWith('#0') || theme.colors.background.toLowerCase().startsWith('#1') ? '-dark' : ''}.min.css">
+                            <style>
+                              body {
+                                margin: 0;
+                                padding: 16px;
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            ${readme}
+                          </body>
+                        </html>
+                      `
+                    }}
+                    style={{ flex: 1, backgroundColor: theme.colors.background === '#000000' || theme.colors.background === '#000' || theme.colors.background.toLowerCase().startsWith('#0') || theme.colors.background.toLowerCase().startsWith('#1') ? '#0d1117' : '#ffffff' }}
+                    showsVerticalScrollIndicator={true}
+                  />
+                ) : null}
+              </View>
+            ) : (
+              <>
+                {/* Tab Bar */}
+                <View style={styles.tabBar}>
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      activeViz === 'city' && styles.tabActive,
+                      activeViz === 'city' && { borderBottomColor: theme.colors.primary },
+                    ]}
+                    onPress={() => setActiveViz('city')}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        { color: activeViz === 'city' ? theme.colors.primary : theme.colors.textSecondary },
+                      ]}
+                    >
+                      About
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      activeViz === 'stars' && styles.tabActive,
+                      activeViz === 'stars' && { borderBottomColor: theme.colors.primary },
+                    ]}
+                    onPress={() => setActiveViz('stars')}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        { color: activeViz === 'stars' ? theme.colors.primary : theme.colors.textSecondary },
+                      ]}
+                    >
+                      History
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      activeViz === 'heatmap' && styles.tabActive,
+                      activeViz === 'heatmap' && { borderBottomColor: theme.colors.primary },
+                    ]}
+                    onPress={() => setActiveViz('heatmap')}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        { color: activeViz === 'heatmap' ? theme.colors.primary : theme.colors.textSecondary },
+                      ]}
+                    >
+                      Development
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Tab Content */}
+                <View style={styles.tabContent}>
               {activeViz === 'city' && (
                 <ScrollView
                   style={styles.repoTabScroll}
                   showsVerticalScrollIndicator={false}
                 >
-                  {/* Age and Owner */}
-                  {repoInfo?.createdAt && (
-                    <Text style={[styles.repoMeta, { color: theme.colors.textSecondary }]}>
-                      {formatRepoAge(repoInfo.createdAt)} by{' '}
-                      <Text style={{ color: theme.colors.primary }}>{owner}</Text>
-                    </Text>
-                  )}
-
                   {/* Description */}
                   {repoInfo?.description && (
                     <Text
@@ -946,6 +1035,14 @@ export function RepoFileCityScreen() {
 
               {activeViz === 'stars' && (
                 <ScrollView style={styles.starsContent} showsVerticalScrollIndicator={false}>
+                  {/* Created At */}
+                  {repoInfo?.createdAt && (
+                    <Text style={[styles.repoMeta, { color: theme.colors.textSecondary, marginTop: 0 }]}>
+                      {formatRepoAge(repoInfo.createdAt)} by{' '}
+                      <Text style={{ color: theme.colors.primary }}>{owner}</Text>
+                    </Text>
+                  )}
+
                   {stargazers.length > 0 ? (
                     <>
                       <Text style={[styles.listTitle, { color: theme.colors.text }]}>
@@ -1004,31 +1101,25 @@ export function RepoFileCityScreen() {
                     <>
                       {/* Active Contributors Row */}
                       <View style={styles.contributorsSection}>
-                        <View style={styles.contributorsHeaderRow}>
-                          <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
-                            {selectedContributor ? (
-                              <>
-                                Contributions by{' '}
-                                <Text style={{ color: theme.colors.primary }}>{selectedContributor}</Text>
-                              </>
-                            ) : (
-                              `Active This Week (${activeContributors.length})`
-                            )}
-                          </Text>
-                          {selectedContributor && (
-                            <TouchableOpacity
-                              onPress={() => {
-                                navigation.navigate('UserProfile', {
-                                  username: selectedContributor,
-                                });
-                              }}
-                            >
-                              <Text style={[styles.viewProfileText, { color: theme.colors.primary }]}>
-                                View Profile
+                        <Text style={[styles.contributorsLabel, { color: theme.colors.textSecondary }]}>
+                          {selectedContributor ? (
+                            <>
+                              Contributions by{' '}
+                              <Text
+                                style={{ color: theme.colors.primary }}
+                                onPress={() => {
+                                  navigation.navigate('UserProfile', {
+                                    username: selectedContributor,
+                                  });
+                                }}
+                              >
+                                {selectedContributor}
                               </Text>
-                            </TouchableOpacity>
+                            </>
+                          ) : (
+                            `Active This Week (${activeContributors.length})`
                           )}
-                        </View>
+                        </Text>
                         {activeContributors.length > 0 ? (
                           <ScrollView
                             horizontal
@@ -1093,7 +1184,9 @@ export function RepoFileCityScreen() {
                   })()}
                 </View>
               )}
-            </View>
+                </View>
+              </>
+            )}
           </View>
         </>
       ) : null}
@@ -1113,7 +1206,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     position: 'relative',
     overflow: 'hidden',
-    minHeight: 100,
   },
   headerBackground: {
     position: 'absolute',
@@ -1214,6 +1306,16 @@ const styles = StyleSheet.create({
     width: 1,
     height: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  createdAtLine: {
+    paddingTop: 4,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  createdAtText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
@@ -1350,23 +1452,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   contributorsSection: {
-    marginBottom: 16,
-  },
-  contributorsHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    marginTop: 0,
   },
   contributorsLabel: {
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
-    marginBottom: 12,
-  },
-  viewProfileText: {
-    fontSize: 14,
-    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
   },
   contributorsGrid: {
     flexDirection: 'row',
@@ -1395,14 +1488,16 @@ const styles = StyleSheet.create({
   },
   repoMeta: {
     fontSize: 15,
-    marginBottom: 12,
+    marginBottom: 16,
     fontWeight: '500',
+    textAlign: 'center',
   },
   description: {
     fontSize: 15,
     lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: 16,
     opacity: 0.9,
+    textAlign: 'center',
   },
   repoTabScroll: {
     flex: 1,
@@ -1455,6 +1550,31 @@ const styles = StyleSheet.create({
   selectedFileName: {
     fontSize: 13,
     fontFamily: 'monospace',
+  },
+  // README tab styles
+  readmeFullContent: {
+    flex: 1,
+  },
+  readmeContent: {
+    flex: 1,
+    marginHorizontal: -16,
+    marginTop: -12,
+  },
+  readmeLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  readmeError: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorHint: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 
