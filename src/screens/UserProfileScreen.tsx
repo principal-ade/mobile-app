@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,15 @@ import {
   TouchableOpacity,
   Dimensions,
   Linking,
+  FlatList,
 } from 'react-native';
+import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { ContributionGrid, DailyContribution } from '../components/ContributionGrid';
 import { Logo } from '../components/Logo';
 import { LucideIcon } from '../components/LucideIcon';
+import { GitHubRepository, GitHubOrganization } from '../types/github';
 
 export interface ActivityCommit {
   sha: string;
@@ -48,6 +51,10 @@ export interface UserProfileScreenProps {
   isWatching?: boolean;
   recentActivity?: HourlyActivityGroup[];
   contributions?: DailyContribution[];
+  repositories?: GitHubRepository[];
+  organizations?: GitHubOrganization[];
+  onRepoPress?: (owner: string, name: string, fullName: string) => void;
+  onOrgPress?: (orgLogin: string) => void;
 }
 
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
@@ -62,10 +69,210 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   isWatching = false,
   recentActivity = [],
   contributions = [],
+  repositories = [],
+  organizations = [],
+  onRepoPress,
+  onOrgPress,
 }) => {
   const { theme } = useTheme();
   const { width } = Dimensions.get('window');
   const insets = useSafeAreaInsets();
+  const [tabIndex, setTabIndex] = useState(0);
+  const [routes] = useState([
+    { key: 'activity', title: 'Activity' },
+    { key: 'repos', title: 'Repos' },
+    { key: 'orgs', title: 'Orgs' },
+  ]);
+
+  // Activity Tab Content
+  const ActivityRoute = () => (
+    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+      <View style={styles.tabContent}>
+        {recentActivity.length > 0 ? (
+          <View>
+            {recentActivity.map((group) => (
+              <View
+                key={group.id}
+                style={[
+                  styles.activityItem,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+              >
+                <View style={styles.activityHeader}>
+                  <Image
+                    source={{ uri: group.repoOwnerAvatar }}
+                    style={styles.activityAvatar}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.activityContent}>
+                    <Text
+                      style={[styles.activityRepo, { color: theme.colors.accent }]}
+                      numberOfLines={1}
+                    >
+                      {group.repo}
+                    </Text>
+                    <Text
+                      style={[styles.activityTitle, { color: theme.colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {group.commitCount} {group.commitCount === 1 ? 'commit' : 'commits'}
+                    </Text>
+                  </View>
+                </View>
+                <Text
+                  style={[styles.activityTimestamp, { color: theme.colors.textTertiary }]}
+                >
+                  {group.hoursAgo === 0
+                    ? 'Just now'
+                    : group.hoursAgo === 1
+                    ? '1 hour ago'
+                    : `${group.hoursAgo} hours ago`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.activityPlaceholder,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <Text style={[styles.placeholderText, { color: theme.colors.textTertiary }]}>
+              No activity in the last 24 hours
+            </Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  // Repositories Tab Content
+  const ReposRoute = () => (
+    <FlatList
+      data={repositories}
+      style={{ backgroundColor: theme.colors.background }}
+      contentContainerStyle={styles.tabContent}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={({ item }) => {
+        const [owner, name] = item.full_name.split('/');
+        return (
+          <TouchableOpacity
+            style={[styles.repoItem, { backgroundColor: theme.colors.surface }]}
+            onPress={() => {
+              if (onRepoPress) {
+                onRepoPress(owner, name, item.full_name);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.repoHeader}>
+              <LucideIcon name="GitBranch" size={16} color={theme.colors.accent} />
+              <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+            </View>
+            {item.description && (
+              <Text
+                style={[styles.repoDescription, { color: theme.colors.textSecondary }]}
+                numberOfLines={2}
+              >
+                {item.description}
+              </Text>
+            )}
+            <View style={styles.repoStats}>
+              <View style={styles.repoStat}>
+                <LucideIcon name="Star" size={14} color={theme.colors.textTertiary} />
+                <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
+                  {item.stargazers_count}
+                </Text>
+              </View>
+              {item.language && (
+                <View style={styles.repoStat}>
+                  <View style={[styles.languageDot, { backgroundColor: theme.colors.accent }]} />
+                  <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
+                    {item.language}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        );
+      }}
+      ListEmptyComponent={
+        <View
+          style={[
+            styles.activityPlaceholder,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <Text style={[styles.placeholderText, { color: theme.colors.textTertiary }]}>
+            No repositories found
+          </Text>
+        </View>
+      }
+    />
+  );
+
+  // Organizations Tab Content
+  const OrgsRoute = () => (
+    <FlatList
+      data={organizations}
+      style={{ backgroundColor: theme.colors.background }}
+      contentContainerStyle={styles.tabContent}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={[styles.orgItem, { backgroundColor: theme.colors.surface }]}
+          onPress={() => {
+            if (onOrgPress) {
+              onOrgPress(item.login);
+            } else {
+              Linking.openURL(`https://github.com/${item.login}`);
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Image
+            source={{ uri: item.avatar_url }}
+            style={styles.orgAvatar}
+            resizeMode="cover"
+          />
+          <View style={styles.orgContent}>
+            <Text style={[styles.orgName, { color: theme.colors.text }]} numberOfLines={1}>
+              {item.login}
+            </Text>
+            {item.description && (
+              <Text
+                style={[styles.orgDescription, { color: theme.colors.textSecondary }]}
+                numberOfLines={2}
+              >
+                {item.description}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
+      ListEmptyComponent={
+        <View
+          style={[
+            styles.activityPlaceholder,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <Text style={[styles.placeholderText, { color: theme.colors.textTertiary }]}>
+            No organizations found
+          </Text>
+        </View>
+      }
+    />
+  );
+
+  const renderScene = SceneMap({
+    activity: ActivityRoute,
+    repos: ReposRoute,
+    orgs: OrgsRoute,
+  });
 
   // Render skeleton loading state
   if (loading) {
@@ -128,10 +335,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         </TouchableOpacity>
       )}
 
-      <ScrollView
-        style={{ backgroundColor: theme.colors.background }}
-        contentContainerStyle={[styles.contentContainer, { paddingBottom: 32 }]}
-      >
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         {/* Header Section */}
         <View style={styles.header}>
           {/* Avatar with contribution calendar background */}
@@ -190,111 +394,61 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             )}
             </View>
           </View>
-        </View>
 
-      {/* Bio Section */}
-      {bio && (
-        <View style={styles.bioSection}>
-          <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
-            {bio}
-          </Text>
-        </View>
-      )}
+          {/* Bio Section */}
+          {bio && (
+            <View style={styles.bioSection}>
+              <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
+                {bio}
+              </Text>
+            </View>
+          )}
 
-      {/* Action Button */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={[
-            styles.watchButton,
-            {
-              backgroundColor: isWatching
-                ? theme.colors.surface
-                : theme.colors.primary,
-              borderColor: theme.colors.primary,
-            },
-          ]}
-          onPress={onWatchPress}
-        >
-          <Text
-            style={[
-              styles.watchButtonText,
-              {
-                color: isWatching ? theme.colors.primary : theme.colors.text,
-              },
-            ]}
-          >
-            {isWatching ? 'Watching' : 'Watch'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Recent Activity - Last 24 Hours */}
-      <View style={styles.activitySection}>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: theme.colors.text },
-          ]}
-        >
-          Recent Activity
-        </Text>
-        {recentActivity.length > 0 ? (
-          <View>
-            {recentActivity.map((group) => (
-              <View
-                key={group.id}
+          {/* Action Button */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[
+                styles.watchButton,
+                {
+                  backgroundColor: isWatching
+                    ? theme.colors.surface
+                    : theme.colors.primary,
+                  borderColor: theme.colors.primary,
+                },
+              ]}
+              onPress={onWatchPress}
+            >
+              <Text
                 style={[
-                  styles.activityItem,
-                  { backgroundColor: theme.colors.surface },
+                  styles.watchButtonText,
+                  {
+                    color: isWatching ? theme.colors.primary : theme.colors.text,
+                  },
                 ]}
               >
-                <View style={styles.activityHeader}>
-                  <Image
-                    source={{ uri: group.repoOwnerAvatar }}
-                    style={styles.activityAvatar}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.activityContent}>
-                    <Text
-                      style={[styles.activityRepo, { color: theme.colors.accent }]}
-                      numberOfLines={1}
-                    >
-                      {group.repo}
-                    </Text>
-                    <Text
-                      style={[styles.activityTitle, { color: theme.colors.text }]}
-                      numberOfLines={2}
-                    >
-                      {group.commitCount} {group.commitCount === 1 ? 'commit' : 'commits'}
-                    </Text>
-                  </View>
-                </View>
-                <Text
-                  style={[styles.activityTimestamp, { color: theme.colors.textTertiary }]}
-                >
-                  {group.hoursAgo === 0
-                    ? 'Just now'
-                    : group.hoursAgo === 1
-                    ? '1 hour ago'
-                    : `${group.hoursAgo} hours ago`}
-                </Text>
-              </View>
-            ))}
+                {isWatching ? 'Watching' : 'Watch'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View
-            style={[
-              styles.activityPlaceholder,
-              { backgroundColor: theme.colors.surface },
-            ]}
-          >
-            <Text style={[styles.placeholderText, { color: theme.colors.textTertiary }]}>
-              No activity in the last 24 hours
-            </Text>
-          </View>
-        )}
+        </View>
+
+        {/* Tabs */}
+        <TabView
+          navigationState={{ index: tabIndex, routes }}
+          renderScene={renderScene}
+          onIndexChange={setTabIndex}
+          initialLayout={{ width }}
+          renderTabBar={(props) => (
+            <TabBar
+              {...props}
+              indicatorStyle={{ backgroundColor: theme.colors.primary }}
+              style={{ backgroundColor: theme.colors.background }}
+              activeColor={theme.colors.text}
+              inactiveColor={theme.colors.textTertiary}
+            />
+          )}
+        />
       </View>
-      </ScrollView>
     </View>
   );
 };
@@ -406,14 +560,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: 'center',
   },
-  activitySection: {
-    paddingHorizontal: 16,
-    paddingTop: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
+  tabContent: {
+    padding: 16,
   },
   activityPlaceholder: {
     padding: 40,
@@ -458,6 +606,72 @@ const styles = StyleSheet.create({
   activityTimestamp: {
     fontSize: 12,
     marginLeft: 44,
+  },
+  // Repo item styles
+  repoItem: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  repoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  repoName: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  repoDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  repoStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  repoStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  repoStatText: {
+    fontSize: 12,
+  },
+  languageDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  // Org item styles
+  orgItem: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  orgAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  orgContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  orgName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  orgDescription: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   closeButton: {
     position: 'absolute',

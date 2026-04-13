@@ -19,6 +19,9 @@ import {
   type ActivityEvent,
 } from '../services/GitHubSearchService';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
+import { fetchUserRepositories, fetchOrganizationsForUser } from '../services/GithubService';
+import { GitHubRepository, GitHubOrganization } from '../types/github';
+import { useAuthContext } from '../context/AuthContext';
 
 type UserProfileRouteProp = RouteProp<FeedStackParamList, 'UserProfile'>;
 
@@ -82,13 +85,16 @@ function transformActivityToHourlyGroups(activity: ActivityEvent[]): HourlyActiv
 export function UserProfileScreenContainer() {
   const { theme } = useTheme();
   const route = useRoute<UserProfileRouteProp>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { username } = route.params;
+  const { token } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<GitHubUserProfile | null>(null);
   const [activityData, setActivityData] = useState<UserActivityResponse | null>(null);
+  const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
+  const [organizations, setOrganizations] = useState<GitHubOrganization[]>([]);
 
   // Feed preferences for watching users
   const { watchedUsers, addUser, removeUser } = useFeedPreferences();
@@ -111,6 +117,15 @@ export function UserProfileScreenContainer() {
     }
   };
 
+  // Navigate to repo screen
+  const handleRepoPress = (owner: string, name: string, fullName: string) => {
+    navigation.navigate('RepoFileCity', {
+      owner,
+      name,
+      fullName,
+    });
+  };
+
   useEffect(() => {
     async function fetchUserData() {
       setIsLoading(true);
@@ -122,11 +137,24 @@ export function UserProfileScreenContainer() {
         setUserData(profile);
         setIsLoading(false);
 
-        // Then fetch activity data in the background
+        // Then fetch activity data, repos, and orgs in parallel
         // Request 150 days (5 months) of contribution data for the heatmap
         // Request 1 day of activity events for recent activity section
-        const activity = await getUserActivity(username, 150, 1);
-        setActivityData(activity);
+        const [activity, repos, orgs] = await Promise.allSettled([
+          getUserActivity(username, 150, 1),
+          token ? fetchUserRepositories(token, username) : Promise.resolve([]),
+          token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
+        ]);
+
+        if (activity.status === 'fulfilled') {
+          setActivityData(activity.value);
+        }
+        if (repos.status === 'fulfilled') {
+          setRepositories(repos.value);
+        }
+        if (orgs.status === 'fulfilled') {
+          setOrganizations(orgs.value);
+        }
       } catch (err) {
         console.error('Error fetching user profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load user profile');
@@ -135,7 +163,7 @@ export function UserProfileScreenContainer() {
     }
 
     fetchUserData();
-  }, [username]);
+  }, [username, token]);
 
   if (error) {
     return (
@@ -151,8 +179,21 @@ export function UserProfileScreenContainer() {
               setUserData(profile);
               setIsLoading(false);
 
-              const activity = await getUserActivity(username, 150, 1);
-              setActivityData(activity);
+              const [activity, repos, orgs] = await Promise.allSettled([
+                getUserActivity(username, 150, 1),
+                token ? fetchUserRepositories(token, username) : Promise.resolve([]),
+                token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
+              ]);
+
+              if (activity.status === 'fulfilled') {
+                setActivityData(activity.value);
+              }
+              if (repos.status === 'fulfilled') {
+                setRepositories(repos.value);
+              }
+              if (orgs.status === 'fulfilled') {
+                setOrganizations(orgs.value);
+              }
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Failed to load');
               setIsLoading(false);
@@ -175,8 +216,11 @@ export function UserProfileScreenContainer() {
       bio={userData?.bio || undefined}
       contributions={activityData?.contributions || []}
       recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}
+      repositories={repositories}
+      organizations={organizations}
       onClose={() => navigation.goBack()}
       onWatchPress={handleToggleWatch}
+      onRepoPress={handleRepoPress}
       isWatching={isWatching}
     />
   );

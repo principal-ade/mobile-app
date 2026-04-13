@@ -18,6 +18,8 @@ export interface GitHubRepository {
   private: boolean;
   stargazers_count: number;
   updated_at: string;
+  html_url: string;
+  language: string | null;
 }
 
 export interface GitHubContentItem {
@@ -27,4 +29,12 @@ export interface GitHubContentItem {
   size: number;
   type: 'file' | 'dir';
   download_url: string | null;
+}
+
+export interface GitHubOrganization {
+  id: number;
+  login: string;
+  description: string | null;
+  avatar_url: string;
+  url: string;
 }

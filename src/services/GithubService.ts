@@ -1,4 +1,4 @@
-import { GitHubContentItem, GitHubRepository } from '../types/github';
+import { GitHubContentItem, GitHubRepository, GitHubOrganization } from '../types/github';
 
 const BASE_URL = 'https://api.github.com';
 
@@ -51,6 +51,29 @@ function buildContentsEndpoint(owner: string, repo: string, path: string): strin
 
 export async function fetchRepositories(token: string): Promise<GitHubRepository[]> {
   return request<GitHubRepository[]>('/user/repos?per_page=100&sort=updated', token);
+}
+
+export async function fetchUserRepositories(
+  token: string,
+  username: string,
+): Promise<GitHubRepository[]> {
+  const encodedUsername = encodeRepositorySegment(username);
+  return request<GitHubRepository[]>(
+    `/users/${encodedUsername}/repos?per_page=100&sort=updated`,
+    token,
+  );
+}
+
+export async function fetchUserOrganizations(token: string): Promise<GitHubOrganization[]> {
+  return request<GitHubOrganization[]>('/user/orgs?per_page=100', token);
+}
+
+export async function fetchOrganizationsForUser(
+  token: string,
+  username: string,
+): Promise<GitHubOrganization[]> {
+  const encodedUsername = encodeRepositorySegment(username);
+  return request<GitHubOrganization[]>(`/users/${encodedUsername}/orgs?per_page=100`, token);
 }
 
 export async function fetchRepositoryContents(
