@@ -87,3 +87,31 @@ export async function fetchMarkdownFileContent(
 
   return await response.text();
 }
+
+export async function fetchRepoReadme(
+  token: string,
+  owner: string,
+  repo: string,
+): Promise<string> {
+  const encodedOwner = encodeRepositorySegment(owner);
+  const encodedRepo = encodeRepositorySegment(repo);
+  const endpoint = `/repos/${encodedOwner}/${encodedRepo}/readme`;
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github.html',
+      Authorization: `token ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('No README found for this repository');
+    }
+    const errorText = await response.text().catch(() => '');
+    throw new Error(errorText || `Failed to load README (${response.status})`);
+  }
+
+  return await response.text();
+}

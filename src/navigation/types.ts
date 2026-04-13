@@ -33,6 +33,11 @@ export type FeedStackParamList = {
     name: string;
     fullName: string;
   };
+  RepoReadme: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
   TourFileCity: {
     owner: string;
     name: string;
@@ -60,6 +65,11 @@ export type WatchStackParamList = {
     name: string;
     fullName: string;
   };
+  RepoReadme: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
   TourFileCity: {
     owner: string;
     name: string;
@@ -81,6 +91,11 @@ export type SearchStackParamList = {
     name: string;
     fullName: string;
   };
+  RepoReadme: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
   TourFileCity: {
     owner: string;
     name: string;
@@ -98,6 +113,11 @@ export type SearchStackParamList = {
 export type StarredStackParamList = {
   StarredHome: undefined;
   RepoFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
+  RepoReadme: {
     owner: string;
     name: string;
     fullName: string;

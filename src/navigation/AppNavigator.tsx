@@ -30,6 +30,7 @@ import CardDetailScreen from '../screens/CardDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import RepoFileCityScreen from '../screens/RepoFileCityScreen';
+import RepoReadmeScreen from '../screens/RepoReadmeScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -60,6 +61,7 @@ const linking: LinkingOptions<RootStackParamList> = {
               CardDetail: 'card/:owner/:repo',
               SavedCards: 'saved',
               RepoFileCity: 'repo/:owner/:name',
+              RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
             },
@@ -69,6 +71,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             screens: {
               WatchHome: '',
               RepoFileCity: 'repo/:owner/:name',
+              RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
             },
@@ -78,6 +81,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             screens: {
               SearchHome: '',
               RepoFileCity: 'repo/:owner/:name',
+              RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
             },
@@ -87,6 +91,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             screens: {
               StarredHome: '',
               RepoFileCity: 'repo/:owner/:name',
+              RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
             },
@@ -188,6 +193,11 @@ function FeedStackNavigator() {
         options={{ headerShown: false }}
       />
       <FeedStack.Screen
+        name="RepoReadme"
+        component={RepoReadmeScreen}
+        options={{ headerShown: false }}
+      />
+      <FeedStack.Screen
         name="TourFileCity"
         component={TourFileCityScreen}
         options={{ headerShown: false }}
@@ -225,6 +235,11 @@ function WatchStackNavigator() {
       <WatchStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <WatchStack.Screen
+        name="RepoReadme"
+        component={RepoReadmeScreen}
         options={{ headerShown: false }}
       />
       <WatchStack.Screen
@@ -268,6 +283,11 @@ function SearchStackNavigator() {
         options={{ headerShown: false }}
       />
       <SearchStack.Screen
+        name="RepoReadme"
+        component={RepoReadmeScreen}
+        options={{ headerShown: false }}
+      />
+      <SearchStack.Screen
         name="TourFileCity"
         component={TourFileCityScreen}
         options={{ headerShown: false }}
@@ -305,6 +325,11 @@ function StarredStackNavigator() {
       <StarredStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <StarredStack.Screen
+        name="RepoReadme"
+        component={RepoReadmeScreen}
         options={{ headerShown: false }}
       />
       <StarredStack.Screen

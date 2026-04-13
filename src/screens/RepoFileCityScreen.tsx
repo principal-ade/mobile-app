@@ -10,6 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LucideIcon } from '../components/LucideIcon';
 
 // Custom warning icon (no emoji)
 function WarningIcon({ color, size = 48 }: { color: string; size?: number }) {
@@ -665,6 +666,21 @@ export function RepoFileCityScreen() {
           )}
         </TouchableOpacity>
         <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[
+              styles.headerIconButton,
+              { backgroundColor: theme.colors.surface },
+            ]}
+            onPress={() => {
+              navigation.navigate('RepoReadme', {
+                owner,
+                name,
+                fullName,
+              });
+            }}
+          >
+            <LucideIcon name="FileText" size={16} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
           {isTourAvailable && (
             <TouchableOpacity
               style={styles.tourButton}
