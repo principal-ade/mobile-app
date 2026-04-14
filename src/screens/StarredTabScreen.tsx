@@ -64,7 +64,7 @@ export function StarredTabScreen() {
           style={[
             styles.segmentedControl,
             {
-              backgroundColor: theme.colors.surfaceVariant,
+              backgroundColor: theme.colors.backgroundSecondary,
               borderColor: theme.colors.border,
             },
           ]}

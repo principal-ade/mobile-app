@@ -47,7 +47,7 @@ export function StarredRepoCard({
           style={[
             styles.addButton,
             collectionCount > 0
-              ? { backgroundColor: theme.colors.surfaceVariant }
+              ? { backgroundColor: theme.colors.backgroundSecondary }
               : { backgroundColor: theme.colors.primary },
           ]}
           onPress={handleActionPress}
@@ -55,7 +55,7 @@ export function StarredRepoCard({
           <Text
             style={[
               styles.addButtonText,
-              { color: collectionCount > 0 ? theme.colors.text : theme.colors.onPrimary },
+              { color: collectionCount > 0 ? theme.colors.text : theme.colors.textOnPrimary },
             ]}
           >
             {collectionCount > 0 ? collectionCount.toString() : '+'}
@@ -92,7 +92,7 @@ export function StarredRepoCard({
             {repo.topics.slice(0, 3).map((topic) => (
               <View
                 key={topic}
-                style={[styles.topicTag, { backgroundColor: theme.colors.surfaceVariant }]}
+                style={[styles.topicTag, { backgroundColor: theme.colors.backgroundSecondary }]}
               >
                 <Text style={[styles.topicText, { color: theme.colors.text }]} numberOfLines={1}>
                   {topic}

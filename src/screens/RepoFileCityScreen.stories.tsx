@@ -8,30 +8,24 @@ import { RepoFileCityScreen } from './RepoFileCityScreen';
 import { iceTangerineDarkTheme } from '../themes/iceTangerineDark';
 import { AuthProvider } from '../context/AuthContext';
 import { FeedPreferencesProvider } from '../context/FeedPreferencesContext';
-import type { RootStackParamList } from '../navigation/types';
+import type { FeedStackParamList } from '../navigation/types';
 
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<FeedStackParamList>();
 
 // Mock user for auth context
 const mockUser = {
+  id: 583231,
   login: 'octocat',
   name: 'The Octocat',
-  email: 'octocat@github.com',
-  avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
-  bio: 'GitHub mascot',
-  company: 'GitHub',
-  location: 'San Francisco',
-  publicRepos: 8,
-  followers: 1000,
-  following: 0,
+  avatar_url: 'https://avatars.githubusercontent.com/u/583231?v=4',
+  html_url: 'https://github.com/octocat',
 };
 
 // Mock tokens for auth context
 const mockTokens = {
-  accessToken: 'mock-access-token',
+  githubAccessToken: 'mock-github-access-token',
+  workosAccessToken: 'mock-workos-access-token',
   refreshToken: 'mock-refresh-token',
-  githubToken: 'mock-github-token',
-  expiresAt: Date.now() + 3600000,
 };
 
 // Wrapper component that provides all necessary context and navigation

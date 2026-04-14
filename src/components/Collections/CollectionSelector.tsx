@@ -116,7 +116,7 @@ export function CollectionSelector({
             )}
 
             {isCreating && (
-              <View style={[styles.createForm, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <View style={[styles.createForm, { backgroundColor: theme.colors.backgroundSecondary }]}>
                 <Text style={[styles.formLabel, { color: theme.colors.text }]}>
                   New Collection
                 </Text>
@@ -136,7 +136,7 @@ export function CollectionSelector({
                       <LucideIcon
                         name={iconName as any}
                         size={20}
-                        color={selectedIcon === iconName ? theme.colors.onPrimary : theme.colors.text}
+                        color={selectedIcon === iconName ? theme.colors.textOnPrimary : theme.colors.text}
                       />
                     </TouchableOpacity>
                   ))}
@@ -179,7 +179,7 @@ export function CollectionSelector({
                     onPress={handleCreate}
                     disabled={!newCollectionName.trim()}
                   >
-                    <Text style={[styles.formButtonText, { color: theme.colors.onPrimary }]}>
+                    <Text style={[styles.formButtonText, { color: theme.colors.textOnPrimary }]}>
                       Create
                     </Text>
                   </TouchableOpacity>
@@ -207,8 +207,8 @@ export function CollectionSelector({
                         styles.collectionItem,
                         {
                           backgroundColor: isSelected
-                            ? theme.colors.primaryContainer
-                            : theme.colors.surfaceVariant,
+                            ? theme.colors.highlight
+                            : theme.colors.backgroundSecondary,
                         },
                       ]}
                       onPress={() => handleToggleCollection(collection.id)}
@@ -257,7 +257,7 @@ export function CollectionSelector({
               style={[styles.doneButton, { backgroundColor: theme.colors.primary }]}
               onPress={onDone}
             >
-              <Text style={[styles.doneButtonText, { color: theme.colors.onPrimary }]}>
+              <Text style={[styles.doneButtonText, { color: theme.colors.textOnPrimary }]}>
                 Done ({selectedCollectionIds.length})
               </Text>
             </TouchableOpacity>

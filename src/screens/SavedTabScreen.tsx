@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { SavedCardsScreen } from './SavedCardsScreen';
 import type { MainTabParamList } from '../navigation/types';
 
-type NavigationProp = BottomTabNavigationProp<MainTabParamList, 'Saved'>;
+type NavigationProp = BottomTabNavigationProp<MainTabParamList>;
 
 function BookmarkIcon({ color, size = 64 }: { color: string; size?: number }) {
   const width = size * 0.6;
@@ -76,7 +76,7 @@ export default function SavedTabScreen() {
         </Text>
         <TouchableOpacity
           style={[styles.signInButton, { backgroundColor: theme.colors.primary }]}
-          onPress={() => navigation.navigate('About')}
+          onPress={() => navigation.navigate('About', { screen: 'AboutHome' })}
         >
           <Text style={styles.signInButtonText}>Sign In</Text>
         </TouchableOpacity>

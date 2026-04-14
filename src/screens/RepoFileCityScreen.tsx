@@ -554,7 +554,7 @@ export function RepoFileCityScreen() {
       setReadmeError(null);
 
       try {
-        const content = await fetchRepoReadme(token, owner, name);
+        const content = await fetchRepoReadme(token!, owner, name);
         if (!cancelled) {
           setReadme(content);
           setReadmeFetched(true);
@@ -1121,9 +1121,9 @@ export function RepoFileCityScreen() {
                                       activeOpacity={0.7}
                                     >
                                       <View style={styles.legendIndicator}>
-                                        {iconConfig?.icon && (
+                                        {iconConfig?.name && iconConfig?.type === 'lucide' && (
                                           <LucideIcon
-                                            name={iconConfig.icon as any}
+                                            name={iconConfig.name as any}
                                             size={16}
                                             color={layer.color}
                                           />

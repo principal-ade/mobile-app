@@ -8,7 +8,7 @@ const meta: Meta<typeof StarredRepoCard> = {
     layout: 'centered',
   },
   argTypes: {
-    isInCollection: { control: 'boolean' },
+    collectionCount: { control: 'number' },
   },
 };
 
@@ -29,14 +29,14 @@ const mockRepo = {
 export const Default: Story = {
   args: {
     repo: mockRepo,
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
 export const InCollection: Story = {
   args: {
     repo: mockRepo,
-    isInCollection: true,
+    collectionCount: 2,
   },
 };
 
@@ -46,7 +46,7 @@ export const NoTopics: Story = {
       ...mockRepo,
       topics: [],
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -56,7 +56,7 @@ export const NoDescription: Story = {
       ...mockRepo,
       description: null,
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -66,7 +66,7 @@ export const NoLanguage: Story = {
       ...mockRepo,
       language: null,
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -83,7 +83,7 @@ export const HighStarCount: Story = {
       language: 'JavaScript',
       topics: ['react', 'javascript', 'ui', 'framework'],
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -93,7 +93,7 @@ export const LowStarCount: Story = {
       ...mockRepo,
       stargazers_count: 42,
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -104,7 +104,7 @@ export const LongName: Story = {
       name: 'very-long-repository-name-that-should-be-truncated',
       full_name: 'organization-with-long-name/very-long-repository-name-that-should-be-truncated',
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -115,7 +115,7 @@ export const LongDescription: Story = {
       description:
         'This is a very long description that goes on and on and should be truncated after two lines to maintain a clean card layout. It contains a lot of information about the repository that might not all fit in the available space.',
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -134,7 +134,7 @@ export const ManyTopics: Story = {
         'fullstack',
       ],
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -149,7 +149,7 @@ export const PythonRepo: Story = {
       topics: ['python', 'web', 'framework', 'django'],
       stargazers_count: 78954,
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -164,7 +164,7 @@ export const RustRepo: Story = {
       topics: ['rust', 'systems-programming', 'compiler'],
       stargazers_count: 95678,
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };
 
@@ -179,6 +179,6 @@ export const GoRepo: Story = {
       topics: ['go', 'kubernetes', 'containers', 'orchestration'],
       stargazers_count: 108543,
     },
-    isInCollection: false,
+    collectionCount: 0,
   },
 };

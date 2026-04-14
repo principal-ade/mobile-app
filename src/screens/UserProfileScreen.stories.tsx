@@ -135,11 +135,10 @@ const meta: Meta<typeof UserProfileScreen> = {
     name: { control: 'text' },
     username: { control: 'text' },
     bio: { control: 'text' },
-    location: { control: 'text' },
-    website: { control: 'text' },
-    isFollowing: { control: 'boolean' },
-    onFollowPress: { action: 'follow pressed' },
-    onMessagePress: { action: 'message pressed' },
+    twitterHandle: { control: 'text' },
+    isWatching: { control: 'boolean' },
+    onWatchPress: { action: 'watch pressed' },
+    onClose: { action: 'close pressed' },
   },
 };
 
@@ -162,22 +161,16 @@ export const Default: Story = {
   ),
 };
 
-export const Following: Story = {
+export const Watching: Story = {
   render: () => (
     <MobileFrame>
       <UserProfileScreen
         avatarUrl="https://avatars.githubusercontent.com/u/1?v=4"
         name="Sarah Chen"
         username="sarahchen"
+        twitterHandle="sarahchen_dev"
         bio="Full-stack developer passionate about open source and building delightful user experiences. Coffee enthusiast and occasional blogger."
-        location="San Francisco, CA"
-        website="https://sarahchen.dev"
-        stats={{
-          repositories: 42,
-          followers: 1234,
-          following: 89,
-        }}
-        isFollowing={true}
+        isWatching={true}
         recentActivity={generateHourlyActivity('moderate')}
         contributions={generateMockContributions('moderate')}
       />
@@ -192,12 +185,7 @@ export const MinimalProfile: Story = {
         avatarUrl="https://avatars.githubusercontent.com/u/2?v=4"
         name="Alex Rivera"
         username="alexrivera"
-        stats={{
-          repositories: 8,
-          followers: 156,
-          following: 45,
-        }}
-        isFollowing={false}
+        isWatching={false}
         contributions={generateMockContributions('light')}
       />
     </MobileFrame>
@@ -211,15 +199,9 @@ export const PopularDeveloper: Story = {
         avatarUrl="https://avatars.githubusercontent.com/u/3?v=4"
         name="Jordan Taylor"
         username="jtaylor"
+        twitterHandle="jtaylor_dev"
         bio="Open source maintainer | Speaker | TypeScript & React enthusiast | Building tools for developers"
-        location="Seattle, WA"
-        website="https://jordantaylor.io"
-        stats={{
-          repositories: 127,
-          followers: 12543,
-          following: 234,
-        }}
-        isFollowing={true}
+        isWatching={true}
         contributions={generateMockContributions('active')}
         recentActivity={generateHourlyActivity('active')}
       />
@@ -235,13 +217,7 @@ export const NewUser: Story = {
         name="Casey Morgan"
         username="cmorgan"
         bio="Just getting started with coding! Learning JavaScript and Python."
-        location="Austin, TX"
-        stats={{
-          repositories: 2,
-          followers: 3,
-          following: 12,
-        }}
-        isFollowing={false}
+        isWatching={false}
         contributions={generateMockContributions('sporadic')}
         recentActivity={generateHourlyActivity('light')}
       />
@@ -257,14 +233,7 @@ export const LongBio: Story = {
         name="Morgan Lee"
         username="morganlee"
         bio="Senior Software Engineer with 10+ years of experience in distributed systems, cloud architecture, and DevOps. Passionate about mentoring, technical writing, and contributing to open source. Currently working on making cloud infrastructure more accessible to developers."
-        location="Remote"
-        website="https://morganlee.tech"
-        stats={{
-          repositories: 85,
-          followers: 3421,
-          following: 156,
-        }}
-        isFollowing={false}
+        isWatching={false}
         contributions={generateMockContributions('active')}
       />
     </MobileFrame>
@@ -279,13 +248,7 @@ export const NoWebsite: Story = {
         name="Riley Park"
         username="rileypark"
         bio="Mobile developer building React Native apps"
-        location="New York, NY"
-        stats={{
-          repositories: 23,
-          followers: 567,
-          following: 78,
-        }}
-        isFollowing={false}
+        isWatching={false}
         contributions={generateMockContributions('moderate')}
       />
     </MobileFrame>

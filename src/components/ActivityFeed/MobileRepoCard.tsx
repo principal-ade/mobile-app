@@ -141,7 +141,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
             <TouchableOpacity
               onPress={() => {
                 navigation.navigate('UserProfile', {
-                  username: commit.authorLogin,
+                  username: commit.authorLogin!,
                 });
               }}
             >
