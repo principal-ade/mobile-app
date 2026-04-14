@@ -56,7 +56,7 @@ export function UserCard({
     <TouchableOpacity
       style={[styles.card, { backgroundColor: theme.colors.surface }]}
       onPress={() => reposContributedTo.length > 0 && setIsExpanded(!isExpanded)}
-      activeOpacity={reposContributedTo.length > 0 ? 0.7 : 1}
+      activeOpacity={1}
       disabled={reposContributedTo.length === 0}
     >
       <View style={styles.leftSection}>
@@ -100,39 +100,41 @@ export function UserCard({
       </View>
       {isExpanded && reposContributedTo.length > 0 && (
         <View style={styles.expandedRepos}>
-          {reposContributedTo.map((repoContribution) => {
+          {reposContributedTo.map((repoContribution, index) => {
             const [owner, name] = repoContribution.repoId.split('/');
             return (
-              <TouchableOpacity
-                key={repoContribution.repoId}
-                style={[styles.repoCard, { backgroundColor: theme.colors.background }]}
-                onPress={() => {
-                  if (owner && name) {
-                    navigation.navigate('RepoFileCity', {
-                      owner,
-                      name,
-                      fullName: repoContribution.repoId,
-                    });
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <Image
-                  source={{ uri: `https://github.com/${owner}.png` }}
-                  style={styles.repoOwnerAvatar}
-                />
-                <View style={styles.repoDetails}>
-                  <Text
-                    style={[styles.repoName, { color: theme.colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {name}
-                  </Text>
-                  <Text style={[styles.repoStats, { color: theme.colors.textSecondary }]}>
-                    {repoContribution.commitCount} commit{repoContribution.commitCount !== 1 ? 's' : ''} · {formatTime(repoContribution.latestCommitTime)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              <View key={repoContribution.repoId}>
+                <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                <TouchableOpacity
+                  style={[styles.repoItem, { backgroundColor: theme.colors.background }]}
+                  onPress={() => {
+                    if (owner && name) {
+                      navigation.navigate('RepoFileCity', {
+                        owner,
+                        name,
+                        fullName: repoContribution.repoId,
+                      });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: `https://github.com/${owner}.png` }}
+                    style={styles.repoOwnerAvatar}
+                  />
+                  <View style={styles.repoDetails}>
+                    <Text
+                      style={[styles.repoName, { color: theme.colors.text }]}
+                      numberOfLines={1}
+                    >
+                      {name}
+                    </Text>
+                    <Text style={[styles.repoStats, { color: theme.colors.textSecondary }]}>
+                      {repoContribution.commitCount} commit{repoContribution.commitCount !== 1 ? 's' : ''} · {formatTime(repoContribution.latestCommitTime)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             );
           })}
         </View>
@@ -198,20 +200,18 @@ const styles = StyleSheet.create({
   expandedRepos: {
     width: '100%',
     flexDirection: 'column',
-    gap: 8,
-    marginTop: 12,
+    marginTop: 16,
   },
-  repoCard: {
+  divider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  repoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 12,
+    borderRadius: 8,
   },
   repoOwnerAvatar: {
     width: 48,
