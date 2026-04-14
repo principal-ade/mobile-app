@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp, type NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { UserProfileScreen, type HourlyActivityGroup } from './UserProfileScreen';
 import type { FeedStackParamList } from '../navigation/types';
@@ -53,7 +53,7 @@ function transformActivityToHourlyGroups(activity: ActivityEvent[]): HourlyActiv
     const hoursAgo = Math.floor((now.getTime() - hourBucket.getTime()) / (1000 * 60 * 60));
 
     // Parse repository owner from "owner/repo" format
-    const [repoOwner, repoName] = event.repository.split('/');
+    const [repoOwner] = event.repository.split('/');
 
     if (!groups.has(groupKey)) {
       groups.set(groupKey, {
@@ -87,11 +87,10 @@ function transformActivityToHourlyGroups(activity: ActivityEvent[]): HourlyActiv
 export function UserProfileScreenContainer() {
   const { theme } = useTheme();
   const route = useRoute<UserProfileRouteProp>();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp<FeedStackParamList>>();
   const { username, isOrganization = false } = route.params;
   const { token } = useAuthContext();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<GitHubUserProfile | null>(null);
   const [activityData, setActivityData] = useState<UserActivityResponse | null>(null);
@@ -146,14 +145,12 @@ export function UserProfileScreenContainer() {
 
   useEffect(() => {
     async function fetchUserData() {
-      setIsLoading(true);
       setError(null);
 
       try {
         // Fetch profile first to show UI immediately
         const profile = await getUserProfile(username);
         setUserData(profile);
-        setIsLoading(false);
 
         // Then fetch activity data, repos, orgs, and pinned repos in parallel
         // Request 150 days (5 months) of contribution data for the heatmap
@@ -206,7 +203,6 @@ export function UserProfileScreenContainer() {
       } catch (err) {
         console.error('Error fetching user profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load user profile');
-        setIsLoading(false);
       }
     }
 
@@ -221,11 +217,9 @@ export function UserProfileScreenContainer() {
           style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
           onPress={async () => {
             setError(null);
-            setIsLoading(true);
             try {
               const profile = await getUserProfile(username);
               setUserData(profile);
-              setIsLoading(false);
 
               const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
                 isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 150, 1),
@@ -273,7 +267,6 @@ export function UserProfileScreenContainer() {
               }
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Failed to load');
-              setIsLoading(false);
             }
           }}
         >

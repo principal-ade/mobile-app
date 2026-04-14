@@ -51,7 +51,7 @@ export function parseGitHubUrl(url: string): GitHubUrlParseResult {
     }
 
     return { type: 'invalid', reason: 'Unexpected URL format' };
-  } catch (error) {
+  } catch {
     return { type: 'invalid', reason: 'Malformed URL' };
   }
 }

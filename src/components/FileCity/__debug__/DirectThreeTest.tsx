@@ -7,14 +7,14 @@
 
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { GLView } from 'expo-gl';
+import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
 
 export function DirectThreeTest() {
   const animationFrameRef = useRef<number | null>(null);
 
-  const onContextCreate = async (gl: any) => {
+  const onContextCreate = async (gl: ExpoWebGLRenderingContext) => {
     console.log('[DirectThreeTest] GL Context created');
     console.log('[DirectThreeTest] GL size:', gl.drawingBufferWidth, 'x', gl.drawingBufferHeight);
 

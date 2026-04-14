@@ -6,14 +6,13 @@
  */
 
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { GLView } from 'expo-gl';
+import { View, StyleSheet } from 'react-native';
+import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
 import type {
   CityData,
   CityBuilding,
-  CityDistrict,
   HighlightLayer,
 } from '@principal-ai/file-city-builder';
 import { getFileColor } from '@principal-ai/file-city-builder';
@@ -87,7 +86,7 @@ export function FileCityCanvas3D_Direct({
 }: FileCityCanvas3DDirectProps) {
   const animationFrameRef = useRef<number | null>(null);
 
-  const onContextCreate = async (gl: any) => {
+  const onContextCreate = async (gl: ExpoWebGLRenderingContext) => {
     console.log('[FileCityCanvas3D_Direct] GL Context created');
 
     // Create renderer

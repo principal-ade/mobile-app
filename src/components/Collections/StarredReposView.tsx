@@ -36,7 +36,6 @@ export function StarredReposView({
   onRefresh,
   onRepoPress,
   onAddRepoToCollection,
-  onRemoveRepoFromCollection,
   onCreateCollection,
 }: StarredReposViewProps) {
   const { theme } = useTheme();

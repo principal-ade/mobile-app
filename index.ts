@@ -7,6 +7,7 @@ import App from './App';
 const enableStorybook = process.env.EXPO_PUBLIC_STORYBOOK === 'true';
 
 if (enableStorybook) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const StorybookUI = require('./.rnstorybook').default;
   registerRootComponent(StorybookUI);
 } else {

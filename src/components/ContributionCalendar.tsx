@@ -168,7 +168,7 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
     return { gridData: grid, maxCount: max };
   }, [layout, contributions, gridRows, gridColumns]);
 
-  const { weeks, maxCount, monthLabels, monthBoundaries } = useMemo(() => {
+  const { weeks, maxCount, monthLabels } = useMemo(() => {
     if (layout === 'grid') {
       return { weeks: [], maxCount: gridMaxCount, monthLabels: [], monthBoundaries: new Set<number>() };
     }
@@ -311,7 +311,7 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
   };
 
   // Create wave shimmer opacity for each block based on position
-  const getWaveOpacity = (weekIdx: number, dayIdx: number) => {
+  const getWaveOpacity = (weekIdx: number) => {
     const totalBlocks = skeletonWeeks.length;
     const blockPosition = weekIdx / Math.max(totalBlocks - 1, 1);
 
@@ -378,7 +378,7 @@ export const ContributionCalendar: React.FC<ContributionCalendarProps> = ({
                           { width: daySize, height: daySize },
                           {
                             backgroundColor: getShimmerColor(),
-                            opacity: getWaveOpacity(weekIdx, dayIdx),
+                            opacity: getWaveOpacity(weekIdx),
                           },
                         ]}
                       />

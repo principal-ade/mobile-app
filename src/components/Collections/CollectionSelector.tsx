@@ -10,7 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
-import { LucideIcon } from '../LucideIcon';
+import { LucideIcon, type LucideIconName } from '../LucideIcon';
 import type { Collection, CollectionItemType } from '../../types/collections';
 
 export interface CollectionSelectorProps {
@@ -134,7 +134,7 @@ export function CollectionSelector({
                       onPress={() => setSelectedIcon(iconName)}
                     >
                       <LucideIcon
-                        name={iconName as any}
+                        name={iconName as LucideIconName}
                         size={20}
                         color={selectedIcon === iconName ? theme.colors.textOnPrimary : theme.colors.text}
                       />
@@ -216,7 +216,7 @@ export function CollectionSelector({
                       <View style={styles.collectionInfo}>
                         <View style={styles.collectionIconContainer}>
                           <LucideIcon
-                            name={(collection.icon || 'Folder') as any}
+                            name={(collection.icon || 'Folder') as LucideIconName}
                             size={20}
                             color={theme.colors.primary}
                           />

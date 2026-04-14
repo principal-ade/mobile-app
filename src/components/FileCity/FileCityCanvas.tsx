@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo, useCallback, useState, useRef, useEffect, useReducer } from 'react';
-import { View, StyleSheet, LayoutChangeEvent, Easing } from 'react-native';
+import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
 import {
   Canvas,
   RoundedRect,
@@ -154,18 +154,8 @@ export function FileCityCanvas({
     ];
   }, [scale, translateX, translateY]);
 
-  // Transform state (only updated when animation completes for hit testing)
-  const [transformState, setTransformState] = useState<TransformState>({
-    scale: initialZoom,
-    translateX: 0,
-    translateY: 0,
-  });
-
   // Animation tracking
   const isAnimating = useSharedValue(false);
-
-  // Refs for gesture tracking
-  const savedTransform = useRef({ scale: initialZoom, translateX: 0, translateY: 0 });
 
   // Opacity tracking for isolation modes
   const buildingOpacityRef = useRef<Map<string, number>>(new Map());

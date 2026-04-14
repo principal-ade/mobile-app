@@ -25,7 +25,6 @@ import AddRepoScreen from '../screens/AddRepoScreen';
 import SwipeFeedScreen from '../screens/SwipeFeedScreen';
 import FeedTabScreen from '../screens/FeedTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
-import ToursTabScreen from '../screens/ToursTabScreen';
 import StarredTabScreen from '../screens/StarredTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
@@ -537,7 +536,7 @@ function MainTabs() {
                     },
                   });
                 }
-              } catch (error) {
+              } catch {
                 Alert.alert('Error', 'Failed to read from clipboard');
               }
             } else {
@@ -573,7 +572,7 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { theme } = useTheme();
-  const { isAuthenticated, isLoading, pendingVerification } = useAuth();
+  const { isLoading, pendingVerification } = useAuth();
 
   if (isLoading) {
     return (

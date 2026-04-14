@@ -100,7 +100,7 @@ export function UserCard({
       </View>
       {isExpanded && reposContributedTo.length > 0 && (
         <View style={styles.expandedRepos}>
-          {reposContributedTo.map((repoContribution, index) => {
+          {reposContributedTo.map((repoContribution) => {
             const [owner, name] = repoContribution.repoId.split('/');
             return (
               <View key={repoContribution.repoId}>

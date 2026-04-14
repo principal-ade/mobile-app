@@ -8,7 +8,6 @@ import {
   FlatList,
   SectionList,
   Pressable,
-  Keyboard,
   Image,
 } from 'react-native';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -113,49 +112,6 @@ function CityIcon({ color, size = 64 }: { color: string; size?: number }) {
   );
 }
 
-function WarningIcon({ color, size = 48 }: { color: string; size?: number }) {
-  return (
-    <View style={[styles.iconWrapper, { width: size, height: size }]}>
-      <View
-        style={[
-          styles.warningTriangle,
-          {
-            borderLeftWidth: size * 0.5,
-            borderRightWidth: size * 0.5,
-            borderBottomWidth: size * 0.85,
-            borderLeftColor: 'transparent',
-            borderRightColor: 'transparent',
-            borderBottomColor: color,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.warningExclamation,
-          {
-            backgroundColor: '#fff',
-            width: size * 0.08,
-            height: size * 0.3,
-            top: size * 0.35,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.warningDot,
-          {
-            backgroundColor: '#fff',
-            width: size * 0.08,
-            height: size * 0.08,
-            borderRadius: size * 0.04,
-            bottom: size * 0.2,
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
 function getLanguageColor(language: string): string {
   const colors: Record<string, string> = {
     JavaScript: '#f7df1e',
@@ -194,8 +150,6 @@ export function SearchTabScreen() {
   // Results state
   const [repoResults, setRepoResults] = useState<GitHubRepo[]>([]);
   const [userResults, setUserResults] = useState<GitHubUser[]>([]);
-  const [repoTotalCount, setRepoTotalCount] = useState(0);
-  const [userTotalCount, setUserTotalCount] = useState(0);
 
   // UI state
   const [activeTab, setActiveTab] = useState<'all' | 'repos' | 'users'>('all');
@@ -248,21 +202,17 @@ export function SearchTabScreen() {
       // Handle repo results
       if (repoResponse.status === 'fulfilled') {
         setRepoResults(repoResponse.value.repos);
-        setRepoTotalCount(repoResponse.value.totalCount);
       } else {
         setRepoError(repoResponse.reason?.message || 'Failed to search repos');
         setRepoResults([]);
-        setRepoTotalCount(0);
       }
 
       // Handle user results
       if (userResponse.status === 'fulfilled') {
         setUserResults(userResponse.value.users);
-        setUserTotalCount(userResponse.value.totalCount);
       } else {
         setUserError(userResponse.reason?.message || 'Failed to search users');
         setUserResults([]);
-        setUserTotalCount(0);
       }
 
       setHasSearched(true);
@@ -457,8 +407,6 @@ export function SearchTabScreen() {
                 setQuery('');
                 setRepoResults([]);
                 setUserResults([]);
-                setRepoTotalCount(0);
-                setUserTotalCount(0);
                 setHasSearched(false);
                 setRepoError(null);
                 setUserError(null);

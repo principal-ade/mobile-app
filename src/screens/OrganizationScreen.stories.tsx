@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-native';
 import { OrganizationScreen } from './OrganizationScreen';
 import type { OrganizationInfo, OrgMember } from './OrganizationScreen';
 import type { GitHubRepository } from '../types/github';

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { LucideIcon } from '../components/LucideIcon';
+import { LucideIcon, type LucideIconName } from '../components/LucideIcon';
 
 // Custom warning icon (no emoji)
 function WarningIcon({ color, size = 48 }: { color: string; size?: number }) {
@@ -1108,13 +1108,13 @@ export function RepoFileCityScreen() {
                                 .slice()
                                 .sort((a, b) => {
                                   // Sort by count (items length) descending
-                                  const countA = (a as any).items?.length || 0;
-                                  const countB = (b as any).items?.length || 0;
+                                  const countA = a.items?.length || 0;
+                                  const countB = b.items?.length || 0;
                                   return countB - countA;
                                 })
                                 .map((layer, index) => {
                                   const iconConfig = iconMap.get(layer.name);
-                                  const count = (layer as any).items?.length || 0;
+                                  const count = layer.items?.length || 0;
                                   const isSelected = selectedLegendLayer === layer.name;
                                   return (
                                     <TouchableOpacity
@@ -1131,7 +1131,7 @@ export function RepoFileCityScreen() {
                                       <View style={styles.legendIndicator}>
                                         {iconConfig?.name && iconConfig?.type === 'lucide' && (
                                           <LucideIcon
-                                            name={iconConfig.name as any}
+                                            name={iconConfig.name as LucideIconName}
                                             size={16}
                                             color={layer.color}
                                           />

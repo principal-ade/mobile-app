@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp, type NavigationProp } from '@react-navigation/native';
 import { OrganizationScreen, type OrganizationInfo } from './OrganizationScreen';
 import type { SearchStackParamList } from '../navigation/types';
 import {
@@ -22,7 +22,7 @@ type OrganizationRouteProp = RouteProp<SearchStackParamList, 'Organization'>;
 
 export function OrganizationScreenContainer() {
   const route = useRoute<OrganizationRouteProp>();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp<SearchStackParamList>>();
   const { orgLogin } = route.params;
 
   const [isLoading, setIsLoading] = useState(true);

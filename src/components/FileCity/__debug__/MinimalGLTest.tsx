@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { GLView } from 'expo-gl';
+import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 
 export function MinimalGLTest() {
-  const onContextCreate = (gl: any) => {
+  const onContextCreate = (gl: ExpoWebGLRenderingContext) => {
     console.log('[MinimalGLTest] GL Context created');
 
     // Vertex shader
