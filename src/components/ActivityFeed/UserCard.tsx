@@ -6,12 +6,18 @@ import type { NavigationProp } from '@react-navigation/native';
 import type { WatchStackParamList } from '../../navigation/types';
 import { LucideIcon } from '../LucideIcon';
 
+interface RepoContribution {
+  repoId: string;
+  commitCount: number;
+  latestCommitTime: string;
+}
+
 export interface UserCardProps {
   login: string;
   avatarUrl?: string;
   commitCount: number;
   latestCommitTime?: string;
-  reposContributedTo: string[];
+  reposContributedTo: RepoContribution[];
 }
 
 export function UserCard({
@@ -94,18 +100,18 @@ export function UserCard({
       </View>
       {isExpanded && reposContributedTo.length > 0 && (
         <View style={styles.expandedRepos}>
-          {reposContributedTo.map((repo) => {
-            const [owner, name] = repo.split('/');
+          {reposContributedTo.map((repoContribution) => {
+            const [owner, name] = repoContribution.repoId.split('/');
             return (
               <TouchableOpacity
-                key={repo}
+                key={repoContribution.repoId}
                 style={[styles.repoCard, { backgroundColor: theme.colors.background }]}
                 onPress={() => {
                   if (owner && name) {
                     navigation.navigate('RepoFileCity', {
                       owner,
                       name,
-                      fullName: repo,
+                      fullName: repoContribution.repoId,
                     });
                   }
                 }}
@@ -115,12 +121,17 @@ export function UserCard({
                   source={{ uri: `https://github.com/${owner}.png` }}
                   style={styles.repoOwnerAvatar}
                 />
-                <Text
-                  style={[styles.repoName, { color: theme.colors.text }]}
-                  numberOfLines={1}
-                >
-                  {name}
-                </Text>
+                <View style={styles.repoDetails}>
+                  <Text
+                    style={[styles.repoName, { color: theme.colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {name}
+                  </Text>
+                  <Text style={[styles.repoStats, { color: theme.colors.textSecondary }]}>
+                    {repoContribution.commitCount} commit{repoContribution.commitCount !== 1 ? 's' : ''} · {formatTime(repoContribution.latestCommitTime)}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -192,7 +203,7 @@ const styles = StyleSheet.create({
   },
   repoCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 12,
     borderRadius: 8,
     gap: 10,
@@ -202,9 +213,15 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 6,
   },
+  repoDetails: {
+    flex: 1,
+  },
   repoName: {
     fontSize: 14,
     fontWeight: '500',
-    flex: 1,
+    marginBottom: 2,
+  },
+  repoStats: {
+    fontSize: 12,
   },
 });

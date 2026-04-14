@@ -48,12 +48,18 @@ interface RepoActivityData {
   latestCommitMessage?: string;
 }
 
+interface RepoContribution {
+  repoId: string;
+  commitCount: number;
+  latestCommitTime: string;
+}
+
 interface UserActivityData {
   login: string;
   avatarUrl?: string;
   commitCount: number;
   latestCommitTime?: string;
-  reposContributedTo: string[];
+  reposContributedTo: RepoContribution[];
 }
 
 export function ActivityTabScreen() {
@@ -251,15 +257,33 @@ export function ActivityTabScreen() {
       );
       const latestCommit = sortedCommits[0];
 
-      // Get unique repos this user contributed to
-      const uniqueRepos = Array.from(new Set(authorCommits.map(c => c.repoId)));
+      // Group commits by repo and calculate per-repo stats
+      const repoCommitsMap = new Map<string, HeatmapCommit[]>();
+      authorCommits.forEach(commit => {
+        const existing = repoCommitsMap.get(commit.repoId) || [];
+        repoCommitsMap.set(commit.repoId, [...existing, commit]);
+      });
+
+      const repoContributions: RepoContribution[] = Array.from(repoCommitsMap.entries()).map(([repoId, commits]) => {
+        const sortedRepoCommits = [...commits].sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        return {
+          repoId,
+          commitCount: commits.length,
+          latestCommitTime: sortedRepoCommits[0].timestamp,
+        };
+      }).sort((a, b) =>
+        // Sort repos by most recent activity
+        new Date(b.latestCommitTime).getTime() - new Date(a.latestCommitTime).getTime()
+      );
 
       return {
         login: watchedUser.login,
         avatarUrl: authorMetadata?.avatarUrl || watchedUser.avatarUrl || `https://github.com/${watchedUser.login}.png`,
         commitCount: authorCommits.length,
         latestCommitTime: latestCommit.timestamp,
-        reposContributedTo: uniqueRepos,
+        reposContributedTo: repoContributions,
       };
     });
 
