@@ -127,30 +127,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   headerWithMargin: {
     marginBottom: 12,
   },
   ownerAvatar: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: 8,
     marginRight: 12,
   },
   repoInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   repoName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
-    textAlign: 'left',
+    marginBottom: 4,
   },
   repoOwner: {
     fontSize: 13,
-    textAlign: 'left',
   },
   statsContainer: {
     alignItems: 'flex-end',
@@ -158,7 +155,7 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   commitCount: {
     fontSize: 13,

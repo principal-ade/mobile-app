@@ -68,7 +68,7 @@ export function ActivityTabScreen() {
   const { isAuthenticated, token } = useAuth();
   const { version, watchedUsers, watchedRepos } = useFeedPreferences();
 
-  const [activeTab, setActiveTab] = useState<Tab>('repos');
+  const [activeTab, setActiveTab] = useState<Tab>('users');
   const [commits, setCommits] = useState<HeatmapCommit[]>([]);
   const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
   const [repos, setRepos] = useState<HeatmapRepo[]>([]);
@@ -419,45 +419,6 @@ export function ActivityTabScreen() {
         <Pressable
           style={[
             styles.tab,
-            activeTab === 'repos' && [
-              styles.activeTab,
-              { borderBottomColor: theme.colors.primary },
-            ],
-          ]}
-          onPress={() => setActiveTab('repos')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              { color: theme.colors.textSecondary },
-              activeTab === 'repos' && [
-                styles.activeTabText,
-                { color: theme.colors.primary },
-              ],
-            ]}
-          >
-            Repositories
-          </Text>
-          <View
-            style={[
-              styles.countBadge,
-              { backgroundColor: activeTab === 'repos' ? theme.colors.primary : theme.colors.border },
-            ]}
-          >
-            <Text
-              style={[
-                styles.countText,
-                { color: activeTab === 'repos' ? '#fff' : theme.colors.textSecondary },
-              ]}
-            >
-              {repoActivityData.length}
-            </Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={[
-            styles.tab,
             activeTab === 'users' && [
               styles.activeTab,
               { borderBottomColor: theme.colors.primary },
@@ -475,7 +436,7 @@ export function ActivityTabScreen() {
               ],
             ]}
           >
-            Users
+            Developers
           </Text>
           <View
             style={[
@@ -490,6 +451,45 @@ export function ActivityTabScreen() {
               ]}
             >
               {userActivityData.length}
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          style={[
+            styles.tab,
+            activeTab === 'repos' && [
+              styles.activeTab,
+              { borderBottomColor: theme.colors.primary },
+            ],
+          ]}
+          onPress={() => setActiveTab('repos')}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              { color: theme.colors.textSecondary },
+              activeTab === 'repos' && [
+                styles.activeTabText,
+                { color: theme.colors.primary },
+              ],
+            ]}
+          >
+            Projects
+          </Text>
+          <View
+            style={[
+              styles.countBadge,
+              { backgroundColor: activeTab === 'repos' ? theme.colors.primary : theme.colors.border },
+            ]}
+          >
+            <Text
+              style={[
+                styles.countText,
+                { color: activeTab === 'repos' ? '#fff' : theme.colors.textSecondary },
+              ]}
+            >
+              {repoActivityData.length}
             </Text>
           </View>
         </Pressable>
@@ -582,11 +582,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   tab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 4,
-    marginRight: 24,
     gap: 8,
   },
   activeTab: {
