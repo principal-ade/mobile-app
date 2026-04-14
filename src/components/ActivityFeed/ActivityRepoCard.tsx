@@ -55,9 +55,11 @@ export function ActivityRepoCard({
     }
   };
 
+  const hasCommitInfo = latestCommitAuthor && latestCommitMessage;
+
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, hasCommitInfo && styles.headerWithMargin]}>
         <TouchableOpacity onPress={handleRepoPress}>
           <Image
             source={{ uri: `https://github.com/${owner}.png` }}
@@ -87,7 +89,7 @@ export function ActivityRepoCard({
         </View>
       </View>
 
-      {latestCommitAuthor && latestCommitMessage && (
+      {hasCommitInfo && (
         <View style={styles.commitInfo}>
           <Image
             source={{ uri: latestCommitAuthor.avatarUrl || `https://github.com/${latestCommitAuthor.login}.png` }}
@@ -126,6 +128,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+  },
+  headerWithMargin: {
     marginBottom: 12,
   },
   ownerAvatar: {
