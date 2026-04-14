@@ -209,7 +209,17 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
       )}
 
       {/* Header */}
-      <View style={[styles.header, !hourLabel && { paddingTop: topInset + 16 }]}>
+      <TouchableOpacity
+        style={[styles.header, !hourLabel && { paddingTop: topInset + 16 }]}
+        onPress={() => {
+          navigation.navigate('RepoFileCity', {
+            owner: summary.owner,
+            name: summary.repo,
+            fullName: summary.fullName,
+          });
+        }}
+        activeOpacity={0.7}
+      >
         <View
           style={[
             styles.avatarContainer,
@@ -241,7 +251,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
             {summary.commitCount !== 1 ? 's' : ''} in last {getTimeRangeText(summary.commits)}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Commit Timeline */}
       {summary.commits.length > 1 && (
