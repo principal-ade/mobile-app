@@ -17,6 +17,7 @@ import { ContributionGrid, DailyContribution } from '../components/ContributionG
 import { Logo } from '../components/Logo';
 import { LucideIcon } from '../components/LucideIcon';
 import { GitHubRepository, GitHubOrganization } from '../types/github';
+import { ContributedRepository } from '../services/GitHubSearchService';
 
 export interface ActivityCommit {
   sha: string;
@@ -30,6 +31,7 @@ export interface HourlyActivityGroup {
   repo: string;
   repoOwner: string;
   repoOwnerAvatar: string;
+  repoOwnerType?: 'User' | 'Organization';
   hour: number; // 0-23
   hourBucket: string; // ISO timestamp
   hoursAgo: number;
@@ -54,8 +56,10 @@ export interface UserProfileScreenProps {
   repositories?: GitHubRepository[];
   pinnedRepoNames?: string[];
   organizations?: GitHubOrganization[];
+  contributedRepos?: ContributedRepository[];
   onRepoPress?: (owner: string, name: string, fullName: string) => void;
   onOrgPress?: (orgLogin: string) => void;
+  onOwnerPress?: (ownerLogin: string, ownerType?: 'User' | 'Organization') => void;
 }
 
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
@@ -73,8 +77,10 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   repositories = [],
   pinnedRepoNames = [],
   organizations = [],
+  contributedRepos = [],
   onRepoPress,
   onOrgPress,
+  onOwnerPress,
 }) => {
   const { theme } = useTheme();
   const { width } = Dimensions.get('window');
@@ -111,8 +117,15 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const ActivityRoute = () => (
     <ScrollView style={{ backgroundColor: theme.colors.background }}>
       <View style={styles.tabContent}>
-        {recentActivity.length > 0 ? (
-          <View>
+        {/* Recent Activity Section */}
+        {recentActivity.length > 0 && (
+          <View style={styles.recentActivitySection}>
+            <Text style={[styles.sectionHeader, { color: theme.colors.text }]}>
+              Recent Commits
+            </Text>
+            <Text style={[styles.sectionSubheader, { color: theme.colors.textSecondary }]}>
+              Last 24 hours
+            </Text>
             {recentActivity.map((group) => {
               const repoName = group.repo.includes('/') ? group.repo.split('/')[1] : group.repo;
               return (
@@ -130,11 +143,20 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
                   activeOpacity={0.7}
                 >
                   <View style={styles.activityHeader}>
-                    <Image
-                      source={{ uri: group.repoOwnerAvatar }}
-                      style={styles.activityAvatar}
-                      resizeMode="cover"
-                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (onOwnerPress) {
+                          onOwnerPress(group.repoOwner, group.repoOwnerType);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Image
+                        source={{ uri: group.repoOwnerAvatar }}
+                        style={styles.activityAvatar}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                     <View style={styles.activityContent}>
                       <Text
                         style={[styles.activityRepo, { color: theme.colors.text }]}
@@ -170,7 +192,80 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
               );
             })}
           </View>
-        ) : (
+        )}
+
+        {/* Contributed Repositories Section */}
+        {contributedRepos && contributedRepos.length > 0 && (
+          <View style={styles.contributedReposSection}>
+            <Text style={[styles.sectionHeader, { color: theme.colors.text }]}>
+              Contributed Repositories
+            </Text>
+            <Text style={[styles.sectionSubheader, { color: theme.colors.textSecondary }]}>
+              Past 5 months
+            </Text>
+            {contributedRepos.map((repo) => (
+              <TouchableOpacity
+                key={repo.nameWithOwner}
+                style={[
+                  styles.contributedRepoCard,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+                onPress={() => {
+                  if (onRepoPress) {
+                    onRepoPress(repo.owner, repo.name, repo.nameWithOwner);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.contributedRepoHeader}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (onOwnerPress) {
+                        onOwnerPress(repo.owner, repo.ownerType);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: `https://github.com/${repo.owner}.png` }}
+                      style={styles.contributedRepoAvatar}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                  <View style={styles.contributedRepoContent}>
+                    <Text
+                      style={[styles.contributedRepoName, { color: theme.colors.text }]}
+                      numberOfLines={1}
+                    >
+                      {repo.name}
+                    </Text>
+                    <Text
+                      style={[styles.contributedRepoOwner, { color: theme.colors.textSecondary }]}
+                      numberOfLines={1}
+                    >
+                      {repo.owner}
+                    </Text>
+                  </View>
+                  <View style={styles.contributedRepoStats}>
+                    <Text
+                      style={[styles.contributedRepoCommits, { color: theme.colors.textSecondary }]}
+                    >
+                      {repo.commitCount} {repo.commitCount === 1 ? 'commit' : 'commits'}
+                    </Text>
+                    <Text
+                      style={[styles.contributedRepoTime, { color: theme.colors.textTertiary }]}
+                    >
+                      {formatUpdateTime(repo.lastContributedAt)}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Empty State - only show if no contributed repos AND no recent activity */}
+        {(!contributedRepos || contributedRepos.length === 0) && recentActivity.length === 0 && (
           <View
             style={[
               styles.activityPlaceholder,
@@ -811,5 +906,64 @@ const styles = StyleSheet.create({
     width: 140,
     height: 48,
     borderRadius: 12,
+  },
+  // Contributed repos section styles
+  contributedReposSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sectionSubheader: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  contributedRepoCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  contributedRepoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  contributedRepoAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  contributedRepoContent: {
+    flex: 1,
+  },
+  contributedRepoName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  contributedRepoOwner: {
+    fontSize: 13,
+  },
+  contributedRepoStats: {
+    alignItems: 'flex-end',
+    marginLeft: 12,
+  },
+  contributedRepoCommits: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  contributedRepoTime: {
+    fontSize: 11,
+  },
+  recentActivitySection: {
+    // No additional styles needed - uses existing styles
   },
 });

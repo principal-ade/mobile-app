@@ -61,6 +61,7 @@ function transformActivityToHourlyGroups(activity: ActivityEvent[]): HourlyActiv
         repo: event.repository,
         repoOwner: repoOwner || '',
         repoOwnerAvatar: `https://github.com/${repoOwner}.png`,
+        repoOwnerType: event.ownerType,
         hour,
         hourBucket: hourBucket.toISOString(),
         hoursAgo,
@@ -87,7 +88,7 @@ export function UserProfileScreenContainer() {
   const { theme } = useTheme();
   const route = useRoute<UserProfileRouteProp>();
   const navigation = useNavigation<any>();
-  const { username } = route.params;
+  const { username, isOrganization = false } = route.params;
   const { token } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +136,14 @@ export function UserProfileScreenContainer() {
     });
   };
 
+  // Navigate to owner profile (user or organization)
+  const handleOwnerPress = (ownerLogin: string, ownerType?: 'User' | 'Organization') => {
+    navigation.navigate('UserProfile', {
+      username: ownerLogin,
+      isOrganization: ownerType === 'Organization',
+    });
+  };
+
   useEffect(() => {
     async function fetchUserData() {
       setIsLoading(true);
@@ -149,14 +158,16 @@ export function UserProfileScreenContainer() {
         // Then fetch activity data, repos, orgs, and pinned repos in parallel
         // Request 150 days (5 months) of contribution data for the heatmap
         // Request 1 day of activity events for recent activity section
+        // Skip activity for organizations (they don't have personal contributions)
         const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
-          getUserActivity(username, 150, 1),
+          isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 150, 1),
           token ? fetchUserRepositories(token, username) : Promise.resolve([]),
           token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
           getPinnedRepositories(username),
         ]);
 
         if (activity.status === 'fulfilled') {
+          console.log('[UserProfile] Contributed repos:', activity.value.contributedRepos?.length || 0);
           setActivityData(activity.value);
         }
         if (repos.status === 'fulfilled') {
@@ -201,7 +212,7 @@ export function UserProfileScreenContainer() {
     }
 
     fetchUserData();
-  }, [username, token]);
+  }, [username, token, isOrganization]);
 
   if (error) {
     return (
@@ -218,7 +229,7 @@ export function UserProfileScreenContainer() {
               setIsLoading(false);
 
               const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
-                getUserActivity(username, 150, 1),
+                isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 150, 1),
                 token ? fetchUserRepositories(token, username) : Promise.resolve([]),
                 token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
                 getPinnedRepositories(username),
@@ -283,6 +294,7 @@ export function UserProfileScreenContainer() {
       bio={userData?.bio || undefined}
       contributions={activityData?.contributions || []}
       recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}
+      contributedRepos={activityData?.contributedRepos || []}
       repositories={repositories}
       pinnedRepoNames={pinnedRepoNames}
       organizations={organizations}
@@ -290,6 +302,7 @@ export function UserProfileScreenContainer() {
       onWatchPress={handleToggleWatch}
       onRepoPress={handleRepoPress}
       onOrgPress={handleOrgPress}
+      onOwnerPress={handleOwnerPress}
       isWatching={isWatching}
     />
   );

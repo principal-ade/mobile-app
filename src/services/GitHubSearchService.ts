@@ -247,6 +247,17 @@ export interface DailyContribution {
   count: number;
 }
 
+export interface ContributedRepository {
+  nameWithOwner: string;
+  owner: string;
+  name: string;
+  url: string;
+  commitCount: number;
+  lastContributedAt: string;
+  isPrivate: boolean;
+  ownerType: 'User' | 'Organization';
+}
+
 export interface ActivityEvent {
   id: string;
   type: 'commit' | 'pr_merged' | 'pr_opened' | 'issue_opened';
@@ -277,6 +288,7 @@ export interface UserActivityResponse {
   };
   activity: ActivityEvent[];
   contributions: DailyContribution[];
+  contributedRepos: ContributedRepository[];
 }
 
 /**
