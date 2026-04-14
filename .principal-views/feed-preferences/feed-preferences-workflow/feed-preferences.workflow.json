@@ -77,7 +77,7 @@
           "feed-preferences.persist": "Persisting {{dataType}}: {{itemCount}} items",
           "feed-preferences.version.changed": "Version changed, trigger=remove-user",
           "feed-preferences.api-sync.user": "API sync: unfollow user {{login}}, success={{success}}",
-          "feed-preferences.consumer.refetch": "ActivityTabScreen detected version change, refetching heatmap"
+          "feed-preferences.consumer.refetch": "WatchTabScreen detected version change, refetching heatmap"
         }
       }
     },

@@ -48,7 +48,7 @@ The FeedPreferencesContext provides centralized state management for feed custom
             +---------------+---------------+
             |                               |
             v                               v
-    ActivityTabScreen              useActivityFeed
+    WatchTabScreen                 useActivityFeed
             |                               |
             v                               v
     fetchActivity(true)            refetch feed data
@@ -63,7 +63,7 @@ The FeedPreferencesContext provides centralized state management for feed custom
 | `src/screens/FeedCustomizationScreen.tsx` | UI for managing preferences |
 | `src/screens/AddUserScreen.tsx` | UI for adding users |
 | `src/screens/AddRepoScreen.tsx` | UI for adding repos |
-| `src/screens/ActivityTabScreen.tsx` | Consumer that refetches on version change |
+| `src/screens/WatchTabScreen.tsx` | Consumer that refetches on version change |
 | `src/hooks/useActivityFeed.ts` | Consumer that refetches on version change |
 
 ## Context API
@@ -116,7 +116,7 @@ The `version` counter is the key mechanism for reactive updates:
 
 3. **Refetch on change**: When version changes, consumers know to refetch their data.
 
-### ActivityTabScreen Example
+### WatchTabScreen Example
 
 ```typescript
 const { version } = useFeedPreferences();

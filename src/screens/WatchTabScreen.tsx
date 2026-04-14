@@ -1,5 +1,5 @@
 /**
- * Activity Tab Screen
+ * Watch Tab Screen
  *
  * Shows repository and user activity cards sorted by most recent activity.
  * Features tabs to switch between viewing repos and users.
@@ -61,7 +61,7 @@ interface UserActivityData {
   reposContributedTo: RepoContribution[];
 }
 
-export function ActivityTabScreen() {
+export function WatchTabScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, token } = useAuth();
@@ -600,4 +600,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActivityTabScreen;
+export default WatchTabScreen;

@@ -24,7 +24,7 @@ import AddUserScreen from '../screens/AddUserScreen';
 import AddRepoScreen from '../screens/AddRepoScreen';
 import SwipeFeedScreen from '../screens/SwipeFeedScreen';
 import FeedTabScreen from '../screens/FeedTabScreen';
-import ActivityTabScreen from '../screens/ActivityTabScreen';
+import WatchTabScreen from '../screens/WatchTabScreen';
 import ToursTabScreen from '../screens/ToursTabScreen';
 import StarredTabScreen from '../screens/StarredTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
@@ -241,7 +241,7 @@ function WatchStackNavigator() {
     >
       <WatchStack.Screen
         name="WatchHome"
-        component={ActivityTabScreen}
+        component={WatchTabScreen}
         options={{ headerShown: false }}
       />
       <WatchStack.Screen

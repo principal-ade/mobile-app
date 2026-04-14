@@ -522,7 +522,7 @@
       "pv": {
         "status": "draft",
         "references": [
-          "src/screens/ActivityTabScreen.tsx",
+          "src/screens/WatchTabScreen.tsx",
           "src/hooks/useActivityFeed.ts"
         ],
         "shape": "rectangle",
@@ -534,7 +534,7 @@
         "attributes": {
           "consumer": {
             "type": "string",
-            "description": "Which consumer triggered refetch: 'ActivityTabScreen', 'useActivityFeed'",
+            "description": "Which consumer triggered refetch: 'WatchTabScreen', 'useActivityFeed'",
             "required": true
           },
           "versionAtLastFetch": {
