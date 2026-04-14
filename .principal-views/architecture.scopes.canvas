@@ -1,0 +1,315 @@
+{
+  "name": "Instrumentation Scopes",
+  "markdown": ".principal-views/architecture.scopes.md",
+  "edgeTypes": {
+    "data-flow": {
+      "label": "Uses"
+    }
+  },
+  "nodes": [
+    {
+      "id": "feature-scopes-header",
+      "type": "text",
+      "x": 0,
+      "y": -80,
+      "width": 900,
+      "height": 60,
+      "color": "#1e293b",
+      "text": "# Feature Scopes (UI/Screen Level)\n\nTrack user-facing features and workflows"
+    },
+    {
+      "id": "activity-feed-scope",
+      "type": "otel-scope",
+      "x": 0,
+      "y": 0,
+      "width": 210,
+      "height": 120,
+      "color": "#06b6d4",
+      "label": "activity-feed",
+      "description": "Activity feed feature - repo fetching, commit viewing, user interactions",
+      "otel": {
+        "status": "draft",
+        "scope": "activity-feed"
+      }
+    },
+    {
+      "id": "profile-view-scope",
+      "type": "otel-scope",
+      "x": 230,
+      "y": 0,
+      "width": 210,
+      "height": 120,
+      "color": "#8b5cf6",
+      "label": "profile-view",
+      "description": "User profile feature - profile loading, repos, contributions",
+      "otel": {
+        "status": "draft",
+        "scope": "profile-view"
+      }
+    },
+    {
+      "id": "repo-view-scope",
+      "type": "otel-scope",
+      "x": 460,
+      "y": 0,
+      "width": 210,
+      "height": 120,
+      "color": "#22c55e",
+      "label": "repo-view",
+      "description": "Repository detail feature - readme, metadata, file city navigation",
+      "otel": {
+        "status": "draft",
+        "scope": "repo-view"
+      }
+    },
+    {
+      "id": "swipe-feed-scope",
+      "type": "otel-scope",
+      "x": 690,
+      "y": 0,
+      "width": 210,
+      "height": 120,
+      "color": "#f59e0b",
+      "label": "swipe-feed",
+      "description": "Swipe feed feature - card interactions, pass/save actions",
+      "otel": {
+        "status": "draft",
+        "scope": "swipe-feed"
+      }
+    },
+    {
+      "id": "search-scope",
+      "type": "otel-scope",
+      "x": 0,
+      "y": 140,
+      "width": 210,
+      "height": 120,
+      "color": "#6366f1",
+      "label": "search",
+      "description": "Search feature - user/repo search, suggestions, result selection",
+      "otel": {
+        "status": "draft",
+        "scope": "search"
+      }
+    },
+    {
+      "id": "starred-repos-scope",
+      "type": "otel-scope",
+      "x": 230,
+      "y": 140,
+      "width": 210,
+      "height": 120,
+      "color": "#f43f5e",
+      "label": "starred-repos",
+      "description": "Starred repositories feature - viewing and managing starred repos",
+      "otel": {
+        "status": "draft",
+        "scope": "starred-repos"
+      }
+    },
+    {
+      "id": "feed-preferences-scope",
+      "type": "otel-scope",
+      "x": 460,
+      "y": 140,
+      "width": 210,
+      "height": 120,
+      "color": "#14b8a6",
+      "label": "feed-preferences",
+      "description": "Feed customization feature - watched users/repos, onboarding",
+      "otel": {
+        "status": "draft",
+        "scope": "feed-preferences"
+      }
+    },
+    {
+      "id": "saved-cards-scope",
+      "type": "otel-scope",
+      "x": 690,
+      "y": 140,
+      "width": 210,
+      "height": 120,
+      "color": "#ec4899",
+      "label": "saved-cards",
+      "description": "Saved cards feature - viewing and managing saved feed cards",
+      "otel": {
+        "status": "draft",
+        "scope": "saved-cards"
+      }
+    },
+    {
+      "id": "infrastructure-scopes-header",
+      "type": "text",
+      "x": 0,
+      "y": 300,
+      "width": 900,
+      "height": 60,
+      "color": "#1e293b",
+      "text": "# Infrastructure Scopes (Internal Systems)\n\nTrack shared services and cross-cutting concerns"
+    },
+    {
+      "id": "auth-scope",
+      "type": "otel-scope",
+      "x": 0,
+      "y": 380,
+      "width": 210,
+      "height": 120,
+      "color": "#ef4444",
+      "label": "auth",
+      "description": "Authentication system - OAuth, tokens, session management",
+      "otel": {
+        "status": "draft",
+        "scope": "auth"
+      }
+    },
+    {
+      "id": "github-api-scope",
+      "type": "otel-scope",
+      "x": 230,
+      "y": 380,
+      "width": 210,
+      "height": 120,
+      "color": "#64748b",
+      "label": "github-api",
+      "description": "GitHub API client - all GitHub API calls and responses",
+      "otel": {
+        "status": "draft",
+        "scope": "github-api"
+      }
+    },
+    {
+      "id": "principal-api-scope",
+      "type": "otel-scope",
+      "x": 460,
+      "y": 380,
+      "width": 210,
+      "height": 120,
+      "color": "#3b82f6",
+      "label": "principal-api",
+      "description": "Principal backend API - tRPC and REST calls to web-ade",
+      "otel": {
+        "status": "draft",
+        "scope": "principal-api"
+      }
+    },
+    {
+      "id": "storage-scope",
+      "type": "otel-scope",
+      "x": 0,
+      "y": 520,
+      "width": 210,
+      "height": 120,
+      "color": "#a855f7",
+      "label": "storage",
+      "description": "Storage layer - local persistence, secure storage, caching",
+      "otel": {
+        "status": "draft",
+        "scope": "storage"
+      }
+    },
+    {
+      "id": "navigation-scope",
+      "type": "otel-scope",
+      "x": 230,
+      "y": 520,
+      "width": 210,
+      "height": 120,
+      "color": "#84cc16",
+      "label": "navigation",
+      "description": "Navigation system - routing, deep links, tab switching",
+      "otel": {
+        "status": "draft",
+        "scope": "navigation"
+      }
+    },
+    {
+      "id": "file-city-renderer-scope",
+      "type": "otel-scope",
+      "x": 460,
+      "y": 520,
+      "width": 210,
+      "height": 120,
+      "color": "#f97316",
+      "label": "file-city-renderer",
+      "description": "File city rendering - visualization generation and caching",
+      "otel": {
+        "status": "draft",
+        "scope": "file-city-renderer"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "activity-uses-github",
+      "fromNode": "activity-feed-scope",
+      "fromSide": "bottom",
+      "toNode": "github-api-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "activity-uses-storage",
+      "fromNode": "activity-feed-scope",
+      "fromSide": "bottom",
+      "toNode": "storage-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "profile-uses-github",
+      "fromNode": "profile-view-scope",
+      "fromSide": "bottom",
+      "toNode": "github-api-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "repo-uses-github",
+      "fromNode": "repo-view-scope",
+      "fromSide": "bottom",
+      "toNode": "github-api-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "swipe-uses-principal",
+      "fromNode": "swipe-feed-scope",
+      "fromSide": "bottom",
+      "toNode": "principal-api-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "search-uses-github",
+      "fromNode": "search-scope",
+      "fromSide": "bottom",
+      "toNode": "github-api-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "all-use-navigation",
+      "fromNode": "activity-feed-scope",
+      "fromSide": "bottom",
+      "toNode": "navigation-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    },
+    {
+      "id": "all-use-auth",
+      "fromNode": "profile-view-scope",
+      "fromSide": "bottom",
+      "toNode": "auth-scope",
+      "toSide": "top",
+      "label": "uses",
+      "edgeType": "data-flow"
+    }
+  ]
+}

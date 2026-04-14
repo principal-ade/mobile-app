@@ -23,7 +23,8 @@
       "id": "feed-load-started",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 100,
       "y": 50,
@@ -61,7 +62,8 @@
       "id": "feed-load-success",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 100,
       "y": 200,
@@ -103,7 +105,8 @@
       "id": "feed-load-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 400,
       "y": 50,
@@ -140,7 +143,8 @@
       "id": "feed-empty",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 400,
       "y": 200,
@@ -177,7 +181,8 @@
       "id": "card-view",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 100,
       "y": 350,
@@ -225,7 +230,8 @@
       "id": "card-pass",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": -200,
       "y": 500,
@@ -278,7 +284,8 @@
       "id": "card-save",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 400,
       "y": 500,
@@ -321,7 +328,8 @@
       "id": "card-undo",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 100,
       "y": 500,
@@ -358,7 +366,8 @@
       "id": "card-tap",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 100,
       "y": 650,
@@ -400,7 +409,8 @@
       "id": "pass-api-success",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": -200,
       "y": 650,
@@ -437,7 +447,8 @@
       "id": "pass-api-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": -400,
       "y": 650,
@@ -474,7 +485,8 @@
       "id": "save-api-success",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 400,
       "y": 650,
@@ -506,7 +518,8 @@
       "id": "save-api-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 600,
       "y": 650,
@@ -543,7 +556,8 @@
       "id": "stack-exhausted",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "swipe-feed"
       },
       "x": 100,
       "y": 800,

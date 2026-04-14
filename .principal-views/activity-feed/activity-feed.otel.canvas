@@ -23,7 +23,8 @@
       "id": "feed-init-started",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 50,
@@ -61,7 +62,8 @@
       "id": "feed-fetch-batch",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 200,
@@ -93,7 +95,8 @@
       "id": "feed-fetch-repo-item",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 350,
@@ -130,7 +133,8 @@
       "id": "feed-fetch-repo-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 400,
       "y": 350,
@@ -172,7 +176,8 @@
       "id": "feed-init-success",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 500,
@@ -210,7 +215,8 @@
       "id": "feed-init-empty",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 400,
       "y": 500,
@@ -242,7 +248,8 @@
       "id": "feed-init-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 400,
       "y": 200,
@@ -274,7 +281,8 @@
       "id": "feed-refresh-started",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": -200,
       "y": 200,
@@ -307,7 +315,8 @@
       "id": "feed-refresh-complete",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": -200,
       "y": 350,
@@ -344,7 +353,8 @@
       "id": "feed-app-state-change",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": -200,
       "y": 50,
@@ -381,7 +391,8 @@
       "id": "card-swipe",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 700,
@@ -428,7 +439,8 @@
       "id": "commit-swipe",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 850,
@@ -480,7 +492,8 @@
       "id": "filecity-load",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 100,
       "y": 1000,
@@ -527,7 +540,8 @@
       "id": "filecity-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 400,
       "y": 1000,
@@ -569,7 +583,8 @@
       "id": "commit-tap",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 400,
       "y": 850,
@@ -611,7 +626,8 @@
       "id": "author-tap",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "activity-feed"
       },
       "x": 400,
       "y": 700,

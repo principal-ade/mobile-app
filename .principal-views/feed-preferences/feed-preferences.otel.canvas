@@ -26,7 +26,8 @@
       "id": "context-bootstrap-started",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 100,
       "y": 50,
@@ -52,7 +53,8 @@
       "id": "context-bootstrap-load-storage",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 100,
       "y": 200,
@@ -85,7 +87,8 @@
       "id": "context-bootstrap-success",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 100,
       "y": 350,
@@ -127,7 +130,8 @@
       "id": "context-bootstrap-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 400,
       "y": 200,
@@ -159,7 +163,8 @@
       "id": "add-user",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": -200,
       "y": 500,
@@ -203,7 +208,8 @@
       "id": "remove-user",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": -200,
       "y": 650,
@@ -246,7 +252,8 @@
       "id": "add-repo",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 100,
       "y": 500,
@@ -290,7 +297,8 @@
       "id": "remove-repo",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 100,
       "y": 650,
@@ -333,7 +341,8 @@
       "id": "reset-to-defaults",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": -50,
       "y": 800,
@@ -381,7 +390,8 @@
       "id": "persist-to-storage",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 400,
       "y": 575,
@@ -419,7 +429,8 @@
       "id": "persist-error",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 650,
       "y": 575,
@@ -456,7 +467,8 @@
       "id": "version-changed",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 400,
       "y": 800,
@@ -498,7 +510,8 @@
       "id": "activity-screen-refetch",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 400,
       "y": 950,
@@ -541,7 +554,8 @@
       "id": "api-sync-user",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": -200,
       "y": 800,
@@ -585,7 +599,8 @@
       "id": "api-sync-repo",
       "type": "otel-event",
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "feed-preferences"
       },
       "x": 100,
       "y": 950,

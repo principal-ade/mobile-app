@@ -8,6 +8,48 @@ edgeComponents: {}
 resources: {}
 
 scopes:
+  # Feature Scopes (UI/Screen level)
   activity-feed:
     color: "#06b6d4"
-    description: Activity feed telemetry instrumentation
+    description: Activity feed feature - repo fetching, commit viewing, user interactions
+  profile-view:
+    color: "#8b5cf6"
+    description: User profile feature - profile loading, repos, contributions
+  repo-view:
+    color: "#22c55e"
+    description: Repository detail feature - readme, metadata, file city navigation
+  swipe-feed:
+    color: "#f59e0b"
+    description: Swipe feed feature - card interactions, pass/save actions
+  search:
+    color: "#6366f1"
+    description: Search feature - user/repo search, suggestions, result selection
+  starred-repos:
+    color: "#f43f5e"
+    description: Starred repositories feature - viewing and managing starred repos
+  feed-preferences:
+    color: "#14b8a6"
+    description: Feed customization feature - watched users/repos, onboarding
+  saved-cards:
+    color: "#ec4899"
+    description: Saved cards feature - viewing and managing saved feed cards
+
+  # Infrastructure Scopes (Internal systems)
+  auth:
+    color: "#ef4444"
+    description: Authentication system - OAuth, tokens, session management
+  github-api:
+    color: "#64748b"
+    description: GitHub API client - all GitHub API calls and responses
+  principal-api:
+    color: "#3b82f6"
+    description: Principal backend API - tRPC and REST calls to web-ade
+  storage:
+    color: "#a855f7"
+    description: Storage layer - local persistence, secure storage, caching
+  navigation:
+    color: "#84cc16"
+    description: Navigation system - routing, deep links, tab switching
+  file-city-renderer:
+    color: "#f97316"
+    description: File city rendering - visualization generation and caching
