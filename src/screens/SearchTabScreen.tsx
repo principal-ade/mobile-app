@@ -221,7 +221,9 @@ export function SearchTabScreen() {
 
   // Debounced search (300ms) - searches both repos and users in parallel
   useEffect(() => {
-    if (!query.trim()) {
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
       setRepoResults([]);
       setUserResults([]);
       setRepoTotalCount(0);
@@ -239,8 +241,8 @@ export function SearchTabScreen() {
 
       // Parallel API calls with Promise.allSettled for partial failure support
       const [repoResponse, userResponse] = await Promise.allSettled([
-        searchRepos(query, { perPage: 20 }),
-        searchUsers(query, { perPage: 20 })
+        searchRepos(trimmedQuery, { perPage: 20 }),
+        searchUsers(trimmedQuery, { perPage: 20 })
       ]);
 
       // Handle repo results
@@ -266,8 +268,8 @@ export function SearchTabScreen() {
       setHasSearched(true);
       setIsSearching(false);
 
-      // Save to history (don't await)
-      saveSearchQuery(query);
+      // Save to history (don't await) - use trimmed query
+      saveSearchQuery(trimmedQuery);
     }, 300);
 
     return () => clearTimeout(timeoutId);
@@ -731,7 +733,7 @@ export function SearchTabScreen() {
             />
           )}
         </>
-      ) : (
+      ) : (searchHistory.length === 0 && clickedResults.length === 0) ? (
         <View style={styles.emptyStateContainer}>
           <CityIcon color={theme.colors.textSecondary} size={80} />
           <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>
@@ -741,7 +743,7 @@ export function SearchTabScreen() {
             Search for repositories and users on GitHub. Results will appear as you type.
           </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -953,8 +955,6 @@ const styles = StyleSheet.create({
   historyContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   historyHeader: {
     flexDirection: 'row',

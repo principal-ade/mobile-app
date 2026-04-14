@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Alert } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import * as Clipboard from 'expo-clipboard';
 import {
   RootStackParamList,
   MainTabParamList,
@@ -37,6 +38,8 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { parseGitHubUrl } from '../utils/githubUrlParser';
+import { saveClickedResult } from '../utils/searchStorage';
 
 const prefix = Linking.createURL('/');
 
@@ -406,6 +409,10 @@ function AboutStackNavigator() {
   );
 }
 
+// Track last tap time for double-tap detection on Search tab
+let lastSearchTabTap = 0;
+const DOUBLE_TAP_DELAY = 300; // milliseconds
+
 function MainTabs() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -450,6 +457,76 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color }) => <LucideIcon name="Search" size={24} color={color} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: async (e) => {
+            const now = Date.now();
+            const timeSinceLastTap = now - lastSearchTabTap;
+
+            if (timeSinceLastTap < DOUBLE_TAP_DELAY && timeSinceLastTap > 0) {
+              // Double tap detected - prevent default navigation
+              e.preventDefault();
+              lastSearchTabTap = 0; // Reset
+
+              try {
+                const clipboardContent = await Clipboard.getStringAsync();
+
+                if (!clipboardContent?.trim()) {
+                  Alert.alert('Clipboard Empty', 'No content found in clipboard');
+                  return;
+                }
+
+                const parseResult = parseGitHubUrl(clipboardContent.trim());
+
+                if (parseResult.type === 'invalid') {
+                  Alert.alert('Invalid URL', 'Clipboard does not contain a valid GitHub URL');
+                  return;
+                }
+
+                // Navigate to the appropriate screen
+                if (parseResult.type === 'repo') {
+                  const fullName = `${parseResult.owner}/${parseResult.repo}`;
+
+                  await saveClickedResult({
+                    type: 'repo',
+                    id: fullName,
+                    name: parseResult.repo,
+                    owner: parseResult.owner,
+                    avatarUrl: `https://github.com/${parseResult.owner}.png`,
+                  });
+
+                  navigation.navigate('Search', {
+                    screen: 'RepoFileCity',
+                    params: {
+                      owner: parseResult.owner,
+                      name: parseResult.repo,
+                      fullName,
+                    },
+                  });
+                } else if (parseResult.type === 'user') {
+                  await saveClickedResult({
+                    type: 'user',
+                    id: parseResult.username,
+                    name: parseResult.username,
+                    login: parseResult.username,
+                    avatarUrl: `https://github.com/${parseResult.username}.png`,
+                  });
+
+                  navigation.navigate('Search', {
+                    screen: 'UserProfile',
+                    params: {
+                      username: parseResult.username,
+                    },
+                  });
+                }
+              } catch (error) {
+                Alert.alert('Error', 'Failed to read from clipboard');
+              }
+            } else {
+              // Single tap - allow default navigation
+              lastSearchTabTap = now;
+            }
+          },
+        })}
       />
       <Tab.Screen
         name="Starred"
