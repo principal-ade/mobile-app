@@ -42,6 +42,7 @@ export interface OrganizationScreenProps {
   loading?: boolean;
   organization?: OrganizationInfo;
   repositories?: GitHubRepository[];
+  pinnedRepoNames?: string[];
   members?: OrgMember[];
   onClose?: () => void;
   onRepoPress?: (owner: string, name: string, fullName: string) => void;
@@ -52,6 +53,7 @@ export const OrganizationScreen: React.FC<OrganizationScreenProps> = ({
   loading = false,
   organization,
   repositories = [],
+  pinnedRepoNames = [],
   members = [],
   onClose,
   onRepoPress,
@@ -65,6 +67,27 @@ export const OrganizationScreen: React.FC<OrganizationScreenProps> = ({
     { key: 'repos', title: 'Projects' },
     { key: 'members', title: 'Members' },
   ]);
+
+  const formatUpdateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (diffDays === 0) {
+      return 'Updated today';
+    } else if (diffDays === 1) {
+      return 'Updated yesterday';
+    } else if (diffDays < 30) {
+      return `Updated ${diffDays}d ago`;
+    } else if (diffMonths < 12) {
+      return `Updated ${diffMonths}mo ago`;
+    } else {
+      return `Updated ${diffYears}y ago`;
+    }
+  };
 
   // Repositories Tab Content
   const ReposRoute = () => (
@@ -90,6 +113,24 @@ export const OrganizationScreen: React.FC<OrganizationScreenProps> = ({
               <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
                 {item.name}
               </Text>
+              {pinnedRepoNames.includes(item.full_name) && (
+                <View style={styles.pinIndicator}>
+                  <LucideIcon name="Pin" size={14} color={theme.colors.accent} />
+                </View>
+              )}
+              {item.fork && item.parent && (
+                <TouchableOpacity
+                  style={styles.forkIndicator}
+                  onPress={() => {
+                    if (onRepoPress && item.parent) {
+                      onRepoPress(item.parent.owner.login, item.parent.name, item.parent.full_name);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <LucideIcon name="GitFork" size={14} color={theme.colors.textTertiary} />
+                </TouchableOpacity>
+              )}
             </View>
             {item.description && (
               <Text
@@ -114,6 +155,11 @@ export const OrganizationScreen: React.FC<OrganizationScreenProps> = ({
                   </Text>
                 </View>
               )}
+              <View style={styles.repoStat}>
+                <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
+                  {formatUpdateTime(item.updated_at)}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
         );
@@ -420,6 +466,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
+  },
+  pinIndicator: {
+    marginLeft: 4,
+  },
+  forkIndicator: {
+    padding: 4,
+    marginLeft: 4,
   },
   repoDescription: {
     fontSize: 14,

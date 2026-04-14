@@ -68,6 +68,7 @@ const linking: LinkingOptions<RootStackParamList> = {
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
+              Organization: 'org/:orgLogin',
             },
           },
           Watch: {
@@ -78,6 +79,7 @@ const linking: LinkingOptions<RootStackParamList> = {
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
+              Organization: 'org/:orgLogin',
             },
           },
           Search: {
@@ -212,6 +214,11 @@ function FeedStackNavigator() {
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
       />
+      <FeedStack.Screen
+        name="Organization"
+        component={OrganizationScreenContainer}
+        options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
+      />
     </FeedStack.Navigator>
   );
 }
@@ -256,6 +263,11 @@ function WatchStackNavigator() {
         name="UserProfile"
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+      <WatchStack.Screen
+        name="Organization"
+        component={OrganizationScreenContainer}
+        options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
       />
     </WatchStack.Navigator>
   );

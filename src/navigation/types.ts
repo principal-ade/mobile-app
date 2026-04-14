@@ -49,6 +49,9 @@ export type FeedStackParamList = {
   UserProfile: {
     username: string;
   };
+  Organization: {
+    orgLogin: string;
+  };
   FeedCustomization: {
     addedUser?: { login: string; avatarUrl: string };
     addedRepo?: { owner: string; name: string };
@@ -80,6 +83,9 @@ export type WatchStackParamList = {
   };
   UserProfile: {
     username: string;
+  };
+  Organization: {
+    orgLogin: string;
   };
 };
 

@@ -16,6 +16,14 @@ export interface GitHubRepository {
   };
   description: string | null;
   private: boolean;
+  fork: boolean;
+  parent?: {
+    full_name: string;
+    owner: {
+      login: string;
+    };
+    name: string;
+  };
   stargazers_count: number;
   updated_at: string;
   html_url: string;

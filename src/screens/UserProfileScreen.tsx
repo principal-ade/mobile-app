@@ -52,6 +52,7 @@ export interface UserProfileScreenProps {
   recentActivity?: HourlyActivityGroup[];
   contributions?: DailyContribution[];
   repositories?: GitHubRepository[];
+  pinnedRepoNames?: string[];
   organizations?: GitHubOrganization[];
   onRepoPress?: (owner: string, name: string, fullName: string) => void;
   onOrgPress?: (orgLogin: string) => void;
@@ -70,6 +71,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   recentActivity = [],
   contributions = [],
   repositories = [],
+  pinnedRepoNames = [],
   organizations = [],
   onRepoPress,
   onOrgPress,
@@ -84,52 +86,89 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
     { key: 'orgs', title: 'Orgs' },
   ]);
 
+  const formatUpdateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (diffDays === 0) {
+      return 'Updated today';
+    } else if (diffDays === 1) {
+      return 'Updated yesterday';
+    } else if (diffDays < 30) {
+      return `Updated ${diffDays}d ago`;
+    } else if (diffMonths < 12) {
+      return `Updated ${diffMonths}mo ago`;
+    } else {
+      return `Updated ${diffYears}y ago`;
+    }
+  };
+
   // Activity Tab Content
   const ActivityRoute = () => (
     <ScrollView style={{ backgroundColor: theme.colors.background }}>
       <View style={styles.tabContent}>
         {recentActivity.length > 0 ? (
           <View>
-            {recentActivity.map((group) => (
-              <View
-                key={group.id}
-                style={[
-                  styles.activityItem,
-                  { backgroundColor: theme.colors.surface },
-                ]}
-              >
-                <View style={styles.activityHeader}>
-                  <Image
-                    source={{ uri: group.repoOwnerAvatar }}
-                    style={styles.activityAvatar}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.activityContent}>
-                    <Text
-                      style={[styles.activityRepo, { color: theme.colors.accent }]}
-                      numberOfLines={1}
-                    >
-                      {group.repo}
-                    </Text>
-                    <Text
-                      style={[styles.activityTitle, { color: theme.colors.text }]}
-                      numberOfLines={2}
-                    >
-                      {group.commitCount} {group.commitCount === 1 ? 'commit' : 'commits'}
-                    </Text>
-                  </View>
-                </View>
-                <Text
-                  style={[styles.activityTimestamp, { color: theme.colors.textTertiary }]}
+            {recentActivity.map((group) => {
+              const repoName = group.repo.includes('/') ? group.repo.split('/')[1] : group.repo;
+              return (
+                <TouchableOpacity
+                  key={group.id}
+                  style={[
+                    styles.activityItem,
+                    { backgroundColor: theme.colors.surface },
+                  ]}
+                  onPress={() => {
+                    if (onRepoPress) {
+                      onRepoPress(group.repoOwner, repoName, group.repo);
+                    }
+                  }}
+                  activeOpacity={0.7}
                 >
-                  {group.hoursAgo === 0
-                    ? 'Just now'
-                    : group.hoursAgo === 1
-                    ? '1 hour ago'
-                    : `${group.hoursAgo} hours ago`}
-                </Text>
-              </View>
-            ))}
+                  <View style={styles.activityHeader}>
+                    <Image
+                      source={{ uri: group.repoOwnerAvatar }}
+                      style={styles.activityAvatar}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.activityContent}>
+                      <Text
+                        style={[styles.activityRepo, { color: theme.colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {repoName}
+                      </Text>
+                      <Text
+                        style={[styles.activityOwner, { color: theme.colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {group.repoOwner}
+                      </Text>
+                    </View>
+                    <View style={styles.activityStatsContainer}>
+                      <Text
+                        style={[styles.activityTimestamp, { color: theme.colors.textSecondary }]}
+                      >
+                        {group.hoursAgo === 0
+                          ? 'Just now'
+                          : group.hoursAgo === 1
+                          ? '1h ago'
+                          : `${group.hoursAgo}h ago`}
+                      </Text>
+                      <Text
+                        style={[styles.activityCommitCount, { color: theme.colors.textSecondary }]}
+                      >
+                        {group.commitCount} {group.commitCount === 1 ? 'commit' : 'commits'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ) : (
           <View
@@ -171,6 +210,24 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
               <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
                 {item.name}
               </Text>
+              {pinnedRepoNames.includes(item.full_name) && (
+                <View style={styles.pinIndicator}>
+                  <LucideIcon name="Pin" size={14} color={theme.colors.accent} />
+                </View>
+              )}
+              {item.fork && item.parent && (
+                <TouchableOpacity
+                  style={styles.forkIndicator}
+                  onPress={() => {
+                    if (onRepoPress && item.parent) {
+                      onRepoPress(item.parent.owner.login, item.parent.name, item.parent.full_name);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <LucideIcon name="GitFork" size={14} color={theme.colors.textTertiary} />
+                </TouchableOpacity>
+              )}
             </View>
             {item.description && (
               <Text
@@ -195,6 +252,11 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
                   </Text>
                 </View>
               )}
+              <View style={styles.repoStat}>
+                <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
+                  {formatUpdateTime(item.updated_at)}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
         );
@@ -576,24 +638,37 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   activityHeader: {
     flexDirection: 'row',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   activityAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     marginRight: 12,
   },
   activityContent: {
     flex: 1,
   },
   activityRepo: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  activityOwner: {
+    fontSize: 13,
+  },
+  activityStatsContainer: {
+    alignItems: 'flex-end',
+    marginLeft: 12,
   },
   activityTitle: {
     fontSize: 14,
@@ -605,7 +680,10 @@ const styles = StyleSheet.create({
   },
   activityTimestamp: {
     fontSize: 12,
-    marginLeft: 44,
+    marginBottom: 6,
+  },
+  activityCommitCount: {
+    fontSize: 13,
   },
   // Repo item styles
   repoItem: {
@@ -623,6 +701,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
+  },
+  pinIndicator: {
+    marginLeft: 4,
+  },
+  forkIndicator: {
+    padding: 4,
+    marginLeft: 4,
   },
   repoDescription: {
     fontSize: 14,

@@ -355,3 +355,24 @@ export async function getRepoContributions(
 
   return response.json();
 }
+
+/**
+ * Get pinned repositories for a user or organization
+ * Fetches from web-ade backend which uses GraphQL
+ * @param username - GitHub username or organization login
+ */
+export async function getPinnedRepositories(username: string): Promise<string[]> {
+  const url = `${API_BASE}/github/user/${username}/pinned`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return []; // No pinned repos
+    }
+    throw new Error(`Failed to fetch pinned repositories: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.pinnedRepos || [];
+}

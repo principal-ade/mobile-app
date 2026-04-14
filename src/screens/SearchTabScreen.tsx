@@ -443,7 +443,7 @@ export function SearchTabScreen() {
           </View>
           <TextInput
             style={[styles.searchInput, { color: theme.colors.text }]}
-            placeholder="Search repositories and users..."
+            placeholder="Search Developers and Projects"
             placeholderTextColor={theme.colors.textSecondary}
             value={query}
             onChangeText={setQuery}

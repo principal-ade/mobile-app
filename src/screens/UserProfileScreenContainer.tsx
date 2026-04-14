@@ -14,6 +14,7 @@ import type { FeedStackParamList } from '../navigation/types';
 import {
   getUserProfile,
   getUserActivity,
+  getPinnedRepositories,
   type GitHubUserProfile,
   type UserActivityResponse,
   type ActivityEvent,
@@ -94,6 +95,7 @@ export function UserProfileScreenContainer() {
   const [userData, setUserData] = useState<GitHubUserProfile | null>(null);
   const [activityData, setActivityData] = useState<UserActivityResponse | null>(null);
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
+  const [pinnedRepoNames, setPinnedRepoNames] = useState<string[]>([]);
   const [organizations, setOrganizations] = useState<GitHubOrganization[]>([]);
 
   // Feed preferences for watching users
@@ -126,6 +128,13 @@ export function UserProfileScreenContainer() {
     });
   };
 
+  // Navigate to organization screen
+  const handleOrgPress = (orgLogin: string) => {
+    navigation.navigate('Organization', {
+      orgLogin,
+    });
+  };
+
   useEffect(() => {
     async function fetchUserData() {
       setIsLoading(true);
@@ -137,20 +146,49 @@ export function UserProfileScreenContainer() {
         setUserData(profile);
         setIsLoading(false);
 
-        // Then fetch activity data, repos, and orgs in parallel
+        // Then fetch activity data, repos, orgs, and pinned repos in parallel
         // Request 150 days (5 months) of contribution data for the heatmap
         // Request 1 day of activity events for recent activity section
-        const [activity, repos, orgs] = await Promise.allSettled([
+        const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
           getUserActivity(username, 150, 1),
           token ? fetchUserRepositories(token, username) : Promise.resolve([]),
           token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
+          getPinnedRepositories(username),
         ]);
 
         if (activity.status === 'fulfilled') {
           setActivityData(activity.value);
         }
         if (repos.status === 'fulfilled') {
-          setRepositories(repos.value);
+          const pinnedNames = pinnedRepoNames.status === 'fulfilled' ? pinnedRepoNames.value : [];
+          setPinnedRepoNames(pinnedNames);
+
+          // Separate pinned and non-pinned repos
+          const pinned: GitHubRepository[] = [];
+          const nonPinned: GitHubRepository[] = [];
+
+          repos.value.forEach(repo => {
+            if (pinnedNames.includes(repo.full_name)) {
+              pinned.push(repo);
+            } else {
+              nonPinned.push(repo);
+            }
+          });
+
+          // Sort non-pinned by updated_at (most recent first)
+          const sortedNonPinned = nonPinned.sort((a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          );
+
+          // Sort pinned repos by the order they appear in pinnedNames
+          const sortedPinned = pinned.sort((a, b) => {
+            const aIndex = pinnedNames.indexOf(a.full_name);
+            const bIndex = pinnedNames.indexOf(b.full_name);
+            return aIndex - bIndex;
+          });
+
+          // Pinned repos first, then sorted repos
+          setRepositories([...sortedPinned, ...sortedNonPinned]);
         }
         if (orgs.status === 'fulfilled') {
           setOrganizations(orgs.value);
@@ -179,17 +217,46 @@ export function UserProfileScreenContainer() {
               setUserData(profile);
               setIsLoading(false);
 
-              const [activity, repos, orgs] = await Promise.allSettled([
+              const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
                 getUserActivity(username, 150, 1),
                 token ? fetchUserRepositories(token, username) : Promise.resolve([]),
                 token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
+                getPinnedRepositories(username),
               ]);
 
               if (activity.status === 'fulfilled') {
                 setActivityData(activity.value);
               }
               if (repos.status === 'fulfilled') {
-                setRepositories(repos.value);
+                const pinnedNames = pinnedRepoNames.status === 'fulfilled' ? pinnedRepoNames.value : [];
+                setPinnedRepoNames(pinnedNames);
+
+                // Separate pinned and non-pinned repos
+                const pinned: GitHubRepository[] = [];
+                const nonPinned: GitHubRepository[] = [];
+
+                repos.value.forEach(repo => {
+                  if (pinnedNames.includes(repo.full_name)) {
+                    pinned.push(repo);
+                  } else {
+                    nonPinned.push(repo);
+                  }
+                });
+
+                // Sort non-pinned by updated_at (most recent first)
+                const sortedNonPinned = nonPinned.sort((a, b) =>
+                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                );
+
+                // Sort pinned repos by the order they appear in pinnedNames
+                const sortedPinned = pinned.sort((a, b) => {
+                  const aIndex = pinnedNames.indexOf(a.full_name);
+                  const bIndex = pinnedNames.indexOf(b.full_name);
+                  return aIndex - bIndex;
+                });
+
+                // Pinned repos first, then sorted repos
+                setRepositories([...sortedPinned, ...sortedNonPinned]);
               }
               if (orgs.status === 'fulfilled') {
                 setOrganizations(orgs.value);
@@ -217,10 +284,12 @@ export function UserProfileScreenContainer() {
       contributions={activityData?.contributions || []}
       recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}
       repositories={repositories}
+      pinnedRepoNames={pinnedRepoNames}
       organizations={organizations}
       onClose={() => navigation.goBack()}
       onWatchPress={handleToggleWatch}
       onRepoPress={handleRepoPress}
+      onOrgPress={handleOrgPress}
       isWatching={isWatching}
     />
   );
