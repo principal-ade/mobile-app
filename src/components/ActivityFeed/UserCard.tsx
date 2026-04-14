@@ -93,18 +93,36 @@ export function UserCard({
       </View>
       {isExpanded && reposContributedTo.length > 0 && (
         <View style={styles.expandedRepos}>
-          {reposContributedTo.map((repo) => (
-            <Text
-              key={repo}
-              style={[styles.repoTag, {
-                color: theme.colors.primary,
-                backgroundColor: `${theme.colors.primary}20`
-              }]}
-              numberOfLines={1}
-            >
-              {repo}
-            </Text>
-          ))}
+          {reposContributedTo.map((repo) => {
+            const [owner, name] = repo.split('/');
+            return (
+              <TouchableOpacity
+                key={repo}
+                style={[styles.repoCard, { backgroundColor: theme.colors.background }]}
+                onPress={() => {
+                  if (owner && name) {
+                    navigation.navigate('RepoFileCity', {
+                      owner,
+                      name,
+                      fullName: repo,
+                    });
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: `https://github.com/${owner}.png` }}
+                  style={styles.repoOwnerAvatar}
+                />
+                <Text
+                  style={[styles.repoName, { color: theme.colors.text }]}
+                  numberOfLines={1}
+                >
+                  {name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>
@@ -167,17 +185,25 @@ const styles = StyleSheet.create({
   },
   expandedRepos: {
     width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    flexDirection: 'column',
+    gap: 8,
     marginTop: 12,
   },
-  repoTag: {
-    fontSize: 11,
-    fontWeight: '500',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  repoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 10,
+  },
+  repoOwnerAvatar: {
+    width: 32,
+    height: 32,
     borderRadius: 6,
-    overflow: 'hidden',
+  },
+  repoName: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 });
