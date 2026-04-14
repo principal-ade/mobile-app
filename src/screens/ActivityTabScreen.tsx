@@ -12,9 +12,10 @@ import {
   StyleSheet,
   RefreshControl,
   ScrollView,
-  Pressable,
   FlatList,
+  Dimensions,
 } from 'react-native';
+import { TabView, TabBar, SceneMap, Route } from 'react-native-tab-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -32,8 +33,6 @@ import {
   FeedWatches,
 } from '../services/FeedApiService';
 import { saveWatchedUsers, saveWatchedRepos } from '../utils/feedStorage';
-
-type Tab = 'repos' | 'users';
 
 interface RepoActivityData {
   repoId: string;
@@ -68,7 +67,12 @@ export function ActivityTabScreen() {
   const { isAuthenticated, token } = useAuth();
   const { version, watchedUsers, watchedRepos } = useFeedPreferences();
 
-  const [activeTab, setActiveTab] = useState<Tab>('users');
+  const { width } = Dimensions.get('window');
+  const [tabIndex, setTabIndex] = useState(0);
+  const [routes] = useState([
+    { key: 'users', title: 'Developers' },
+    { key: 'repos', title: 'Projects' },
+  ]);
   const [commits, setCommits] = useState<HeatmapCommit[]>([]);
   const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
   const [repos, setRepos] = useState<HeatmapRepo[]>([]);
@@ -303,6 +307,66 @@ export function ActivityTabScreen() {
     });
   }, [commits, authors, watchedUsers, follows]);
 
+  // Scene components for TabView
+  const ReposScene = () => (
+    <FlatList
+      data={repoActivityData}
+      keyExtractor={(item) => item.repoId}
+      renderItem={({ item }) => <ActivityRepoCard {...item} />}
+      contentContainerStyle={[
+        styles.listContent,
+        { paddingBottom: insets.bottom + 24 },
+      ]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={theme.colors.primary}
+        />
+      }
+      showsVerticalScrollIndicator={false}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+            No repositories being watched
+          </Text>
+        </View>
+      }
+    />
+  );
+
+  const UsersScene = () => (
+    <FlatList
+      data={userActivityData}
+      keyExtractor={(item) => item.login}
+      renderItem={({ item }) => <UserCard {...item} />}
+      contentContainerStyle={[
+        styles.listContent,
+        { paddingBottom: insets.bottom + 24 },
+      ]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={theme.colors.primary}
+        />
+      }
+      showsVerticalScrollIndicator={false}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+            No users being watched
+          </Text>
+        </View>
+      }
+    />
+  );
+
+  const renderScene = SceneMap({
+    repos: ReposScene,
+    users: UsersScene,
+  });
+
   // Not authenticated state
   if (!isAuthenticated) {
     return (
@@ -414,142 +478,59 @@ export function ActivityTabScreen() {
         </Text>
       </View>
 
-      {/* Tabs */}
-      <View style={[styles.tabsContainer, { borderBottomColor: theme.colors.border }]}>
-        <Pressable
-          style={[
-            styles.tab,
-            activeTab === 'users' && [
-              styles.activeTab,
-              { borderBottomColor: theme.colors.primary },
-            ],
-          ]}
-          onPress={() => setActiveTab('users')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              { color: theme.colors.textSecondary },
-              activeTab === 'users' && [
-                styles.activeTabText,
-                { color: theme.colors.primary },
-              ],
-            ]}
-          >
-            Developers
-          </Text>
-          <View
-            style={[
-              styles.countBadge,
-              { backgroundColor: activeTab === 'users' ? theme.colors.primary : theme.colors.border },
-            ]}
-          >
-            <Text
-              style={[
-                styles.countText,
-                { color: activeTab === 'users' ? '#fff' : theme.colors.textSecondary },
-              ]}
-            >
-              {userActivityData.length}
-            </Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={[
-            styles.tab,
-            activeTab === 'repos' && [
-              styles.activeTab,
-              { borderBottomColor: theme.colors.primary },
-            ],
-          ]}
-          onPress={() => setActiveTab('repos')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              { color: theme.colors.textSecondary },
-              activeTab === 'repos' && [
-                styles.activeTabText,
-                { color: theme.colors.primary },
-              ],
-            ]}
-          >
-            Projects
-          </Text>
-          <View
-            style={[
-              styles.countBadge,
-              { backgroundColor: activeTab === 'repos' ? theme.colors.primary : theme.colors.border },
-            ]}
-          >
-            <Text
-              style={[
-                styles.countText,
-                { color: activeTab === 'repos' ? '#fff' : theme.colors.textSecondary },
-              ]}
-            >
-              {repoActivityData.length}
-            </Text>
-          </View>
-        </Pressable>
-      </View>
-
-      {/* Content - Repos Tab */}
-      {activeTab === 'repos' && (
-        <FlatList
-          data={repoActivityData}
-          keyExtractor={(item) => item.repoId}
-          renderItem={({ item }) => <ActivityRepoCard {...item} />}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + 24 },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No repositories being watched
-              </Text>
-            </View>
-          }
-        />
-      )}
-
-      {/* Content - Users Tab */}
-      {activeTab === 'users' && (
-        <FlatList
-          data={userActivityData}
-          keyExtractor={(item) => item.login}
-          renderItem={({ item }) => <UserCard {...item} />}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + 24 },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No users being watched
-              </Text>
-            </View>
-          }
-        />
-      )}
+      {/* Tabs with Swipe Support */}
+      <TabView
+        navigationState={{ index: tabIndex, routes }}
+        renderScene={renderScene}
+        onIndexChange={setTabIndex}
+        initialLayout={{ width }}
+        renderTabBar={(props) => (
+          <TabBar
+            {...props}
+            indicatorStyle={{ backgroundColor: theme.colors.primary }}
+            style={{ backgroundColor: theme.colors.background }}
+            activeColor={theme.colors.text}
+            inactiveColor={theme.colors.textSecondary}
+            // @ts-expect-error - renderLabel exists in react-native-tab-view but may not be in type definitions
+            renderLabel={({ route, focused }: { route: Route; focused: boolean }) => (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text
+                  style={{
+                    color: focused ? theme.colors.primary : theme.colors.textSecondary,
+                    fontSize: 15,
+                    fontWeight: focused ? '600' : '500',
+                  }}
+                >
+                  {route.title}
+                </Text>
+                <View
+                  style={[
+                    styles.countBadge,
+                    {
+                      backgroundColor: focused
+                        ? theme.colors.primary
+                        : theme.colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.countText,
+                      {
+                        color: focused ? '#fff' : theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {route.key === 'users'
+                      ? userActivityData.length
+                      : repoActivityData.length}
+                  </Text>
+                </View>
+              </View>
+            )}
+          />
+        )}
+      />
     </View>
   );
 }
@@ -575,30 +556,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     marginTop: 2,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    gap: 8,
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    fontWeight: '600',
   },
   countBadge: {
     paddingHorizontal: 8,
