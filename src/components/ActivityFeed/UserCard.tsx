@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { WatchStackParamList } from '../../navigation/types';
+import { LucideIcon } from '../LucideIcon';
 
 export interface UserCardProps {
   login: string;
@@ -22,6 +23,7 @@ export function UserCard({
 }: UserCardProps) {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp<WatchStackParamList>>();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleAvatarPress = () => {
     navigation.navigate('UserProfile', { username: login });
@@ -73,27 +75,38 @@ export function UserCard({
           </Text>
         )}
         {reposContributedTo.length > 0 && (
-          <View style={styles.reposContainer}>
-            {reposContributedTo.slice(0, 3).map((repo, _idx) => (
-              <Text
-                key={repo}
-                style={[styles.repoTag, {
-                  color: theme.colors.primary,
-                  backgroundColor: `${theme.colors.primary}20`
-                }]}
-                numberOfLines={1}
-              >
-                {repo}
-              </Text>
-            ))}
-            {reposContributedTo.length > 3 && (
-              <Text style={[styles.moreRepos, { color: theme.colors.textSecondary }]}>
-                +{reposContributedTo.length - 3} more
-              </Text>
-            )}
-          </View>
+          <TouchableOpacity
+            style={styles.reposToggle}
+            onPress={() => setIsExpanded(!isExpanded)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.reposCount, { color: theme.colors.textSecondary }]}>
+              {reposContributedTo.length} {reposContributedTo.length === 1 ? 'repo' : 'repos'}
+            </Text>
+            <LucideIcon
+              name={isExpanded ? 'ChevronUp' : 'ChevronDown'}
+              size={16}
+              color={theme.colors.textSecondary}
+            />
+          </TouchableOpacity>
         )}
       </View>
+      {isExpanded && reposContributedTo.length > 0 && (
+        <View style={styles.expandedRepos}>
+          {reposContributedTo.map((repo) => (
+            <Text
+              key={repo}
+              style={[styles.repoTag, {
+                color: theme.colors.primary,
+                backgroundColor: `${theme.colors.primary}20`
+              }]}
+              numberOfLines={1}
+            >
+              {repo}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -110,6 +123,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
@@ -143,21 +157,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 6,
   },
-  reposContainer: {
-    flexDirection: 'column',
-    alignItems: 'flex-end',
+  reposToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+  },
+  reposCount: {
+    fontSize: 12,
+  },
+  expandedRepos: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 12,
   },
   repoTag: {
     fontSize: 11,
     fontWeight: '500',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
     overflow: 'hidden',
-  },
-  moreRepos: {
-    fontSize: 11,
-    marginTop: 2,
   },
 });
