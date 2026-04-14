@@ -10,6 +10,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation, RouteProp, type NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { UserProfileScreen, type HourlyActivityGroup } from './UserProfileScreen';
+import { AppProfileScreen } from './AppProfileScreen';
 import type { FeedStackParamList } from '../navigation/types';
 import {
   getUserProfile,
@@ -21,7 +22,7 @@ import {
 } from '../services/GitHubSearchService';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { fetchUserRepositories, fetchOrganizationsForUser } from '../services/GithubService';
-import { GitHubRepository, GitHubOrganization } from '../types/github';
+import { GitHubRepository, GitHubOrganization, GitHubAccountType } from '../types/github';
 import { useAuthContext } from '../context/AuthContext';
 
 type UserProfileRouteProp = RouteProp<FeedStackParamList, 'UserProfile'>;
@@ -88,7 +89,7 @@ export function UserProfileScreenContainer() {
   const { theme } = useTheme();
   const route = useRoute<UserProfileRouteProp>();
   const navigation = useNavigation<NavigationProp<FeedStackParamList>>();
-  const { username, isOrganization = false } = route.params;
+  const { username, isOrganization = false, isBot = false } = route.params;
   const { token } = useAuthContext();
 
   const [error, setError] = useState<string | null>(null);
@@ -135,11 +136,12 @@ export function UserProfileScreenContainer() {
     });
   };
 
-  // Navigate to owner profile (user or organization)
-  const handleOwnerPress = (ownerLogin: string, ownerType?: 'User' | 'Organization') => {
+  // Navigate to owner profile (user, organization, or bot)
+  const handleOwnerPress = (ownerLogin: string, ownerType?: GitHubAccountType) => {
     navigation.navigate('UserProfile', {
       username: ownerLogin,
       isOrganization: ownerType === 'Organization',
+      isBot: ownerType === 'Bot',
     });
   };
 
@@ -148,6 +150,47 @@ export function UserProfileScreenContainer() {
       setError(null);
 
       try {
+        // For bots, handle gracefully
+        // NOTE: "Bot" can mean two things:
+        // 1. Bot user accounts (like "dependabot[bot]") - HAVE user profiles, can be queried
+        // 2. GitHub Apps without user accounts (like "opencode-agent") - DON'T have user profiles
+        // We detect both via [bot] suffix, but need to handle API failures gracefully
+        if (isBot) {
+          // Set minimal user data first (works for both types)
+          setUserData({
+            login: username,
+            name: username,
+            avatar_url: `https://github.com/${username}.png`,
+            bio: null,
+            location: null,
+            blog: null,
+            twitter_username: null,
+            public_repos: 0,
+            followers: 0,
+            following: 0,
+          });
+
+          // Try to fetch activity
+          // Will succeed for: bot user accounts (dependabot[bot])
+          // Will fail for: GitHub Apps without user accounts (opencode-agent)
+          try {
+            const activity = await getUserActivity(username, 150, 1);
+            setActivityData(activity);
+          } catch (err) {
+            // This bot is likely a GitHub App without a user account
+            // Show empty activity instead of erroring
+            console.log(`Bot ${username} doesn't have user account - showing empty activity`);
+            setActivityData({
+              user: { login: username, name: username, avatarUrl: `https://github.com/${username}.png`, followersCount: 0 },
+              activity: [],
+              contributions: [],
+              contributedRepos: []
+            });
+          }
+
+          return;
+        }
+
         // Fetch profile first to show UI immediately
         const profile = await getUserProfile(username);
         setUserData(profile);
@@ -207,7 +250,7 @@ export function UserProfileScreenContainer() {
     }
 
     fetchUserData();
-  }, [username, token, isOrganization]);
+  }, [username, token, isOrganization, isBot]);
 
   if (error) {
     return (
@@ -218,6 +261,37 @@ export function UserProfileScreenContainer() {
           onPress={async () => {
             setError(null);
             try {
+              // Handle bots separately (see note above about bot types)
+              if (isBot) {
+                setUserData({
+                  login: username,
+                  name: username,
+                  avatar_url: `https://github.com/${username}.png`,
+                  bio: null,
+                  location: null,
+                  blog: null,
+                  twitter_username: null,
+                  public_repos: 0,
+                  followers: 0,
+                  following: 0,
+                });
+
+                try {
+                  const activity = await getUserActivity(username, 150, 1);
+                  setActivityData(activity);
+                } catch (err) {
+                  // GitHub App without user account - show empty activity
+                  console.log(`Bot ${username} doesn't have user account - showing empty activity`);
+                  setActivityData({
+                    user: { login: username, name: username, avatarUrl: `https://github.com/${username}.png`, followersCount: 0 },
+                    activity: [],
+                    contributions: [],
+                    contributedRepos: []
+                  });
+                }
+                return;
+              }
+
               const profile = await getUserProfile(username);
               setUserData(profile);
 
@@ -276,6 +350,25 @@ export function UserProfileScreenContainer() {
     );
   }
 
+  // Render AppProfileScreen for bots
+  if (isBot) {
+    return (
+      <AppProfileScreen
+        loading={!userData}
+        avatarUrl={userData?.avatar_url}
+        name={userData?.name || userData?.login}
+        login={userData?.login}
+        description={userData?.bio || undefined}
+        createdAt={userData?.created_at || undefined}
+        externalUrl={userData?.blog || undefined}
+        recentActivity={activityData ? transformActivityToHourlyGroups(activityData.activity) : []}
+        onClose={() => navigation.goBack()}
+        onRepoPress={handleRepoPress}
+      />
+    );
+  }
+
+  // Render UserProfileScreen for regular users and organizations
   return (
     <UserProfileScreen
       loading={!userData}

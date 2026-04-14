@@ -1,9 +1,12 @@
+export type GitHubAccountType = 'User' | 'Organization' | 'Bot';
+
 export interface GitHubUser {
   id: number;
   login: string;
   name: string | null;
   avatar_url: string;
   html_url: string;
+  type?: GitHubAccountType;
 }
 
 export interface GitHubRepository {

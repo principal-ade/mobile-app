@@ -17,6 +17,7 @@ import {
 } from '../services/GithubService';
 import { getPinnedRepositories } from '../services/GitHubSearchService';
 import { GitHubRepository } from '../types/github';
+import { isBotLogin, cleanBotLogin } from '../utils/githubHelpers';
 
 type OrganizationRouteProp = RouteProp<SearchStackParamList, 'Organization'>;
 
@@ -42,8 +43,11 @@ export function OrganizationScreenContainer() {
 
   // Navigate to user profile screen
   const handleMemberPress = (username: string) => {
+    const isBot = isBotLogin(username);
+    const cleanLogin = cleanBotLogin(username);
     navigation.navigate('UserProfile', {
-      username,
+      username: cleanLogin,
+      isBot,
     });
   };
 

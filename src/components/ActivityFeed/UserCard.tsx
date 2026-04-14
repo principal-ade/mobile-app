@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { WatchStackParamList } from '../../navigation/types';
 import { LucideIcon } from '../LucideIcon';
+import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
 
 interface RepoContribution {
   repoId: string;
@@ -32,7 +33,9 @@ export function UserCard({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleAvatarPress = () => {
-    navigation.navigate('UserProfile', { username: login });
+    const isBot = isBotLogin(login);
+    const cleanLogin = cleanBotLogin(login);
+    navigation.navigate('UserProfile', { username: cleanLogin, isBot });
   };
 
   const formatTime = (isoString: string) => {

@@ -8,13 +8,14 @@
  */
 
 import { apiConfig } from '../utils/config';
+import { GitHubAccountType } from '../types/github';
 
 const API_BASE = apiConfig.baseUrl;
 
 export interface GitHubUser {
   login: string;
   avatar_url: string;
-  type?: 'User' | 'Organization';
+  type?: GitHubAccountType;
   name?: string | null;
 }
 
@@ -29,6 +30,7 @@ export interface GitHubUserProfile {
   public_repos: number;
   followers: number;
   following: number;
+  created_at?: string;
 }
 
 export interface SuggestedUser extends GitHubUser {
@@ -64,7 +66,7 @@ interface SearchUsersResponse {
   users: Array<{
     login: string;
     avatar_url: string;
-    type: 'User' | 'Organization';
+    type: GitHubAccountType;
   }>;
   total_count: number;
 }
@@ -257,7 +259,7 @@ export interface ContributedRepository {
   commitCount: number;
   lastContributedAt: string;
   isPrivate: boolean;
-  ownerType: 'User' | 'Organization';
+  ownerType: GitHubAccountType;
 }
 
 export interface ActivityEvent {

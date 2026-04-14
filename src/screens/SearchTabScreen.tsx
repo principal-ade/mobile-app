@@ -20,6 +20,7 @@ import type { GitHubRepo, GitHubUser } from '../services/GitHubSearchService';
 import type { SearchStackParamList } from '../navigation/types';
 import { LucideIcon } from '../components/LucideIcon';
 import { saveSearchQuery, getSearchHistory, clearSearchHistory, type SearchHistoryEntry, saveClickedResult, getClickedResults, type ClickedResult } from '../utils/searchStorage';
+import { isBotLogin, cleanBotLogin } from '../utils/githubHelpers';
 
 type NavigationProp = StackNavigationProp<SearchStackParamList>;
 
@@ -271,8 +272,11 @@ export function SearchTabScreen() {
           orgLogin: user.login,
         });
       } else {
+        const isBot = user.type === 'Bot' || isBotLogin(user.login);
+        const cleanLogin = cleanBotLogin(user.login);
         navigation.navigate('UserProfile', {
-          username: user.login,
+          username: cleanLogin,
+          isBot,
         });
       }
     },
@@ -486,8 +490,11 @@ export function SearchTabScreen() {
                           orgLogin: result.login!,
                         });
                       } else {
+                        const isBot = result.githubType === 'Bot' || isBotLogin(result.login);
+                        const cleanLogin = cleanBotLogin(result.login);
                         navigation.navigate('UserProfile', {
-                          username: result.login!,
+                          username: cleanLogin,
+                          isBot,
                         });
                       }
                     }}

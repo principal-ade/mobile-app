@@ -92,6 +92,7 @@ import { getRepoActivity, checkTourAvailability } from '../services/FeedApiServi
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { ContributionCalendar, type DailyContribution } from '../components/ContributionCalendar';
 import { getRepoContributions } from '../services/GitHubSearchService';
+import { isBotLogin, cleanBotLogin } from '../utils/githubHelpers';
 
 type RouteProps = RouteProp<FeedStackParamList, 'RepoFileCity'>;
 
@@ -779,8 +780,11 @@ export function RepoFileCityScreen() {
             <TouchableOpacity
               style={styles.avatarButton}
               onPress={() => {
+                const isBot = isBotLogin(owner);
+                const cleanLogin = cleanBotLogin(owner);
                 navigation.navigate('UserProfile', {
-                  username: owner,
+                  username: cleanLogin,
+                  isBot,
                 });
               }}
             >
@@ -1079,8 +1083,11 @@ export function RepoFileCityScreen() {
                                   key={contributor.login}
                                   style={styles.contributorAvatar}
                                   onPress={() => {
+                                    const isBot = isBotLogin(contributor.login);
+                                    const cleanLogin = cleanBotLogin(contributor.login);
                                     navigation.navigate('UserProfile', {
-                                      username: contributor.login,
+                                      username: cleanLogin,
+                                      isBot,
                                     });
                                   }}
                                 >
@@ -1183,8 +1190,11 @@ export function RepoFileCityScreen() {
                           key={star.login}
                           style={styles.stargazerRow}
                           onPress={() => {
+                            const isBot = isBotLogin(star.login);
+                            const cleanLogin = cleanBotLogin(star.login);
                             navigation.navigate('UserProfile', {
-                              username: star.login,
+                              username: cleanLogin,
+                              isBot,
                             });
                           }}
                           activeOpacity={0.7}
@@ -1238,8 +1248,11 @@ export function RepoFileCityScreen() {
                               <Text
                                 style={{ color: theme.colors.primary }}
                                 onPress={() => {
+                                  const isBot = isBotLogin(selectedContributor);
+                                  const cleanLogin = cleanBotLogin(selectedContributor);
                                   navigation.navigate('UserProfile', {
-                                    username: selectedContributor,
+                                    username: cleanLogin,
+                                    isBot,
                                   });
                                 }}
                               >

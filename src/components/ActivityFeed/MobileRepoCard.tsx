@@ -18,6 +18,7 @@ import { Logo } from '../Logo';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 import type { FeedStackParamList } from '../../navigation/types';
 import { apiConfig } from '../../utils/config';
+import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
 
 interface MobileRepoCardProps {
   summary: RepoActivitySummary;
@@ -140,8 +141,11 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
           {commit.authorAvatarUrl && commit.authorLogin && (
             <TouchableOpacity
               onPress={() => {
+                const isBot = isBotLogin(commit.authorLogin);
+                const cleanLogin = cleanBotLogin(commit.authorLogin);
                 navigation.navigate('UserProfile', {
-                  username: commit.authorLogin!,
+                  username: cleanLogin,
+                  isBot,
                 });
               }}
             >

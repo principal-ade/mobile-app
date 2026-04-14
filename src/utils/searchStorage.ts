@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { GitHubAccountType } from '../types/github';
 
 const SEARCH_HISTORY_KEY = 'search_history';
 const CLICKED_RESULTS_KEY = 'clicked_results';
@@ -18,7 +19,7 @@ export interface ClickedResult {
   login?: string; // For users
   avatarUrl: string;
   timestamp: string;
-  githubType?: 'User' | 'Organization'; // For distinguishing users from orgs
+  githubType?: GitHubAccountType; // For distinguishing users from orgs and bots
 }
 
 async function isSecureStoreAvailable(): Promise<boolean> {

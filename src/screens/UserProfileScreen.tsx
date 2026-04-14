@@ -16,7 +16,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { ContributionGrid, DailyContribution } from '../components/ContributionGrid';
 import { Logo } from '../components/Logo';
 import { LucideIcon } from '../components/LucideIcon';
-import { GitHubRepository, GitHubOrganization } from '../types/github';
+import { GitHubRepository, GitHubOrganization, GitHubAccountType } from '../types/github';
 import { ContributedRepository } from '../services/GitHubSearchService';
 
 export interface ActivityCommit {
@@ -31,7 +31,7 @@ export interface HourlyActivityGroup {
   repo: string;
   repoOwner: string;
   repoOwnerAvatar: string;
-  repoOwnerType?: 'User' | 'Organization';
+  repoOwnerType?: GitHubAccountType;
   hour: number; // 0-23
   hourBucket: string; // ISO timestamp
   hoursAgo: number;
@@ -59,7 +59,7 @@ export interface UserProfileScreenProps {
   contributedRepos?: ContributedRepository[];
   onRepoPress?: (owner: string, name: string, fullName: string) => void;
   onOrgPress?: (orgLogin: string) => void;
-  onOwnerPress?: (ownerLogin: string, ownerType?: 'User' | 'Organization') => void;
+  onOwnerPress?: (ownerLogin: string, ownerType?: GitHubAccountType) => void;
 }
 
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({

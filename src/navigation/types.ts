@@ -49,6 +49,7 @@ export type FeedStackParamList = {
   UserProfile: {
     username: string;
     isOrganization?: boolean;
+    isBot?: boolean;
   };
   Organization: {
     orgLogin: string;
@@ -85,6 +86,7 @@ export type WatchStackParamList = {
   UserProfile: {
     username: string;
     isOrganization?: boolean;
+    isBot?: boolean;
   };
   Organization: {
     orgLogin: string;
@@ -115,6 +117,7 @@ export type SearchStackParamList = {
   UserProfile: {
     username: string;
     isOrganization?: boolean;
+    isBot?: boolean;
   };
   Organization: {
     orgLogin: string;
@@ -145,6 +148,7 @@ export type StarredStackParamList = {
   UserProfile: {
     username: string;
     isOrganization?: boolean;
+    isBot?: boolean;
   };
 };
 
