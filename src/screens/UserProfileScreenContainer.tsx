@@ -167,7 +167,6 @@ export function UserProfileScreenContainer() {
         ]);
 
         if (activity.status === 'fulfilled') {
-          console.log('[UserProfile] Contributed repos:', activity.value.contributedRepos?.length || 0);
           setActivityData(activity.value);
         }
         if (repos.status === 'fulfilled') {
