@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   ownerAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
     marginRight: 12,
   },
   repoInfo: {
