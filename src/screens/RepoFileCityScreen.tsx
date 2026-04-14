@@ -581,18 +581,26 @@ export function RepoFileCityScreen() {
   const handleToggleStar = async () => {
     if (!token || starToggling) return;
 
+    // Optimistic update - update UI immediately
+    const previousState = isStarred;
+    setIsStarred(!isStarred);
     setStarToggling(true);
+
     try {
       const method = isStarred ? 'DELETE' : 'PUT';
       const res = await fetch(`https://api.github.com/user/starred/${owner}/${name}`, {
         method,
         headers: { Authorization: `token ${token}` },
       });
-      if (res.ok || res.status === 204) {
-        setIsStarred(!isStarred);
+
+      // If the request failed, revert the optimistic update
+      if (!res.ok && res.status !== 204) {
+        setIsStarred(previousState);
       }
     } catch (err) {
       console.error('Error toggling star:', err);
+      // Revert on error
+      setIsStarred(previousState);
     } finally {
       setStarToggling(false);
     }

@@ -15,6 +15,7 @@ const API_BASE = apiConfig.baseUrl;
 export interface WatchedUser {
   login: string;
   watchedAt: string;
+  avatarUrl?: string;
 }
 
 export interface WatchedRepo {

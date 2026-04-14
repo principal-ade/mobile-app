@@ -18,6 +18,7 @@ type Story = StoryObj<typeof meta>;
 
 const mockRepos: StarredRepo[] = [
   {
+    id: 1,
     owner: 'anthropics',
     name: 'claude-code',
     full_name: 'anthropics/claude-code',
@@ -28,6 +29,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['ai', 'cli', 'developer-tools', 'typescript'],
   },
   {
+    id: 2,
     owner: 'facebook',
     name: 'react',
     full_name: 'facebook/react',
@@ -38,6 +40,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['react', 'javascript', 'ui', 'framework'],
   },
   {
+    id: 3,
     owner: 'vercel',
     name: 'next.js',
     full_name: 'vercel/next.js',
@@ -48,6 +51,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['react', 'nextjs', 'framework', 'ssr'],
   },
   {
+    id: 4,
     owner: 'django',
     name: 'django',
     full_name: 'django/django',
@@ -58,6 +62,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['python', 'web', 'framework', 'django'],
   },
   {
+    id: 5,
     owner: 'rust-lang',
     name: 'rust',
     full_name: 'rust-lang/rust',
@@ -68,6 +73,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['rust', 'systems-programming', 'compiler'],
   },
   {
+    id: 6,
     owner: 'kubernetes',
     name: 'kubernetes',
     full_name: 'kubernetes/kubernetes',
@@ -78,6 +84,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['go', 'kubernetes', 'containers', 'orchestration'],
   },
   {
+    id: 7,
     owner: 'microsoft',
     name: 'vscode',
     full_name: 'microsoft/vscode',
@@ -88,6 +95,7 @@ const mockRepos: StarredRepo[] = [
     topics: ['editor', 'typescript', 'electron'],
   },
   {
+    id: 8,
     owner: 'tensorflow',
     name: 'tensorflow',
     full_name: 'tensorflow/tensorflow',

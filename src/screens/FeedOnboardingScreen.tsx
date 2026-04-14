@@ -96,9 +96,10 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
         const { repos } = await getSuggestedRepos(token);
 
         // Combine with featured repos
-        const featuredAsRepos: SuggestedRepo[] = FEATURED_REPOS.map((fullName) => {
+        const featuredAsRepos: SuggestedRepo[] = FEATURED_REPOS.map((fullName, index) => {
           const [owner, name] = fullName.split('/') as [string, string];
           return {
+            id: index + 1,
             owner,
             name,
             full_name: fullName,
@@ -119,9 +120,10 @@ export default function FeedOnboardingScreen({ onComplete }: FeedOnboardingScree
       } catch (err) {
         console.warn('Failed to load suggested repos:', err);
         // Fallback to featured repos only
-        const featuredAsRepos: SuggestedRepo[] = FEATURED_REPOS.map((fullName) => {
+        const featuredAsRepos: SuggestedRepo[] = FEATURED_REPOS.map((fullName, index) => {
           const [owner, name] = fullName.split('/') as [string, string];
           return {
+            id: index + 1,
             owner,
             name,
             full_name: fullName,

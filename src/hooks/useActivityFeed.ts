@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { RepoActivitySummary } from '../types/activity';
 import { fetchActivityFeed, FEATURED_REPOS } from '../services/ActivityFeedService';
-import { useFeedPreferences } from '../context/FeedPreferencesContext';
+import { useFeedPreferences, type WatchedRepo } from '../context/FeedPreferencesContext';
 
 interface UseActivityFeedOptions {
   /** Repos to fetch (overrides saved preferences if provided) */
@@ -25,7 +25,7 @@ export function useActivityFeed(
   const { repos: overrideRepos, refreshInterval = 0, skipStorage = false } = options;
 
   // Get repos from context (always called to follow hook rules)
-  const { followedRepos, version, isLoading: contextLoading } = useFeedPreferences();
+  const { watchedRepos, version, isLoading: contextLoading } = useFeedPreferences();
 
   const [summaries, setSummaries] = useState<RepoActivitySummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,11 +36,11 @@ export function useActivityFeed(
     if (overrideRepos) return overrideRepos;
     if (skipStorage) return FEATURED_REPOS;
     if (contextLoading) return null; // Wait for context to load
-    if (followedRepos.length > 0) {
-      return followedRepos.map((r) => `${r.owner}/${r.repo}`);
+    if (watchedRepos.length > 0) {
+      return watchedRepos.map((r: WatchedRepo) => `${r.owner}/${r.repo}`);
     }
     return FEATURED_REPOS;
-  }, [overrideRepos, skipStorage, contextLoading, followedRepos]);
+  }, [overrideRepos, skipStorage, contextLoading, watchedRepos]);
 
   const fetchData = useCallback(async () => {
     if (!resolvedRepos) return; // Wait for repos to be loaded

@@ -39,6 +39,7 @@ export interface SuggestedUser extends GitHubUser {
 }
 
 export interface GitHubRepo {
+  id: number;
   owner: string;
   name: string;
   full_name: string;
@@ -70,6 +71,7 @@ interface SearchUsersResponse {
 
 interface SearchReposResponse {
   repos: Array<{
+    id: number;
     owner: string;
     name: string;
     full_name: string;

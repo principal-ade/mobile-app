@@ -16,6 +16,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const mockRepo = {
+  id: 12345,
   owner: 'anthropics',
   name: 'claude-code',
   full_name: 'anthropics/claude-code',

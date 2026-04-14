@@ -30,6 +30,7 @@ export interface Collection {
 }
 
 export interface StarredRepo {
+  id: number;
   owner: string;
   name: string;
   full_name: string;
