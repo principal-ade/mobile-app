@@ -47,7 +47,12 @@ export function UserCard({
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: theme.colors.surface }]}
+      onPress={() => reposContributedTo.length > 0 && setIsExpanded(!isExpanded)}
+      activeOpacity={reposContributedTo.length > 0 ? 0.7 : 1}
+      disabled={reposContributedTo.length === 0}
+    >
       <View style={styles.leftSection}>
         <TouchableOpacity onPress={handleAvatarPress}>
           <Image
@@ -75,11 +80,7 @@ export function UserCard({
           </Text>
         )}
         {reposContributedTo.length > 0 && (
-          <TouchableOpacity
-            style={styles.reposToggle}
-            onPress={() => setIsExpanded(!isExpanded)}
-            activeOpacity={0.7}
-          >
+          <View style={styles.reposToggle}>
             <Text style={[styles.reposCount, { color: theme.colors.textSecondary }]}>
               {reposContributedTo.length} {reposContributedTo.length === 1 ? 'repo' : 'repos'}
             </Text>
@@ -88,7 +89,7 @@ export function UserCard({
               size={16}
               color={theme.colors.textSecondary}
             />
-          </TouchableOpacity>
+          </View>
         )}
       </View>
       {isExpanded && reposContributedTo.length > 0 && (
@@ -125,7 +126,7 @@ export function UserCard({
           })}
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
