@@ -18,6 +18,7 @@ export interface ClickedResult {
   login?: string; // For users
   avatarUrl: string;
   timestamp: string;
+  githubType?: 'User' | 'Organization'; // For distinguishing users from orgs
 }
 
 async function isSecureStoreAvailable(): Promise<boolean> {

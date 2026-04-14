@@ -308,15 +308,23 @@ export function SearchTabScreen() {
         name: user.name || user.login,
         login: user.login,
         avatarUrl: user.avatar_url,
+        githubType: user.type, // Store whether it's User or Organization
       });
 
       // Update local state
       const updated = await getClickedResults();
       setClickedResults(updated);
 
-      navigation.navigate('UserProfile', {
-        username: user.login,
-      });
+      // Navigate to Organization or UserProfile based on type
+      if (user.type === 'Organization') {
+        navigation.navigate('Organization', {
+          orgLogin: user.login,
+        });
+      } else {
+        navigation.navigate('UserProfile', {
+          username: user.login,
+        });
+      }
     },
     [navigation]
   );
@@ -386,7 +394,7 @@ export function SearchTabScreen() {
         <View style={styles.repoHeaderWithAvatar}>
           <Image
             source={{ uri: item.avatar_url }}
-            style={styles.ownerAvatar}
+            style={item.type === 'Organization' ? styles.orgAvatar : styles.ownerAvatar}
           />
           <View style={styles.repoInfo}>
             <Text style={[styles.repoName, { color: theme.colors.primary }]}>
@@ -525,6 +533,10 @@ export function SearchTabScreen() {
                           name: result.name,
                           fullName: result.id,
                         });
+                      } else if (result.githubType === 'Organization') {
+                        navigation.navigate('Organization', {
+                          orgLogin: result.login!,
+                        });
                       } else {
                         navigation.navigate('UserProfile', {
                           username: result.login!,
@@ -534,7 +546,7 @@ export function SearchTabScreen() {
                   >
                     <Image
                       source={{ uri: result.avatarUrl }}
-                      style={styles.clickedResultAvatar}
+                      style={result.githubType === 'Organization' ? styles.clickedResultOrgAvatar : styles.clickedResultAvatar}
                     />
                     <View style={styles.clickedResultInfo}>
                       <Text style={[styles.clickedResultName, { color: theme.colors.text }]}>
@@ -854,6 +866,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
   },
+  orgAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
   repoInfo: {
     flex: 1,
   },
@@ -1004,6 +1021,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+  },
+  clickedResultOrgAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   clickedResultInfo: {
     flex: 1,

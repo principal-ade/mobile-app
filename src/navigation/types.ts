@@ -107,6 +107,9 @@ export type SearchStackParamList = {
   UserProfile: {
     username: string;
   };
+  Organization: {
+    orgLogin: string;
+  };
 };
 
 // Stack params for Starred tab

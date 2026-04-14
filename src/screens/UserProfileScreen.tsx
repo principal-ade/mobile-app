@@ -499,15 +499,15 @@ const styles = StyleSheet.create({
   },
   nameContainer: {
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 10,
     marginBottom: 0,
-    paddingBottom: 16,
+    paddingBottom: 12,
     zIndex: 1,
   },
   name: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   socialHandles: {
     flexDirection: 'row',
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
   orgAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 10,
     marginRight: 12,
   },
   orgContent: {
@@ -694,7 +694,8 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '300',
     lineHeight: 28,
-    marginTop: -2,
+    marginTop: 0,
+    textAlign: 'center',
   },
   // Skeleton styles
   skeletonHeaderHeight: {

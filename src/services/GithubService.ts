@@ -138,3 +138,79 @@ export async function fetchRepoReadme(
 
   return await response.text();
 }
+
+export interface OrganizationDetails {
+  login: string;
+  name: string | null;
+  description: string | null;
+  avatar_url: string;
+  html_url: string;
+  blog: string | null;
+  location: string | null;
+  email: string | null;
+  twitter_username: string | null;
+  public_repos: number;
+  public_gists: number;
+  followers: number;
+  created_at: string;
+}
+
+export interface OrgMember {
+  id: number;
+  login: string;
+  avatar_url: string;
+}
+
+export async function fetchOrganizationDetails(
+  orgLogin: string,
+): Promise<OrganizationDetails> {
+  const encodedOrg = encodeRepositorySegment(orgLogin);
+  const response = await fetch(`${BASE_URL}/orgs/${encodedOrg}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch organization details: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+export async function fetchOrganizationRepositories(
+  orgLogin: string,
+): Promise<GitHubRepository[]> {
+  const encodedOrg = encodeRepositorySegment(orgLogin);
+  const response = await fetch(`${BASE_URL}/orgs/${encodedOrg}/repos?per_page=100&sort=updated`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch organization repositories: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+export async function fetchOrganizationMembers(
+  orgLogin: string,
+): Promise<OrgMember[]> {
+  const encodedOrg = encodeRepositorySegment(orgLogin);
+  const response = await fetch(`${BASE_URL}/orgs/${encodedOrg}/members?per_page=100`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch organization members: ${response.status}`);
+  }
+
+  return await response.json();
+}

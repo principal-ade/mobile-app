@@ -34,6 +34,7 @@ import RepoFileCityScreen from '../screens/RepoFileCityScreen';
 import RepoReadmeScreen from '../screens/RepoReadmeScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
+import { OrganizationScreenContainer } from '../screens/OrganizationScreenContainer';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { LucideIcon } from '../components/LucideIcon';
@@ -87,6 +88,7 @@ const linking: LinkingOptions<RootStackParamList> = {
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
               UserProfile: 'user/:username',
+              Organization: 'org/:orgLogin',
             },
           },
           Starred: {
@@ -299,6 +301,11 @@ function SearchStackNavigator() {
         name="UserProfile"
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+      <SearchStack.Screen
+        name="Organization"
+        component={OrganizationScreenContainer}
+        options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
       />
     </SearchStack.Navigator>
   );

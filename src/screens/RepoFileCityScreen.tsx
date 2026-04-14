@@ -1336,7 +1336,8 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '300',
     lineHeight: 28,
-    marginTop: -2,
+    marginTop: 0,
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
