@@ -75,7 +75,7 @@
     "@typescript-eslint/parser": "^8.57.2",
     "@vitest/browser-playwright": "^4.1.1",
     "@vitest/coverage-v8": "^4.1.1",
-    "eslint": "^10.1.0",
+    "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-storybook": "^10.3.3",
     "husky": "^9.1.7",
