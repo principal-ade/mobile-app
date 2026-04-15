@@ -176,7 +176,7 @@ export function UserProfileScreenContainer() {
           try {
             const activity = await getUserActivity(username, 150, 1);
             setActivityData(activity);
-          } catch (err) {
+          } catch {
             // This bot is likely a GitHub App without a user account
             // Show empty activity instead of erroring
             console.log(`Bot ${username} doesn't have user account - showing empty activity`);
@@ -279,7 +279,7 @@ export function UserProfileScreenContainer() {
                 try {
                   const activity = await getUserActivity(username, 150, 1);
                   setActivityData(activity);
-                } catch (err) {
+                } catch {
                   // GitHub App without user account - show empty activity
                   console.log(`Bot ${username} doesn't have user account - showing empty activity`);
                   setActivityData({

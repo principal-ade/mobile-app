@@ -31,15 +31,27 @@ export function MinimalGLTest() {
 
     // Create shaders
     const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    if (!vertexShader) {
+      console.error('Failed to create vertex shader');
+      return;
+    }
     gl.shaderSource(vertexShader, vertexShaderSource);
     gl.compileShader(vertexShader);
 
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    if (!fragmentShader) {
+      console.error('Failed to create fragment shader');
+      return;
+    }
     gl.shaderSource(fragmentShader, fragmentShaderSource);
     gl.compileShader(fragmentShader);
 
     // Create program
     const program = gl.createProgram();
+    if (!program) {
+      console.error('Failed to create program');
+      return;
+    }
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);

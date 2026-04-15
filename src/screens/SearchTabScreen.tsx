@@ -181,8 +181,6 @@ export function SearchTabScreen() {
     if (!trimmedQuery) {
       setRepoResults([]);
       setUserResults([]);
-      setRepoTotalCount(0);
-      setUserTotalCount(0);
       setHasSearched(false);
       setRepoError(null);
       setUserError(null);

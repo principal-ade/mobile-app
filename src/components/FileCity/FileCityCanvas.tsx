@@ -26,7 +26,6 @@ import {
 import {
   runOnJS,
   useSharedValue,
-  useAnimatedReaction,
   useDerivedValue,
   withTiming,
   withSpring,
@@ -238,28 +237,6 @@ export function FileCityCanvas({
       return hasHighlight ? config.highlighted : config.normal;
     },
     [shouldIsolate, isolationMode]
-  );
-
-  // Only sync shared values to React state when animation completes (for hit testing)
-  // This prevents 60fps re-renders during animations
-  useAnimatedReaction(
-    () => ({
-      scale: scale.value,
-      translateX: translateX.value,
-      translateY: translateY.value,
-      animating: isAnimating.value,
-    }),
-    (current, previous) => {
-      // Only update React state when animation stops or values significantly change
-      if (!current.animating && previous?.animating) {
-        runOnJS(setTransformState)({
-          scale: current.scale,
-          translateX: current.translateX,
-          translateY: current.translateY,
-        });
-      }
-    },
-    [scale, translateX, translateY, isAnimating]
   );
 
   // Calculate scale and offset
