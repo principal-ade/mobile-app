@@ -5,7 +5,7 @@
  * Features tabs to switch between viewing repos and users.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,7 @@ import {
   HeatmapRepo,
   FeedWatches,
 } from '../services/FeedApiService';
-import { saveWatchedUsers, saveWatchedRepos } from '../utils/feedStorage';
+import { getWatchedUsers, getWatchedRepos } from '../utils/feedStorage';
 
 interface RepoActivityData {
   repoId: string;
@@ -65,7 +65,7 @@ export function WatchTabScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, token } = useAuth();
-  const { version, watchedUsers, watchedRepos } = useFeedPreferences();
+  const { version, watchedUsers, watchedRepos, setUsers: setContextUsers, setRepos: setContextRepos } = useFeedPreferences();
 
   const { width } = Dimensions.get('window');
   const [tabIndex, setTabIndex] = useState(0);
@@ -77,7 +77,7 @@ export function WatchTabScreen() {
   const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
   const [repos, setRepos] = useState<HeatmapRepo[]>([]);
   const [follows, setFollows] = useState<FeedWatches | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start false - we load from local storage first
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,8 +85,9 @@ export function WatchTabScreen() {
   const hasFetched = useRef(false);
   const lastFetchTime = useRef<number>(0);
   const versionAtLastFetch = useRef(version);
+  const hasLoadedFromStorage = useRef(false);
 
-  const fetchActivity = useCallback(async (force = false) => {
+  const fetchActivity = useCallback(async (force = false, showLoadingSpinner = true) => {
     if (!token) {
       setLoading(false);
       return;
@@ -100,6 +101,9 @@ export function WatchTabScreen() {
     }
 
     try {
+      if (showLoadingSpinner) {
+        setLoading(true);
+      }
       setError(null);
 
       // Fetch both activity and follows in parallel
@@ -113,29 +117,63 @@ export function WatchTabScreen() {
       setRepos(activityResponse.repos);
       setFollows(followsResponse);
 
-      // Sync API watches to local storage (without triggering version increment)
-      saveWatchedUsers(followsResponse.watchedUsers).catch(console.error);
-      saveWatchedRepos(followsResponse.watchedRepos).catch(console.error);
+      // Sync API watches to context (updates both storage and context state)
+      setContextUsers(followsResponse.watchedUsers);
+      setContextRepos(followsResponse.watchedRepos);
 
       hasFetched.current = true;
       lastFetchTime.current = now;
-      versionAtLastFetch.current = version;
+      // Account for version increment from setContextUsers/setContextRepos (each increments by 1)
+      versionAtLastFetch.current = version + 2;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load activity');
     } finally {
       setLoading(false);
     }
-  }, [token, version]);
+  }, [token, version, watchedRepos, setContextUsers, setContextRepos]);
+
+  // Load from local storage on mount (instant, no API call)
+  useEffect(() => {
+    if (!isAuthenticated || hasLoadedFromStorage.current) return;
+
+    const loadFromStorage = async () => {
+      try {
+        const [users, repos] = await Promise.all([
+          getWatchedUsers(),
+          getWatchedRepos(),
+        ]);
+
+        // Set initial state from storage (ensure watchedAt field exists for API type compatibility)
+        if (users || repos) {
+          setFollows({
+            watchedUsers: (users || []).map(u => ({
+              ...u,
+              watchedAt: u.watchedAt || new Date().toISOString(),
+            })),
+            watchedRepos: (repos || []).map(r => ({
+              ...r,
+              watchedAt: r.watchedAt || new Date().toISOString(),
+            })),
+          });
+        }
+        hasLoadedFromStorage.current = true;
+      } catch (err) {
+        console.warn('Failed to load from storage:', err);
+      }
+    };
+
+    loadFromStorage();
+  }, [isAuthenticated]);
 
   // Fetch on initial mount and when returning to screen if version changed
   useFocusEffect(
     useCallback(() => {
       if (!hasFetched.current) {
-        // Initial fetch
-        fetchActivity();
+        // Initial fetch - don't show loading spinner since we loaded from storage
+        fetchActivity(false, false);
       } else if (versionAtLastFetch.current !== version) {
         // Refetch if version changed while away
-        fetchActivity(true);
+        fetchActivity(true, false);
       }
     }, [fetchActivity, version])
   );

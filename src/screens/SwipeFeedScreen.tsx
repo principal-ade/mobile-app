@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   FlatList,
   ViewToken,
@@ -27,7 +26,6 @@ import {
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { FeedStackParamList, MainTabParamList } from '../navigation/types';
-import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { TapGestureHandler, State } from 'react-native-gesture-handler';
 
 type NavigationProp = CompositeNavigationProp<
@@ -71,7 +69,6 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
-  const { watchedUsers, watchedRepos } = useFeedPreferences();
   const { height } = useWindowDimensions();
 
   // Account for tab bar height (56px + adjusted safe area)
@@ -84,6 +81,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const [seenCards, setSeenCards] = useState<Set<string>>(new Set());
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [savedCardId, setSavedCardId] = useState<string | null>(null);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const heartScale = useRef(new Animated.Value(0)).current;
 
   // Debug: log seen cards count when changed
@@ -187,9 +185,17 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
 
   // Track viewable items and mark as seen when scrolled past
   const handleViewableItemsChanged = useCallback(({ viewableItems: _viewableItems, changed }: { viewableItems: ViewToken[]; changed: ViewToken[] }) => {
+    // Update current card index based on the first viewable item
+    if (_viewableItems.length > 0 && _viewableItems[0].index !== null) {
+      setCurrentCardIndex(_viewableItems[0].index);
+    }
+
     // Mark cards that are no longer viewable as seen
     changed.forEach((item) => {
       if (!item.isViewable && item.item) {
+        // Skip the done card
+        if ('isDoneCard' in item.item) return;
+
         const card = item.item as CommitActivityCard;
         setSeenCards((prev) => {
           if (prev.has(card.itemId)) return prev;
@@ -241,17 +247,110 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     navigation.navigate('FeedCustomization', {});
   }, [navigation]);
 
+  // Prepare data with done card at the end
+  const cardsWithDone = useMemo(() => {
+    if (cards.length === 0) return [];
+    return [...cards, { isDoneCard: true as const }];
+  }, [cards]);
+
+  // Render dot indicator for card progress
+  const renderDotIndicator = useCallback(() => {
+    const totalCards = cards.length;
+    // Hide dots if no cards or if viewing the done card
+    if (totalCards === 0 || currentCardIndex >= totalCards) return null;
+
+    const maxDots = 10;
+    const dotsToShow = Math.min(totalCards, maxDots);
+
+    return (
+      <View style={[styles.dotIndicatorContainer, { top: availableHeight / 2 - (dotsToShow * 10) / 2 }]}>
+        {Array.from({ length: dotsToShow }).map((_, index) => {
+          const isActive = index === currentCardIndex && currentCardIndex < dotsToShow;
+          return (
+            <View
+              key={index}
+              style={[
+                styles.dot,
+                isActive && styles.dotActive,
+                { backgroundColor: isActive ? theme.colors.primary : theme.colors.textMuted },
+              ]}
+            />
+          );
+        })}
+      </View>
+    );
+  }, [cards.length, currentCardIndex, theme.colors.primary, theme.colors.textMuted, availableHeight]);
+
   // Render each card
-  const renderCard = useCallback(({ item: card }: { item: CommitActivityCard }) => {
-    const summary = cardToSummary(card);
-    const isSaved = savedCardId === card.itemId;
+  const renderCard = useCallback(({ item: card }: { item: CommitActivityCard | { isDoneCard: true } }) => {
+    // Check if this is the "done" card
+    if ('isDoneCard' in card) {
+      return (
+        <View style={[styles.cardWrapper, { height: availableHeight }]}>
+          <ScrollView
+            style={[styles.doneCardContainer, { backgroundColor: theme.colors.background }]}
+            contentContainerStyle={[styles.doneCardContent, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}
+          >
+            {/* Checkmark icon */}
+            <View style={[styles.emptyIconContainer, { borderColor: theme.colors.success }]}>
+              <View style={[styles.checkmark, { borderColor: theme.colors.success }]} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+              You're all caught up!
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
+              {isGuest
+                ? 'Sign in to customize your feed and save cards.'
+                : 'No more activity cards to review right now.'}
+            </Text>
+            {lastFetchedAt && (
+              <Text style={[styles.lastUpdatedText, { color: theme.colors.textMuted, marginBottom: 24 }]}>
+                {formatLastFetched()}
+              </Text>
+            )}
+
+            <View style={styles.emptyButtonsContainer}>
+              {isGuest ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+                    onPress={() => navigation.navigate('About', { screen: 'AboutHome' })}
+                  >
+                    <Text style={styles.primaryButtonText}>Sign In</Text>
+                  </TouchableOpacity>
+                  {onRefresh && (
+                    <TouchableOpacity
+                      style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
+                      onPress={onRefresh}
+                    >
+                      <Text style={[styles.secondaryButtonText, { color: theme.colors.text }]}>Refresh</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+                  onPress={handleGoToCustomize}
+                >
+                  <Text style={styles.primaryButtonText}>Edit Feed</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
+
+    const actualCard = card as CommitActivityCard;
+    const summary = cardToSummary(actualCard);
+    const isSaved = savedCardId === actualCard.itemId;
 
     return (
       <TapGestureHandler
         numberOfTaps={2}
         onHandlerStateChange={(event) => {
           if (event.nativeEvent.state === State.ACTIVE) {
-            handleDoubleTap(card);
+            handleDoubleTap(actualCard);
           }
         }}
       >
@@ -278,7 +377,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         </View>
       </TapGestureHandler>
     );
-  }, [availableHeight, handleDoubleTap, savedCardId, heartScale]);
+  }, [availableHeight, handleDoubleTap, savedCardId, heartScale, theme.colors, insets, isGuest, lastFetchedAt, formatLastFetched, navigation, handleGoToCustomize, onRefresh]);
 
   // Loading state
   if (isLoading) {
@@ -335,63 +434,6 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
           </Text>
         )}
 
-        {/* Show watched users and repos for authenticated users */}
-        {!isGuest && (watchedUsers.length > 0 || watchedRepos.length > 0) && (
-          <View style={styles.watchedContainer}>
-            {/* Watched Users */}
-            {watchedUsers.length > 0 && (
-              <View style={styles.watchedSection}>
-                <Text style={[styles.watchedSectionTitle, { color: theme.colors.textSecondary }]}>
-                  WATCHING {watchedUsers.length} {watchedUsers.length === 1 ? 'USER' : 'USERS'}
-                </Text>
-                <View style={styles.usersList}>
-                  {watchedUsers.map((user) => (
-                    <View key={user.login} style={styles.userItem}>
-                      <Image
-                        source={{ uri: user.avatarUrl }}
-                        style={styles.userAvatar}
-                      />
-                      <Text style={[styles.userLogin, { color: theme.colors.text }]} numberOfLines={1}>
-                        {user.login}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Watched Repos */}
-            {watchedRepos.length > 0 && (
-              <View style={styles.watchedSection}>
-                <Text style={[styles.watchedSectionTitle, { color: theme.colors.textSecondary }]}>
-                  WATCHING {watchedRepos.length} {watchedRepos.length === 1 ? 'REPOSITORY' : 'REPOSITORIES'}
-                </Text>
-                <View style={styles.reposList}>
-                  {watchedRepos.map((repo) => (
-                    <View
-                      key={`${repo.owner}/${repo.repo}`}
-                      style={[
-                        styles.repoItem,
-                        {
-                          backgroundColor: theme.colors.surface,
-                          borderColor: theme.colors.border,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
-                        {repo.owner}/{repo.repo}
-                      </Text>
-                      {repo.isFeatured && (
-                        <Text style={styles.featuredBadge}>★</Text>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
         <View style={styles.emptyButtonsContainer}>
           {isGuest ? (
             <>
@@ -431,9 +473,9 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
       ]}
     >
       <FlatList
-        data={cards}
+        data={cardsWithDone}
         renderItem={renderCard}
-        keyExtractor={(item) => item.itemId}
+        keyExtractor={(item) => 'isDoneCard' in item ? 'done-card' : (item as CommitActivityCard).itemId}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={availableHeight}
@@ -441,6 +483,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         onViewableItemsChanged={onViewableItemsChanged.current}
         viewabilityConfig={viewabilityConfig}
       />
+      {renderDotIndicator()}
     </View>
   );
 }
@@ -507,65 +550,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  watchedContainer: {
-    width: '100%',
-    marginBottom: 24,
-    gap: 24,
-  },
-  watchedSection: {
-    width: '100%',
-  },
-  watchedSectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  usersList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    maxWidth: '100%',
-  },
-  userAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
-  userLogin: {
-    fontSize: 14,
-    fontWeight: '500',
-    flexShrink: 1,
-  },
-  reposList: {
-    gap: 8,
-  },
-  repoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  repoName: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-  },
-  featuredBadge: {
-    fontSize: 16,
-    marginLeft: 8,
-  },
   emptyButtonsContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -610,6 +594,35 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  dotIndicatorContainer: {
+    position: 'absolute',
+    right: 12,
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 100,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 0.4,
+  },
+  dotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 1,
+  },
+  doneCardContainer: {
+    flex: 1,
+  },
+  doneCardContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    minHeight: '100%',
+    justifyContent: 'center',
   },
 });
 
