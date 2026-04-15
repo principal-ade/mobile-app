@@ -8,6 +8,7 @@ import {
   AuthTokens,
 } from '../utils/authStorage';
 import { GitHubUser } from '../types/github';
+import { getDeviceId, getDeviceMetadata } from '../utils/deviceId';
 
 // Ensure any pending auth sessions are completed
 WebBrowser.maybeCompleteAuthSession();
@@ -69,6 +70,10 @@ export async function startAuthFlow(preferEphemeralSession = false): Promise<Aut
   const { authServerUrl } = authConfig;
   const callbackUrl = getAuthCallbackUrl();
 
+  // Get device ID for device-specific session tracking
+  const deviceId = await getDeviceId();
+  const deviceMetadata = getDeviceMetadata();
+
   // Call auth server to get OAuth URL with mobile callback
   const response = await fetch(`${authServerUrl}/api/auth/workos/start/mobile`, {
     method: 'POST',
@@ -79,6 +84,8 @@ export async function startAuthFlow(preferEphemeralSession = false): Promise<Aut
       code_challenge: codeChallenge,
       state,
       return_url: callbackUrl, // Deep link for redirect back to app
+      device_id: deviceId,
+      platform: deviceMetadata.platform,
     }),
   });
 
@@ -235,18 +242,36 @@ export async function verifyEmail(state: string, verificationCode: string): Prom
 
 /**
  * Refreshes the access tokens using the refresh token
+ * @param refreshToken - The refresh token to use
+ * @param githubUserId - Optional GitHub user ID for device-specific token management
  */
-export async function refreshTokens(refreshToken: string): Promise<AuthTokens> {
+export async function refreshTokens(
+  refreshToken: string,
+  githubUserId?: number
+): Promise<AuthTokens> {
   const { authServerUrl } = authConfig;
+
+  // Get device ID for device-specific session tracking
+  const deviceId = await getDeviceId();
+
+  const requestBody: Record<string, string> = {
+    refresh_token: refreshToken,
+  };
+
+  // Add device-specific parameters if available
+  if (deviceId) {
+    requestBody.device_id = deviceId;
+  }
+  if (githubUserId) {
+    requestBody.github_user_id = String(githubUserId);
+  }
 
   const response = await fetch(`${authServerUrl}/api/auth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      refresh_token: refreshToken,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
