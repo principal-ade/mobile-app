@@ -125,14 +125,20 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
 
   const renderCommitCard = useCallback(
     ({ item: commit }: { item: ActivityCommit }) => (
-      <View
-        style={[
+      <Pressable
+        onPress={() => {
+          navigation.navigate('CommitDetail', {
+            commit,
+            fullName: summary.fullName,
+          });
+        }}
+        style={({ pressed }) => [
           styles.commitCard,
           {
             backgroundColor: theme.colors.surface,
             width: cardWidth,
             height: commitSectionHeight,
-            opacity: isScrolling ? 0 : 1,
+            opacity: isScrolling ? 0 : pressed ? 0.7 : 1,
           },
         ]}
       >
@@ -193,9 +199,9 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
             </View>
           )}
         </View>
-      </View>
+      </Pressable>
     ),
-    [theme, cardWidth, commitSectionHeight, isScrolling]
+    [theme, cardWidth, commitSectionHeight, isScrolling, navigation, summary.fullName]
   );
 
   return (

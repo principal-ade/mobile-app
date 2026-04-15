@@ -27,6 +27,7 @@ import FeedTabScreen from '../screens/FeedTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
 import StarredTabScreen from '../screens/StarredTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
+import CommitDetailScreen from '../screens/CommitDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import RepoFileCityScreen from '../screens/RepoFileCityScreen';
@@ -170,6 +171,14 @@ function FeedStackNavigator() {
             name="CardDetail"
             component={CardDetailScreen}
             options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <FeedStack.Screen
+            name="CommitDetail"
+            component={CommitDetailScreen}
+            options={{
+              headerShown: false,
+              presentation: 'card',
+            }}
           />
           <FeedStack.Screen
             name="SavedCards"

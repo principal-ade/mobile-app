@@ -60,6 +60,23 @@ export type FeedStackParamList = {
   } | undefined;
   AddUser: undefined;
   AddRepo: undefined;
+  CommitDetail: {
+    commit: {
+      repoOwner: string;
+      repoName: string;
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorEmail: string;
+      authorAvatarUrl: string | null;
+      date: string;
+      additions?: number;
+      deletions?: number;
+      filesChanged?: number;
+    };
+    fullName: string;
+  };
 };
 
 // Stack params for Watch tab
