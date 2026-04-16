@@ -134,7 +134,10 @@ export function AboutScreen() {
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
           {isAuthenticated && user ? (
             <>
-              <View style={styles.accountRow}>
+              <TouchableOpacity
+                style={styles.accountRow}
+                onPress={() => navigation.navigate('UserProfile', { username: user.login })}
+              >
                 <Image
                   source={{ uri: user.avatar_url }}
                   style={styles.avatar}
@@ -147,7 +150,7 @@ export function AboutScreen() {
                     @{user.login}
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
               <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
               {accounts.length >= 2 ? (
                 <TouchableOpacity

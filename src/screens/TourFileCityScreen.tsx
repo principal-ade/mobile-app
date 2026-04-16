@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Image,
 } from 'react-native';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -23,9 +22,7 @@ import type { IntroductionTour } from '@principal-ai/file-city-builder';
 
 type RouteProps = RouteProp<FeedStackParamList, 'TourFileCity'>;
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const FILE_CITY_HEIGHT = SCREEN_HEIGHT * 0.5; // 50% for File City
-const TOUR_PLAYER_HEIGHT = SCREEN_HEIGHT * 0.5; // 50% for tour player
+// Use flex layout instead of fixed heights to work with tab bar
 
 const COMPLETED_TOURS_KEY = '@completed_tours';
 
@@ -215,7 +212,7 @@ export default function TourFileCityScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* File City Section */}
-      <View style={[styles.fileCitySection, { height: FILE_CITY_HEIGHT, paddingTop: insets.top + 16 }]}>
+      <View style={[styles.fileCitySection, { paddingTop: insets.top + 16 }]}>
         <FileCityCanvas
           cityData={cityData}
           highlightLayers={highlightLayers}
@@ -232,7 +229,7 @@ export default function TourFileCityScreen() {
       </View>
 
       {/* Tour Player Section */}
-      <View style={[styles.tourPlayerSection, { height: TOUR_PLAYER_HEIGHT }]}>
+      <View style={styles.tourPlayerSection}>
         {!tourStarted ? (
           /* Tour Introduction */
           <>
@@ -441,9 +438,11 @@ const styles = StyleSheet.create({
 
   // Layout sections
   fileCitySection: {
+    flex: 1,
     width: '100%',
   },
   tourPlayerSection: {
+    flex: 1,
     width: '100%',
   },
 

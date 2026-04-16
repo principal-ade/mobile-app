@@ -37,6 +37,7 @@ import { UserProfileScreenContainer } from '../screens/UserProfileScreenContaine
 import { OrganizationScreenContainer } from '../screens/OrganizationScreenContainer';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
+import { useMultiAccount } from '../context/MultiAccountContext';
 import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { parseGitHubUrl } from '../utils/githubUrlParser';
@@ -430,14 +431,20 @@ function AboutStackNavigator() {
             component={SavedCardsScreen}
             options={{ title: 'Saved Cards' }}
           />
+          <AboutStack.Screen
+            name="UserProfile"
+            component={UserProfileScreenContainer}
+            options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+          />
         </>
       )}
     </AboutStack.Navigator>
   );
 }
 
-// Track last tap time for double-tap detection on Search tab
+// Track last tap time for double-tap detection on Search and About tabs
 let lastSearchTabTap = 0;
+let lastAboutTabTap = 0;
 const DOUBLE_TAP_DELAY = 300; // milliseconds
 
 function MainTabs() {
@@ -574,6 +581,30 @@ function MainTabs() {
               <LucideIcon name="Info" size={24} color={color} />
             ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!isAuthenticated || !user) return;
+
+            const now = Date.now();
+            const timeSinceLastTap = now - lastAboutTabTap;
+
+            if (timeSinceLastTap < DOUBLE_TAP_DELAY && timeSinceLastTap > 0) {
+              // Double tap detected - navigate to user profile
+              e.preventDefault();
+              lastAboutTabTap = 0; // Reset
+
+              navigation.navigate('About', {
+                screen: 'UserProfile',
+                params: {
+                  username: user.login,
+                },
+              });
+            } else {
+              // Single tap - allow default navigation
+              lastAboutTabTap = now;
+            }
+          },
+        })}
       />
     </Tab.Navigator>
   );
@@ -582,6 +613,7 @@ function MainTabs() {
 export default function AppNavigator() {
   const { theme } = useTheme();
   const { isLoading, pendingVerification } = useAuth();
+  const { activeAccountId } = useMultiAccount();
 
   if (isLoading) {
     return (
@@ -593,7 +625,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer
-      key={pendingVerification ? 'verification' : 'main'}
+      key={pendingVerification ? 'verification' : `main-${activeAccountId}`}
       linking={pendingVerification ? undefined : linking}
     >
       <RootStack.Navigator

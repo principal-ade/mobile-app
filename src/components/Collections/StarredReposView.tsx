@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   TextInput,
   TouchableOpacity,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { LucideIcon } from '../LucideIcon';
@@ -42,6 +44,7 @@ export function StarredReposView({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRepo, setSelectedRepo] = useState<StarredRepo | null>(null);
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
+  const [showFilter, setShowFilter] = useState(false);
 
   const filteredRepos = repos
     .filter((repo) => {
@@ -100,6 +103,17 @@ export function StarredReposView({
     }
   };
 
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+
+    // Show filter when scrolled down past 50px
+    if (currentScrollY > 50 && !showFilter) {
+      setShowFilter(true);
+    } else if (currentScrollY <= 50 && showFilter) {
+      setShowFilter(false);
+    }
+  };
+
   const renderHeader = () => (
     <>
       {showHeader && (
@@ -111,40 +125,7 @@ export function StarredReposView({
         </View>
       )}
 
-      <View style={styles.filterContainer}>
-        <View
-          style={[
-            styles.filterInputContainer,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={styles.searchIconWrapper}>
-            <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
-          </View>
-          <TextInput
-            style={[styles.searchInput, { color: theme.colors.text }]}
-            placeholder="Filter Projects"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              style={styles.clearButton}
-            >
-              <LucideIcon name="X" color={theme.colors.textSecondary} size={14} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {repos.length > 0 && searchQuery.trim() && (
+      {repos.length > 0 && searchQuery.trim() && !showFilter && (
         <View style={styles.resultsHeader}>
           <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
             {filteredRepos.length} of {repos.length} {repos.length === 1 ? 'repo' : 'repos'} matching "{searchQuery}"
@@ -156,7 +137,7 @@ export function StarredReposView({
 
   const renderEmpty = () => (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyIcon, { color: theme.colors.textSecondary }]}>⭐</Text>
+      <LucideIcon name="Star" size={48} color={theme.colors.textSecondary} />
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No starred repos</Text>
       <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
         {searchQuery
@@ -188,7 +169,52 @@ export function StarredReposView({
         refreshing={isLoading}
         onRefresh={onRefresh}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       />
+
+      {/* Floating filter bar */}
+      {repos.length > 0 && showFilter && (
+        <View style={[styles.floatingFilterContainer, { backgroundColor: theme.colors.background }]}>
+          <View
+            style={[
+              styles.filterInputContainer,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={styles.searchIconWrapper}>
+              <LucideIcon name="Search" color={theme.colors.textSecondary} size={16} />
+            </View>
+            <TextInput
+              style={[styles.searchInput, { color: theme.colors.text }]}
+              placeholder="Filter Projects"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+              >
+                <LucideIcon name="X" color={theme.colors.textSecondary} size={14} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {searchQuery.trim() && (
+            <View style={styles.floatingResultsHeader}>
+              <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
+                {filteredRepos.length} of {repos.length} {repos.length === 1 ? 'repo' : 'repos'} matching "{searchQuery}"
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {selectedRepo && (
         <CollectionSelector
@@ -257,7 +283,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   resultsHeader: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
   resultsCount: {
@@ -272,10 +298,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
     paddingHorizontal: 40,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    gap: 16,
   },
   emptyTitle: {
     fontSize: 20,
@@ -295,5 +318,22 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  floatingFilterContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  floatingResultsHeader: {
+    paddingTop: 8,
   },
 });

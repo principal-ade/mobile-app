@@ -84,7 +84,7 @@ export function StarredTabScreen() {
                 {
                   color:
                     activeTab === 'starred'
-                      ? theme.colors.text
+                      ? theme.colors.primary
                       : theme.colors.textSecondary,
                   fontWeight: activeTab === 'starred' ? '600' : '500',
                 },
@@ -109,7 +109,7 @@ export function StarredTabScreen() {
                 {
                   color:
                     activeTab === 'tours'
-                      ? theme.colors.text
+                      ? theme.colors.primary
                       : theme.colors.textSecondary,
                   fontWeight: activeTab === 'tours' ? '600' : '500',
                 },

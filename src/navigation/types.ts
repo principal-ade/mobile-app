@@ -186,6 +186,11 @@ export type AboutStackParamList = {
   AddUser: undefined;
   AddRepo: undefined;
   SavedCards: undefined;
+  UserProfile: {
+    username: string;
+    isOrganization?: boolean;
+    isBot?: boolean;
+  };
 };
 
 export type MainTabParamList = {
