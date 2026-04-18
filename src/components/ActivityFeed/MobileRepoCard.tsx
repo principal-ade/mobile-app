@@ -142,49 +142,84 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
     };
   }, [summary.owner, summary.repo]);
 
-  // Build commit highlight layer for active commit
-  const commitHighlightLayer = useMemo<HighlightLayer | null>(() => {
+  // Build commit highlight layers for active commit
+  // Create separate layers per status: added=green, modified=orange, removed=red
+  const commitHighlightLayers = useMemo<HighlightLayer[]>(() => {
     if (!activeCommit || !cityData) {
-      return null;
+      return [];
     }
 
     if (!activeCommit.files || activeCommit.files.length === 0) {
-      return null;
+      return [];
     }
 
-    // For now, use a single color for all changed files
-    // Future enhancement: Create separate layers per status (added=green, modified=orange, removed=red)
-    const items = activeCommit.files.map(file => {
-      const renderStrategy: 'fill' | 'border' = file.status === 'added' ? 'fill' : 'border';
+    // Group files by status
+    const addedFiles = activeCommit.files.filter(f => f.status === 'added');
+    const modifiedFiles = activeCommit.files.filter(f =>
+      f.status === 'modified' || f.status === 'changed'
+    );
+    const removedFiles = activeCommit.files.filter(f => f.status === 'removed');
 
-      return {
-        path: file.filename,
-        type: 'file' as const,
-        renderStrategy,
-      };
-    });
+    const layers: HighlightLayer[] = [];
 
-    const layer = {
-      id: `commit-changes-${activeCommit.sha}`,
-      name: 'Commit Changes',
-      color: theme.colors.warning, // Orange for modified files
-      opacity: 0.8,
-      enabled: true,
-      priority: 100, // Higher priority to render on top of file type layers
-      items,
-    };
+    // Layer for added files (green, filled)
+    if (addedFiles.length > 0) {
+      layers.push({
+        id: `commit-added-${activeCommit.sha}`,
+        name: 'Added Files',
+        color: theme.colors.success,
+        opacity: 0.8,
+        enabled: true,
+        priority: 102,
+        items: addedFiles.map(file => ({
+          path: file.filename,
+          type: 'file' as const,
+          renderStrategy: 'fill' as const,
+        })),
+      });
+    }
 
-    return layer;
+    // Layer for modified files (orange, border)
+    if (modifiedFiles.length > 0) {
+      layers.push({
+        id: `commit-modified-${activeCommit.sha}`,
+        name: 'Modified Files',
+        color: theme.colors.warning,
+        opacity: 0.8,
+        enabled: true,
+        priority: 101,
+        items: modifiedFiles.map(file => ({
+          path: file.filename,
+          type: 'file' as const,
+          renderStrategy: 'border' as const,
+        })),
+      });
+    }
+
+    // Layer for removed files (red, border)
+    if (removedFiles.length > 0) {
+      layers.push({
+        id: `commit-removed-${activeCommit.sha}`,
+        name: 'Removed Files',
+        color: theme.colors.error,
+        opacity: 0.8,
+        enabled: true,
+        priority: 100,
+        items: removedFiles.map(file => ({
+          path: file.filename,
+          type: 'file' as const,
+          renderStrategy: 'border' as const,
+        })),
+      });
+    }
+
+    return layers;
   }, [activeCommit, cityData, theme]);
 
   // Combine all highlight layers
   const allHighlightLayers = useMemo(() => {
-    const combined = commitHighlightLayer
-      ? [...baseHighlightLayers, commitHighlightLayer]
-      : baseHighlightLayers;
-
-    return combined;
-  }, [baseHighlightLayers, commitHighlightLayer]);
+    return [...baseHighlightLayers, ...commitHighlightLayers];
+  }, [baseHighlightLayers, commitHighlightLayers]);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
