@@ -94,14 +94,12 @@ export async function fetchCommitStats(
   const response = await fetch(url);
 
   if (!response.ok) {
-    console.log(`[fetchCommitStats] Failed to fetch: ${response.status} for ${owner}/${repo}@${sha.slice(0, 7)}`);
     return null;
   }
 
   const data: CommitStatsResponse = await response.json();
 
   if (!data.stats) {
-    console.log(`[fetchCommitStats] No stats in response for ${owner}/${repo}@${sha.slice(0, 7)}`);
     return null;
   }
 
@@ -112,8 +110,6 @@ export async function fetchCommitStats(
     deletions: file.deletions,
     changes: file.changes,
   }));
-
-  console.log(`[fetchCommitStats] Fetched ${files.length} files for ${owner}/${repo}@${sha.slice(0, 7)}`);
 
   return {
     additions: data.stats.additions,

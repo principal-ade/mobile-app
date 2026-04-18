@@ -144,27 +144,13 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
 
   // Build commit highlight layer for active commit
   const commitHighlightLayer = useMemo<HighlightLayer | null>(() => {
-    console.log('[MobileRepoCard] Building commit highlight layer:', {
-      hasActiveCommit: !!activeCommit,
-      hasCityData: !!cityData,
-      commitSha: activeCommit?.sha.slice(0, 7),
-      filesCount: activeCommit?.files?.length ?? 0,
-    });
-
     if (!activeCommit || !cityData) {
-      console.log('[MobileRepoCard] No active commit or city data');
       return null;
     }
 
     if (!activeCommit.files || activeCommit.files.length === 0) {
-      console.log('[MobileRepoCard] No files in commit');
       return null;
     }
-
-    console.log('[MobileRepoCard] Commit files:', activeCommit.files.map(f => ({
-      filename: f.filename,
-      status: f.status,
-    })));
 
     // For now, use a single color for all changed files
     // Future enhancement: Create separate layers per status (added=green, modified=orange, removed=red)
@@ -188,14 +174,6 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
       items,
     };
 
-    console.log('[MobileRepoCard] Created commit highlight layer:', {
-      id: layer.id,
-      itemCount: layer.items.length,
-      color: layer.color,
-      opacity: layer.opacity,
-      priority: layer.priority,
-    });
-
     return layer;
   }, [activeCommit, cityData, theme]);
 
@@ -204,13 +182,6 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
     const combined = commitHighlightLayer
       ? [...baseHighlightLayers, commitHighlightLayer]
       : baseHighlightLayers;
-
-    console.log('[MobileRepoCard] All highlight layers:', {
-      baseLayersCount: baseHighlightLayers.length,
-      hasCommitLayer: !!commitHighlightLayer,
-      totalLayersCount: combined.length,
-      layerNames: combined.map(l => l.name),
-    });
 
     return combined;
   }, [baseHighlightLayers, commitHighlightLayer]);
