@@ -32,6 +32,18 @@ export function UserCard({
   const navigation = useNavigation<NavigationProp<WatchStackParamList>>();
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const handleCardPress = () => {
+    // Toggle expand/collapse to show repos
+    if (reposContributedTo.length > 0) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  const handleViewActivity = () => {
+    // Navigate to user activity screen to see feed-style cards
+    navigation.navigate('UserActivity', { username: login, avatarUrl });
+  };
+
   const handleAvatarPress = () => {
     const isBot = isBotLogin(login);
     const cleanLogin = cleanBotLogin(login);
@@ -58,7 +70,7 @@ export function UserCard({
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: theme.colors.surface }]}
-      onPress={() => reposContributedTo.length > 0 && setIsExpanded(!isExpanded)}
+      onPress={handleCardPress}
       activeOpacity={1}
       disabled={reposContributedTo.length === 0}
     >
@@ -88,18 +100,35 @@ export function UserCard({
             {formatTime(latestCommitTime)}
           </Text>
         )}
-        {reposContributedTo.length > 0 && (
-          <View style={styles.reposToggle}>
-            <Text style={[styles.reposCount, { color: theme.colors.textSecondary }]}>
-              {reposContributedTo.length} {reposContributedTo.length === 1 ? 'repo' : 'repos'}
-            </Text>
-            <LucideIcon
-              name={isExpanded ? 'ChevronUp' : 'ChevronDown'}
-              size={16}
-              color={theme.colors.textSecondary}
-            />
-          </View>
-        )}
+        <View style={styles.bottomRow}>
+          {commitCount > 0 && (
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                handleViewActivity();
+              }}
+              style={styles.viewActivityButton}
+            >
+              <LucideIcon
+                name="Newspaper"
+                size={16}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          )}
+          {reposContributedTo.length > 0 && (
+            <View style={styles.reposToggle}>
+              <Text style={[styles.reposCount, { color: theme.colors.textSecondary }]}>
+                {reposContributedTo.length} {reposContributedTo.length === 1 ? 'repo' : 'repos'}
+              </Text>
+              <LucideIcon
+                name={isExpanded ? 'ChevronUp' : 'ChevronDown'}
+                size={16}
+                color={theme.colors.textSecondary}
+              />
+            </View>
+          )}
+        </View>
       </View>
       {isExpanded && reposContributedTo.length > 0 && (
         <View style={styles.expandedRepos}>
@@ -112,10 +141,10 @@ export function UserCard({
                   style={[styles.repoItem, { backgroundColor: theme.colors.background }]}
                   onPress={() => {
                     if (owner && name) {
-                      navigation.navigate('RepoFileCity', {
-                        owner,
-                        name,
-                        fullName: repoContribution.repoId,
+                      navigation.navigate('UserActivity', {
+                        username: login,
+                        avatarUrl,
+                        repoFilter: { owner, name },
                       });
                     }
                   }}
@@ -191,6 +220,14 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 12,
     marginBottom: 6,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  viewActivityButton: {
+    padding: 4,
   },
   reposToggle: {
     flexDirection: 'row',

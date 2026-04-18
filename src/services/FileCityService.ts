@@ -66,6 +66,16 @@ export interface FileCityResult {
   repoInfo: RepoInfo;
 }
 
+export interface FileCityDataResult {
+  cityData: CityData;
+  highlightFiles: Array<{
+    path: string;
+    status: 'added' | 'modified' | 'removed';
+  }>;
+  treeSha: string;
+  truncated: boolean;
+}
+
 /**
  * Fetch repository info from the API
  */
@@ -187,6 +197,37 @@ export async function getFileCityForRepo(
   };
 }
 
+/**
+ * Fetch File City data with optional commit highlighting
+ * Uses new JSON endpoint instead of PNG for better performance
+ */
+export async function getFileCityData(
+  owner: string,
+  repo: string,
+  options?: {
+    ref?: string;
+    commit?: string;
+    commits?: string[];
+  }
+): Promise<FileCityDataResult> {
+  const params = new URLSearchParams();
+  if (options?.ref) params.set('ref', options.ref);
+  if (options?.commit) params.set('commit', options.commit);
+  if (options?.commits?.length) params.set('commits', options.commits.join(','));
+
+  const url = `${apiConfig.baseUrl}/file-city-data/${owner}/${repo}${params.toString() ? `?${params}` : ''}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to fetch city data: ${response.status} - ${errorText}`);
+  }
+
+  return await response.json();
+}
+
 export default {
   getFileCityForRepo,
+  getFileCityData,
 };

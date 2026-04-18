@@ -25,11 +25,11 @@ import { ActivityRepoCard } from '../components/ActivityFeed/ActivityRepoCard';
 import { UserCard } from '../components/ActivityFeed/UserCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
-  getActivityHeatmap,
+  getRecentCommits,
   getWatches,
-  HeatmapCommit,
-  HeatmapAuthor,
-  HeatmapRepo,
+  RecentCommit,
+  RecentCommitsAuthor,
+  RecentCommitsRepo,
   FeedWatches,
 } from '../services/FeedApiService';
 import { getWatchedUsers, getWatchedRepos } from '../utils/feedStorage';
@@ -73,9 +73,9 @@ export function WatchTabScreen() {
     { key: 'users', title: 'Developers' },
     { key: 'repos', title: 'Projects' },
   ]);
-  const [commits, setCommits] = useState<HeatmapCommit[]>([]);
-  const [authors, setAuthors] = useState<HeatmapAuthor[]>([]);
-  const [repos, setRepos] = useState<HeatmapRepo[]>([]);
+  const [commits, setCommits] = useState<RecentCommit[]>([]);
+  const [authors, setAuthors] = useState<RecentCommitsAuthor[]>([]);
+  const [repos, setRepos] = useState<RecentCommitsRepo[]>([]);
   const [follows, setFollows] = useState<FeedWatches | null>(null);
   const [loading, setLoading] = useState(false); // Start false - we load from local storage first
   const [refreshing, setRefreshing] = useState(false);
@@ -108,7 +108,7 @@ export function WatchTabScreen() {
 
       // Fetch both activity and follows in parallel
       const [activityResponse, followsResponse] = await Promise.all([
-        getActivityHeatmap(token, { hoursBack: 24 }),
+        getRecentCommits(token, { hoursBack: 24 }),
         getWatches(token),
       ]);
 
@@ -190,7 +190,7 @@ export function WatchTabScreen() {
     const activeWatchedRepos = follows?.watchedRepos ?? watchedRepos;
 
     // Group commits by repo
-    const repoCommitsMap = new Map<string, HeatmapCommit[]>();
+    const repoCommitsMap = new Map<string, RecentCommit[]>();
     commits.forEach(commit => {
       const existing = repoCommitsMap.get(commit.repoId) || [];
       repoCommitsMap.set(commit.repoId, [...existing, commit]);
@@ -205,7 +205,7 @@ export function WatchTabScreen() {
       const repoMetadata = repoMetadataMap.get(repoIdKey);
 
       // Find commits by matching owner/repo from the metadata map
-      const repoCommits: HeatmapCommit[] = [];
+      const repoCommits: RecentCommit[] = [];
       if (repoMetadata) {
         const commits = repoCommitsMap.get(repoMetadata.id) || [];
         repoCommits.push(...commits);
@@ -266,7 +266,7 @@ export function WatchTabScreen() {
     const activeWatchedUsers = follows?.watchedUsers ?? watchedUsers;
 
     // Group commits by author (use lowercase for case-insensitive matching)
-    const authorCommitsMap = new Map<string, HeatmapCommit[]>();
+    const authorCommitsMap = new Map<string, RecentCommit[]>();
     commits.forEach(commit => {
       const loginKey = commit.authorLogin.toLowerCase();
       const existing = authorCommitsMap.get(loginKey) || [];
@@ -300,7 +300,7 @@ export function WatchTabScreen() {
       const latestCommit = sortedCommits[0];
 
       // Group commits by repo and calculate per-repo stats
-      const repoCommitsMap = new Map<string, HeatmapCommit[]>();
+      const repoCommitsMap = new Map<string, RecentCommit[]>();
       authorCommits.forEach(commit => {
         const existing = repoCommitsMap.get(commit.repoId) || [];
         repoCommitsMap.set(commit.repoId, [...existing, commit]);

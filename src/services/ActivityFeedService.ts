@@ -1,4 +1,4 @@
-import type { RepoActivitySummary, ActivityCommit } from '../types/activity';
+import type { RepoActivitySummary, ActivityCommit, CommitFile } from '../types/activity';
 import { apiConfig } from '../utils/config';
 
 const API_BASE = apiConfig.baseUrl;
@@ -40,7 +40,13 @@ interface CommitStatsResponse {
     additions: number;
     deletions: number;
   };
-  files?: Array<{ filename: string }>;
+  files?: Array<{
+    filename: string;
+    status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged';
+    additions: number;
+    deletions: number;
+    changes: number;
+  }>;
 }
 
 /**
@@ -77,30 +83,43 @@ export async function fetchRepoCommits(
 }
 
 /**
- * Fetches stats (additions/deletions) for a specific commit
+ * Fetches stats (additions/deletions) and file changes for a specific commit
  */
 export async function fetchCommitStats(
   owner: string,
   repo: string,
   sha: string
-): Promise<{ additions: number; deletions: number; filesChanged: number } | null> {
+): Promise<{ additions: number; deletions: number; filesChanged: number; files: CommitFile[] } | null> {
   const url = `${API_BASE}/github/repo/${owner}/${repo}/commits/${sha}`;
   const response = await fetch(url);
 
   if (!response.ok) {
+    console.log(`[fetchCommitStats] Failed to fetch: ${response.status} for ${owner}/${repo}@${sha.slice(0, 7)}`);
     return null;
   }
 
   const data: CommitStatsResponse = await response.json();
 
   if (!data.stats) {
+    console.log(`[fetchCommitStats] No stats in response for ${owner}/${repo}@${sha.slice(0, 7)}`);
     return null;
   }
+
+  const files: CommitFile[] = (data.files || []).map(file => ({
+    filename: file.filename,
+    status: file.status,
+    additions: file.additions,
+    deletions: file.deletions,
+    changes: file.changes,
+  }));
+
+  console.log(`[fetchCommitStats] Fetched ${files.length} files for ${owner}/${repo}@${sha.slice(0, 7)}`);
 
   return {
     additions: data.stats.additions,
     deletions: data.stats.deletions,
     filesChanged: data.files?.length ?? 0,
+    files,
   };
 }
 
@@ -135,6 +154,7 @@ export async function fetchActivityFeed(
             additions: stats?.additions,
             deletions: stats?.deletions,
             filesChanged: stats?.filesChanged,
+            files: stats?.files,
           };
         })
       );

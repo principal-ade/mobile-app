@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,11 +14,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
+import type { CityData, HighlightLayer } from '@principal-ai/file-city-builder';
+import { createFileHighlightLayers } from '@principal-ai/file-city-builder';
 import { Logo } from '../Logo';
+import { FileCityCanvas } from '../FileCity/FileCityCanvas';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 import type { FeedStackParamList } from '../../navigation/types';
-import { apiConfig } from '../../utils/config';
 import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
+import { getFileCityData } from '../../services/FileCityService';
+import type { FileTypeIconConfig } from '@principal-ai/file-city-builder';
 
 interface MobileRepoCardProps {
   summary: RepoActivitySummary;
@@ -79,6 +83,11 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
   const [isScrolling, setIsScrolling] = useState(false);
   const commitsListRef = useRef<FlatList<ActivityCommit>>(null);
 
+  // City data state
+  const [cityData, setCityData] = useState<CityData | null>(null);
+  const [baseHighlightLayers, setBaseHighlightLayers] = useState<HighlightLayer[]>([]);
+  const [iconMap, setIconMap] = useState<Map<string, FileTypeIconConfig>>(new Map());
+
   const onContainerLayout = useCallback((event: LayoutChangeEvent) => {
     setContainerWidth(event.nativeEvent.layout.width);
   }, []);
@@ -93,11 +102,118 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
 
   const activeCommit = summary.commits[activeCommitIndex];
 
-  // File City image URL
-  const baseImageUrl = `${apiConfig.baseUrl}/file-city/${summary.owner}/${summary.repo}?width=800&height=800`;
-  const fileCityImageUrl = activeCommit
-    ? `${baseImageUrl}&commit=${activeCommit.sha}`
-    : baseImageUrl;
+  // Fetch city data on mount (one-time per repo)
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCityData() {
+      try {
+        const result = await getFileCityData(summary.owner, summary.repo);
+
+        if (!cancelled) {
+          setCityData(result.cityData);
+          setFileCityLoaded(true);
+
+          // Generate base highlight layers from city data
+          const files = result.cityData.buildings.map((b) => ({ path: b.path }));
+          const { highlightLayers, iconMap: fileIconMap } = createFileHighlightLayers(files);
+
+          // Reduce opacity of file type layers to make commit diffs stand out
+          const dulledLayers = highlightLayers.map(layer => ({
+            ...layer,
+            opacity: 0.15, // Much lower opacity for file type highlights
+          }));
+
+          setBaseHighlightLayers(dulledLayers);
+          setIconMap(fileIconMap);
+        }
+      } catch (err) {
+        console.error('[MobileRepoCard] Failed to load city data:', err);
+        if (!cancelled) {
+          setFileCityError(true);
+        }
+      }
+    }
+
+    loadCityData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [summary.owner, summary.repo]);
+
+  // Build commit highlight layer for active commit
+  const commitHighlightLayer = useMemo<HighlightLayer | null>(() => {
+    console.log('[MobileRepoCard] Building commit highlight layer:', {
+      hasActiveCommit: !!activeCommit,
+      hasCityData: !!cityData,
+      commitSha: activeCommit?.sha.slice(0, 7),
+      filesCount: activeCommit?.files?.length ?? 0,
+    });
+
+    if (!activeCommit || !cityData) {
+      console.log('[MobileRepoCard] No active commit or city data');
+      return null;
+    }
+
+    if (!activeCommit.files || activeCommit.files.length === 0) {
+      console.log('[MobileRepoCard] No files in commit');
+      return null;
+    }
+
+    console.log('[MobileRepoCard] Commit files:', activeCommit.files.map(f => ({
+      filename: f.filename,
+      status: f.status,
+    })));
+
+    // For now, use a single color for all changed files
+    // Future enhancement: Create separate layers per status (added=green, modified=orange, removed=red)
+    const items = activeCommit.files.map(file => {
+      const renderStrategy: 'fill' | 'border' = file.status === 'added' ? 'fill' : 'border';
+
+      return {
+        path: file.filename,
+        type: 'file' as const,
+        renderStrategy,
+      };
+    });
+
+    const layer = {
+      id: `commit-changes-${activeCommit.sha}`,
+      name: 'Commit Changes',
+      color: theme.colors.warning, // Orange for modified files
+      opacity: 0.8,
+      enabled: true,
+      priority: 100, // Higher priority to render on top of file type layers
+      items,
+    };
+
+    console.log('[MobileRepoCard] Created commit highlight layer:', {
+      id: layer.id,
+      itemCount: layer.items.length,
+      color: layer.color,
+      opacity: layer.opacity,
+      priority: layer.priority,
+    });
+
+    return layer;
+  }, [activeCommit, cityData, theme]);
+
+  // Combine all highlight layers
+  const allHighlightLayers = useMemo(() => {
+    const combined = commitHighlightLayer
+      ? [...baseHighlightLayers, commitHighlightLayer]
+      : baseHighlightLayers;
+
+    console.log('[MobileRepoCard] All highlight layers:', {
+      baseLayersCount: baseHighlightLayers.length,
+      hasCommitLayer: !!commitHighlightLayer,
+      totalLayersCount: combined.length,
+      layerNames: combined.map(l => l.name),
+    });
+
+    return combined;
+  }, [baseHighlightLayers, commitHighlightLayer]);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -315,7 +431,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
         </View>
       )}
 
-      {/* File City Image */}
+      {/* File City Canvas */}
       <View
         style={[
           styles.fileCityContainer,
@@ -341,15 +457,22 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
               opacity={0.4}
             />
           </View>
-        ) : (
-          <Image
-            source={{ uri: fileCityImageUrl }}
-            style={styles.fileCityImage}
-            resizeMode="contain"
-            onLoad={() => setFileCityLoaded(true)}
-            onError={() => setFileCityError(true)}
-          />
-        )}
+        ) : cityData ? (
+          <View style={{ width: containerWidth, height: containerWidth }}>
+            <FileCityCanvas
+              cityData={cityData}
+              highlightLayers={allHighlightLayers}
+              iconMap={iconMap}
+              showFileTypeIcons={true}
+              backgroundColor="transparent"
+              defaultDistrictColor="#4B5155"
+              buildingBorderRadius={0}
+              showDirectoryLabels={false}
+              enableZoom={false}
+              enablePan={false}
+            />
+          </View>
+        ) : null}
       </View>
 
       {/* Commits Carousel */}

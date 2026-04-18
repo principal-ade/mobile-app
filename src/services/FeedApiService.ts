@@ -398,35 +398,39 @@ export async function unsaveCard(
 }
 
 // ============================================================================
-// Activity Heatmap
+// Recent Commits
 // ============================================================================
 
-export interface HeatmapCommit {
+export interface RecentCommit {
+  sha: string;
+  message: string;
   timestamp: string; // ISO date string
   repoId: string; // "owner/repo"
   authorLogin: string;
+  authorName: string;
+  authorEmail: string;
   authorAvatarUrl?: string;
 }
 
-export interface HeatmapAuthor {
+export interface RecentCommitsAuthor {
   login: string;
   avatarUrl?: string;
   commitCount: number;
 }
 
-export interface HeatmapRepo {
+export interface RecentCommitsRepo {
   id: string; // "owner/repo"
   owner: string;
   name: string;
   commitCount: number;
 }
 
-export interface ActivityHeatmapResponse {
-  commits: HeatmapCommit[];
+export interface RecentCommitsResponse {
+  commits: RecentCommit[];
   /** Authors with activity in this time range */
-  authors: HeatmapAuthor[];
+  authors: RecentCommitsAuthor[];
   /** Repos with activity in this time range */
-  repos: HeatmapRepo[];
+  repos: RecentCommitsRepo[];
   /** Time range covered */
   timeRange: {
     start: string; // ISO date
@@ -435,22 +439,22 @@ export interface ActivityHeatmapResponse {
 }
 
 /**
- * Get commit activity for heatmap visualization
- * Returns commits from watched users/repos for the specified time range
+ * Get recent commits from watched users/repos
+ * Returns full commit details including SHAs, messages, and authors
  * Requires authentication
  *
  * @param hoursBack - Number of hours to look back (default: 24, max: 168/1 week)
  * @param authorLogins - Optional filter to specific authors
  * @param repoIds - Optional filter to specific repos ("owner/repo" format)
  */
-export async function getActivityHeatmap(
+export async function getRecentCommits(
   githubToken: string,
   options?: {
     hoursBack?: number;
     authorLogins?: string[];
     repoIds?: string[];
   }
-): Promise<ActivityHeatmapResponse> {
+): Promise<RecentCommitsResponse> {
   const { hoursBack = 24, authorLogins, repoIds } = options || {};
 
   const input = {
@@ -461,7 +465,7 @@ export async function getActivityHeatmap(
     },
   };
 
-  const url = `${API_BASE}/trpc/feed.getActivityHeatmap?input=${encodeURIComponent(JSON.stringify(input))}`;
+  const url = `${API_BASE}/trpc/feed.getRecentCommits?input=${encodeURIComponent(JSON.stringify(input))}`;
 
   const response = await fetch(url, {
     headers: {
@@ -473,10 +477,10 @@ export async function getActivityHeatmap(
     if (response.status === 401) {
       throw new Error('Authentication required');
     }
-    throw new Error(`Failed to fetch activity heatmap: ${response.status}`);
+    throw new Error(`Failed to fetch recent commits: ${response.status}`);
   }
 
-  const data: TRPCResponse<ActivityHeatmapResponse> = await response.json();
+  const data: TRPCResponse<RecentCommitsResponse> = await response.json();
   return data.result.data;
 }
 

@@ -1,3 +1,11 @@
+export interface CommitFile {
+  filename: string;
+  status: 'added' | 'removed' | 'modified' | 'renamed' | 'copied' | 'changed' | 'unchanged';
+  additions: number;
+  deletions: number;
+  changes: number;
+}
+
 export interface ActivityCommit {
   repoOwner: string;
   repoName: string;
@@ -11,6 +19,7 @@ export interface ActivityCommit {
   additions?: number;
   deletions?: number;
   filesChanged?: number;
+  files?: CommitFile[];
 }
 
 export interface RepoActivitySummary {

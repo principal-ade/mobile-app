@@ -82,6 +82,14 @@ export type FeedStackParamList = {
 // Stack params for Watch tab
 export type WatchStackParamList = {
   WatchHome: undefined;
+  UserActivity: {
+    username: string;
+    avatarUrl?: string;
+    repoFilter?: {
+      owner: string;
+      name: string;
+    };
+  };
   RepoFileCity: {
     owner: string;
     name: string;
@@ -107,6 +115,23 @@ export type WatchStackParamList = {
   };
   Organization: {
     orgLogin: string;
+  };
+  CommitDetail: {
+    commit: {
+      repoOwner: string;
+      repoName: string;
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorEmail: string;
+      authorAvatarUrl: string | null;
+      date: string;
+      additions?: number;
+      deletions?: number;
+      filesChanged?: number;
+    };
+    fullName: string;
   };
 };
 

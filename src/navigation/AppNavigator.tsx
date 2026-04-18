@@ -25,6 +25,7 @@ import AddRepoScreen from '../screens/AddRepoScreen';
 import SwipeFeedScreen from '../screens/SwipeFeedScreen';
 import FeedTabScreen from '../screens/FeedTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
+import UserActivityScreen from '../screens/UserActivityScreen';
 import StarredTabScreen from '../screens/StarredTabScreen';
 import CardDetailScreen from '../screens/CardDetailScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
@@ -76,6 +77,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             path: 'watch',
             screens: {
               WatchHome: '',
+              UserActivity: 'user/:username/activity',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
@@ -254,6 +256,11 @@ function WatchStackNavigator() {
         options={{ headerShown: false }}
       />
       <WatchStack.Screen
+        name="UserActivity"
+        component={UserActivityScreen}
+        options={{ headerShown: false }}
+      />
+      <WatchStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
         options={{ headerShown: false }}
@@ -277,6 +284,11 @@ function WatchStackNavigator() {
         name="Organization"
         component={OrganizationScreenContainer}
         options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
+      />
+      <WatchStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{ headerShown: false }}
       />
     </WatchStack.Navigator>
   );

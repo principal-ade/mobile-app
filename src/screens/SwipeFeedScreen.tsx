@@ -23,6 +23,8 @@ import {
   saveCard,
   type CommitActivityCard,
 } from '../services/FeedApiService';
+import { fetchCommitStats } from '../services/ActivityFeedService';
+import type { CommitFile } from '../types/activity';
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import type { FeedStackParamList, MainTabParamList } from '../navigation/types';
@@ -43,22 +45,33 @@ interface SwipeFeedScreenProps {
 }
 
 // Convert API card to RepoActivitySummary format for SwipeCard
-function cardToSummary(card: CommitActivityCard) {
+function cardToSummary(
+  card: CommitActivityCard,
+  filesMap: Map<string, CommitFile[]>,
+  statsMap: Map<string, { additions: number; deletions: number; filesChanged: number }>
+) {
   return {
     owner: card.repo.owner,
     repo: card.repo.name,
     fullName: `${card.repo.owner}/${card.repo.name}`,
-    commits: card.commits.map((c) => ({
-      repoOwner: card.repo.owner,
-      repoName: card.repo.name,
-      sha: c.sha,
-      message: c.message,
-      author: c.author.login,
-      authorLogin: c.author.login,
-      authorEmail: '',
-      authorAvatarUrl: c.author.avatarUrl || null,
-      date: c.committedAt,
-    })),
+    commits: card.commits.map((c) => {
+      const stats = statsMap.get(c.sha);
+      return {
+        repoOwner: card.repo.owner,
+        repoName: card.repo.name,
+        sha: c.sha,
+        message: c.message,
+        author: c.author.login,
+        authorLogin: c.author.login,
+        authorEmail: '',
+        authorAvatarUrl: c.author.avatarUrl || null,
+        date: c.committedAt,
+        files: filesMap.get(c.sha) || [], // Include files from map
+        additions: stats?.additions,
+        deletions: stats?.deletions,
+        filesChanged: stats?.filesChanged,
+      };
+    }),
     latestCommitAt: new Date(card.latestCommitAt),
     commitCount: card.commitCount,
   };
@@ -84,6 +97,10 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const heartScale = useRef(new Animated.Value(0)).current;
 
+  // Store file changes and stats by commit SHA
+  const [commitFiles, setCommitFiles] = useState<Map<string, CommitFile[]>>(new Map());
+  const [commitStats, setCommitStats] = useState<Map<string, { additions: number; deletions: number; filesChanged: number }>>(new Map());
+
   // Debug: log seen cards count when changed
   useEffect(() => {
     if (seenCards.size > 0) {
@@ -98,6 +115,46 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         setCards(initialCards);
         setSeenCards(new Set());
         setIsLoading(false);
+
+        // Fetch file changes for guest cards too
+        const uniqueCommits = new Set<string>();
+
+        for (const card of initialCards) {
+          for (const commit of card.commits) {
+            if (!uniqueCommits.has(commit.sha)) {
+              uniqueCommits.add(commit.sha);
+
+              // Fetch file stats in background
+              fetchCommitStats(card.repo.owner, card.repo.name, commit.sha)
+                .then(stats => {
+                  if (stats) {
+                    // Update files state functionally to avoid race conditions
+                    if (stats.files) {
+                      setCommitFiles(prev => {
+                        const newMap = new Map(prev);
+                        newMap.set(commit.sha, stats.files);
+                        return newMap;
+                      });
+                    }
+
+                    // Update stats state
+                    setCommitStats(prev => {
+                      const newMap = new Map(prev);
+                      newMap.set(commit.sha, {
+                        additions: stats.additions,
+                        deletions: stats.deletions,
+                        filesChanged: stats.filesChanged,
+                      });
+                      return newMap;
+                    });
+                  }
+                })
+                .catch(err => {
+                  console.warn(`[SwipeFeed Guest] Failed to fetch files for ${commit.sha.slice(0, 7)}:`, err);
+                });
+            }
+          }
+        }
       } else {
         setIsLoading(true);
       }
@@ -120,6 +177,46 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
       setCards(result.cards);
       setSeenCards(new Set());
       setLastFetchedAt(new Date());
+
+      // Fetch file changes for all commits in background
+      const uniqueCommits = new Set<string>(); // Track unique SHAs to avoid duplicate fetches
+
+      for (const card of result.cards) {
+        for (const commit of card.commits) {
+          if (!uniqueCommits.has(commit.sha)) {
+            uniqueCommits.add(commit.sha);
+
+            // Fetch file stats in background (don't await)
+            fetchCommitStats(card.repo.owner, card.repo.name, commit.sha)
+              .then(stats => {
+                if (stats) {
+                  // Update files state functionally to avoid race conditions
+                  if (stats.files) {
+                    setCommitFiles(prev => {
+                      const newMap = new Map(prev);
+                      newMap.set(commit.sha, stats.files);
+                      return newMap;
+                    });
+                  }
+
+                  // Update stats state
+                  setCommitStats(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(commit.sha, {
+                      additions: stats.additions,
+                      deletions: stats.deletions,
+                      filesChanged: stats.filesChanged,
+                    });
+                    return newMap;
+                  });
+                }
+              })
+              .catch(err => {
+                console.warn(`[SwipeFeed] Failed to fetch files for ${commit.sha.slice(0, 7)}:`, err);
+              });
+          }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feed');
     } finally {
@@ -342,7 +439,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
     }
 
     const actualCard = card as CommitActivityCard;
-    const summary = cardToSummary(actualCard);
+    const summary = cardToSummary(actualCard, commitFiles, commitStats);
     const isSaved = savedCardId === actualCard.itemId;
 
     return (
@@ -377,7 +474,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         </View>
       </TapGestureHandler>
     );
-  }, [availableHeight, handleDoubleTap, savedCardId, heartScale, theme.colors, insets, isGuest, lastFetchedAt, formatLastFetched, navigation, handleGoToCustomize, onRefresh]);
+  }, [availableHeight, handleDoubleTap, savedCardId, heartScale, theme.colors, insets, isGuest, lastFetchedAt, formatLastFetched, navigation, handleGoToCustomize, onRefresh, commitFiles, commitStats]);
 
   // Loading state
   if (isLoading) {
