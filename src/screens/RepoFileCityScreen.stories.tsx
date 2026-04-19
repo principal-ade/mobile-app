@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import React from 'react';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { ThemeProvider } from '@principal-ade/industry-theme';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RepoFileCityScreen } from './RepoFileCityScreen';
@@ -10,7 +11,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { FeedPreferencesProvider } from '../context/FeedPreferencesContext';
 import type { FeedStackParamList } from '../navigation/types';
 
-const Stack = createStackNavigator<FeedStackParamList>();
+const Tab = createMaterialTopTabNavigator<FeedStackParamList>();
 
 // Mock user for auth context
 const mockUser = {
@@ -28,7 +29,7 @@ const mockTokens = {
   refreshToken: 'mock-refresh-token',
 };
 
-// Wrapper component that provides all necessary context and navigation
+// Wrapper component that provides all necessary context
 const RepoFileCityScreenWrapper = ({
   owner,
   name,
@@ -42,12 +43,13 @@ const RepoFileCityScreenWrapper = ({
         <AuthProvider initialTokens={mockTokens} initialUser={mockUser}>
           <FeedPreferencesProvider>
             <NavigationContainer>
-              <Stack.Navigator
+              <Tab.Navigator
                 screenOptions={{
-                  headerShown: false,
+                  tabBarStyle: { display: 'none' }, // Hide tab bar for storybook
+                  swipeEnabled: false,
                 }}
               >
-                <Stack.Screen
+                <Tab.Screen
                   name="RepoFileCity"
                   component={RepoFileCityScreen}
                   initialParams={{
@@ -56,7 +58,7 @@ const RepoFileCityScreenWrapper = ({
                     fullName: `${owner}/${name}`,
                   }}
                 />
-              </Stack.Navigator>
+              </Tab.Navigator>
             </NavigationContainer>
           </FeedPreferencesProvider>
         </AuthProvider>
