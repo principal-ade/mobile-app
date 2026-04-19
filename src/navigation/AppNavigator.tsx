@@ -31,7 +31,7 @@ import CardDetailScreen from '../screens/CardDetailScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
-import RepoFileCityScreen from '../screens/RepoFileCityScreen';
+import { RepoFileCityScreen } from '../screens/RepoFileCityScreen';
 import RepoReadmeScreen from '../screens/RepoReadmeScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
@@ -163,6 +163,14 @@ function FeedStackNavigator() {
         component={FeedTabScreen}
         options={{ headerShown: false }}
       />
+      <FeedStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
       {isAuthenticated && (
         <>
           <FeedStack.Screen
@@ -174,14 +182,6 @@ function FeedStackNavigator() {
             name="CardDetail"
             component={CardDetailScreen}
             options={{ headerShown: false, presentation: 'modal' }}
-          />
-          <FeedStack.Screen
-            name="CommitDetail"
-            component={CommitDetailScreen}
-            options={{
-              headerShown: false,
-              presentation: 'card',
-            }}
           />
           <FeedStack.Screen
             name="SavedCards"
@@ -340,6 +340,11 @@ function SearchStackNavigator() {
         component={OrganizationScreenContainer}
         options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
       />
+      <SearchStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{ headerShown: false }}
+      />
     </SearchStack.Navigator>
   );
 }
@@ -384,6 +389,11 @@ function StarredStackNavigator() {
         name="UserProfile"
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+      <StarredStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{ headerShown: false }}
       />
     </StarredStack.Navigator>
   );

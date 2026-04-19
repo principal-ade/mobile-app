@@ -164,6 +164,23 @@ export type SearchStackParamList = {
   Organization: {
     orgLogin: string;
   };
+  CommitDetail: {
+    commit: {
+      repoOwner: string;
+      repoName: string;
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorEmail: string;
+      authorAvatarUrl: string | null;
+      date: string;
+      additions?: number;
+      deletions?: number;
+      filesChanged?: number;
+    };
+    fullName: string;
+  };
 };
 
 // Stack params for Starred tab
@@ -191,6 +208,23 @@ export type StarredStackParamList = {
     username: string;
     isOrganization?: boolean;
     isBot?: boolean;
+  };
+  CommitDetail: {
+    commit: {
+      repoOwner: string;
+      repoName: string;
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorEmail: string;
+      authorAvatarUrl: string | null;
+      date: string;
+      additions?: number;
+      deletions?: number;
+      filesChanged?: number;
+    };
+    fullName: string;
   };
 };
 

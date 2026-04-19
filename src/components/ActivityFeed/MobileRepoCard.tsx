@@ -19,7 +19,6 @@ import { createFileHighlightLayers } from '@principal-ai/file-city-builder';
 import { Logo } from '../Logo';
 import { FileCityCanvas } from '../FileCity/FileCityCanvas';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
-import type { FeedStackParamList } from '../../navigation/types';
 import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
 import { getFileCityData } from '../../services/FileCityService';
 import type { FileTypeIconConfig } from '@principal-ai/file-city-builder';
@@ -72,7 +71,8 @@ const TIMELINE_LINE_HEIGHT = 2;
 
 export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopInset = false }: MobileRepoCardProps) {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp<FeedStackParamList>>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = useNavigation<NavigationProp<any>>();
   const insets = useSafeAreaInsets();
   const topInset = skipTopInset ? 0 : insets.top;
   const [avatarError, setAvatarError] = useState(false);

@@ -110,7 +110,7 @@ export function UserCard({
               style={styles.viewActivityButton}
             >
               <LucideIcon
-                name="Newspaper"
+                name="FileText"
                 size={16}
                 color={theme.colors.primary}
               />

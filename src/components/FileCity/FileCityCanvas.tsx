@@ -662,7 +662,7 @@ export function FileCityCanvas({
           y: topLeft.y + inset,
           width: width - scaledBorderWidth,
           height: height - scaledBorderWidth,
-          borderColor: adjustColorBrightness(defaultDistrictColor, 40),
+          borderColor: adjustColorBrightness(defaultDistrictColor, 15),
           borderOpacity,
           districtName,
           shouldShowText,

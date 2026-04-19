@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { hexToRgb, getIntensityColor } from '../utils/heatmapUtils';
 
@@ -26,6 +26,7 @@ export interface ContributionGridProps {
   daySize?: number; // Size of each cell (auto-calculated if not provided)
   emptyColor?: string; // Override for empty cells
   primaryColor?: string; // Override for filled cells
+  scrollToEnd?: boolean; // Scroll to the end (most recent) on mount (default: false)
 }
 
 interface WeekData {
@@ -43,9 +44,11 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({
   daySize: providedDaySize,
   emptyColor,
   primaryColor,
+  scrollToEnd = false,
 }) => {
   const { theme } = useTheme();
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
   const [measuredHeight, setMeasuredHeight] = React.useState<number | null>(null);
   const [measuredWidth, setMeasuredWidth] = React.useState<number | null>(null);
 
@@ -101,6 +104,17 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({
       return () => animation.stop();
     }
   }, [loading, shimmerAnim]);
+
+  // Scroll to end on mount (for weeks layout)
+  useEffect(() => {
+    if (scrollToEnd && !loading && layout === 'weeks' && scrollViewRef.current && daySize > 0) {
+      // Use a small delay to ensure content is laid out
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToEnd, loading, layout, daySize]);
 
   // Calculate weeks to show (for weeks layout)
   const weeksToShow = useMemo(() => {
@@ -220,6 +234,20 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({
     return borderColor;
   };
 
+  // Get month letter for a date (first letter of month name)
+  const getMonthLetter = (dateStr: string): string | null => {
+    const date = new Date(dateStr);
+    const dayOfMonth = date.getDate();
+
+    // Only show on first day of month
+    if (dayOfMonth !== 1) {
+      return null;
+    }
+
+    const monthNames = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    return monthNames[date.getMonth()];
+  };
+
   // Create wave shimmer opacity for each block based on position
   const getWaveOpacity = (weekIdx: number, _dayIdx: number) => {
     const totalBlocks = weeksToShow;
@@ -277,6 +305,7 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({
         ) : (
           // Weeks layout skeleton
           <ScrollView
+            ref={scrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={[styles.weeksGrid, { gap }]}
@@ -340,6 +369,7 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({
       ) : (
         // Weeks layout: horizontal scrolling weeks
         <ScrollView
+          ref={scrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[styles.weeksGrid, { gap }]}
@@ -348,18 +378,41 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({
             const weekHeight = (daySize * 7) + (gap * 6);
             return (
             <View key={weekIdx} style={[styles.week, { width: daySize, height: weekHeight, gap }]}>
-              {week.days.map((day, dayIdx) => (
-                <View
-                  key={dayIdx}
-                  style={[
-                    styles.day,
-                    { width: daySize, height: daySize },
-                    {
-                      backgroundColor: day ? getColor(day.count) : 'transparent',
-                    },
-                  ]}
-                />
-              ))}
+              {week.days.map((day, dayIdx) => {
+                const monthLetter = day ? getMonthLetter(day.date) : null;
+                return (
+                  <View
+                    key={dayIdx}
+                    style={[
+                      styles.dayContainer,
+                      { width: daySize, height: daySize },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.day,
+                        { width: daySize, height: daySize },
+                        {
+                          backgroundColor: day ? getColor(day.count) : 'transparent',
+                        },
+                      ]}
+                    />
+                    {monthLetter && (
+                      <Text
+                        style={[
+                          styles.monthLabel,
+                          {
+                            fontSize: Math.max(daySize * 0.5, 8),
+                            color: theme.colors.text,
+                          },
+                        ]}
+                      >
+                        {monthLetter}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           );
           })}
@@ -387,8 +440,18 @@ const styles = StyleSheet.create({
   },
   week: {
   },
+  dayContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   day: {
     borderRadius: 1.5,
+  },
+  monthLabel: {
+    position: 'absolute',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

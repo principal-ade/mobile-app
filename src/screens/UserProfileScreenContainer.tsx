@@ -174,7 +174,7 @@ export function UserProfileScreenContainer() {
           // Will succeed for: bot user accounts (dependabot[bot])
           // Will fail for: GitHub Apps without user accounts (opencode-agent)
           try {
-            const activity = await getUserActivity(username, 150, 1);
+            const activity = await getUserActivity(username, 365, 1);
             setActivityData(activity);
           } catch {
             // This bot is likely a GitHub App without a user account
@@ -196,11 +196,11 @@ export function UserProfileScreenContainer() {
         setUserData(profile);
 
         // Then fetch activity data, repos, orgs, and pinned repos in parallel
-        // Request 150 days (5 months) of contribution data for the heatmap
+        // Request 365 days (12 months) of contribution data for the heatmap
         // Request 1 day of activity events for recent activity section
         // Skip activity for organizations (they don't have personal contributions)
         const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
-          isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 150, 1),
+          isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 365, 1),
           token ? fetchUserRepositories(token, username) : Promise.resolve([]),
           token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
           getPinnedRepositories(username),
@@ -277,7 +277,7 @@ export function UserProfileScreenContainer() {
                 });
 
                 try {
-                  const activity = await getUserActivity(username, 150, 1);
+                  const activity = await getUserActivity(username, 365, 1);
                   setActivityData(activity);
                 } catch {
                   // GitHub App without user account - show empty activity
@@ -296,7 +296,7 @@ export function UserProfileScreenContainer() {
               setUserData(profile);
 
               const [activity, repos, orgs, pinnedRepoNames] = await Promise.allSettled([
-                isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 150, 1),
+                isOrganization ? Promise.resolve({ user: { login: username, name: null, avatarUrl: profile.avatar_url, followersCount: 0 }, activity: [], contributions: [], contributedRepos: [] }) : getUserActivity(username, 365, 1),
                 token ? fetchUserRepositories(token, username) : Promise.resolve([]),
                 token ? fetchOrganizationsForUser(token, username) : Promise.resolve([]),
                 getPinnedRepositories(username),
