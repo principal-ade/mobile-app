@@ -93,7 +93,10 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
   }, []);
 
   // Calculate commit section height based on known layout dimensions
-  const fileCityHeight = containerWidth + FILE_CITY_BORDER;
+  // Limit File City to 50% of container height max, while keeping it square
+  const maxFileCityHeight = containerHeight * 0.5;
+  const fileCitySize = Math.min(containerWidth, maxFileCityHeight);
+  const fileCityHeight = fileCitySize + FILE_CITY_BORDER;
   const topContentHeight = hourLabel
     ? topInset + HOUR_LABEL_HEIGHT + HEADER_HEIGHT
     : topInset + HEADER_HEIGHT;
@@ -441,7 +444,11 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
       <View
         style={[
           styles.fileCityContainer,
-          { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
+          {
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+            height: fileCitySize,
+          },
         ]}
       >
         {!fileCityLoaded && !fileCityError && (
@@ -464,7 +471,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
             />
           </View>
         ) : cityData ? (
-          <View style={{ width: containerWidth, height: containerWidth }}>
+          <View style={{ width: fileCitySize, height: fileCitySize }}>
             <FileCityCanvas
               cityData={cityData}
               highlightLayers={allHighlightLayers}
@@ -554,7 +561,6 @@ const styles = StyleSheet.create({
   },
   fileCityContainer: {
     width: '100%',
-    aspectRatio: 1,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     alignItems: 'center',
