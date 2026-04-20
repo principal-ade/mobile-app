@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { ToursTabScreen } from './ToursTabScreen';
@@ -20,10 +20,21 @@ export function StarredTabScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
-  const { collections, createCollection, addRepoToCollection, removeRepoFromCollection } = useCollections();
+  const { collections, createCollection, addRepoToCollection, removeRepoFromCollection, syncWithServer } = useCollections();
   const [activeTab, setActiveTab] = useState<TabType>('starred');
   const [starredRepos, setStarredRepos] = useState<StarredRepo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync collections from server when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        syncWithServer().catch((error) => {
+          console.warn('Failed to sync collections on focus:', error);
+        });
+      }
+    }, [token, syncWithServer])
+  );
 
   // Fetch starred repos on mount
   useEffect(() => {
@@ -132,16 +143,24 @@ export function StarredTabScreen() {
             if (!token) return;
             setIsLoading(true);
             try {
-              const { repos } = await getSuggestedRepos(token);
-              const starred = repos
-                .filter((r) => r.source === 'starred')
-                .map((repo) => ({
-                  ...repo,
-                  owner_avatar_url: repo.owner_avatar_url || `https://github.com/${repo.owner}.png`,
-                }));
-              setStarredRepos(starred);
+              // Sync collections and starred repos in parallel
+              await Promise.all([
+                syncWithServer().catch((error) => {
+                  console.warn('Failed to sync collections on refresh:', error);
+                }),
+                (async () => {
+                  const { repos } = await getSuggestedRepos(token);
+                  const starred = repos
+                    .filter((r) => r.source === 'starred')
+                    .map((repo) => ({
+                      ...repo,
+                      owner_avatar_url: repo.owner_avatar_url || `https://github.com/${repo.owner}.png`,
+                    }));
+                  setStarredRepos(starred);
+                })(),
+              ]);
             } catch (error) {
-              console.error('Failed to refresh starred repos:', error);
+              console.error('Failed to refresh:', error);
             } finally {
               setIsLoading(false);
             }
