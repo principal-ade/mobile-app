@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,20 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  FlatList,
+  useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
+import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { ContributionGrid, DailyContribution } from '../../components/ContributionGrid';
 import { LucideIcon } from '../../components/LucideIcon';
 import { GitHubRepository, GitHubOrganization, GitHubAccountType } from '../../types/github';
 import { ContributedRepository } from '../../services/GitHubSearchService';
-import { formatUpdateTime, formatNumber } from './utils';
+import { formatNumber } from './utils';
+import { TabletRepoCard } from '../../components/TabletRepoCard';
+import { fetchRepository } from '../../services/GithubService';
+import { useAuthContext } from '../../context/AuthContext';
 
 export interface ActivityCommit {
   sha: string;
@@ -70,17 +75,80 @@ export const UserProfileTabletLayout: React.FC<UserProfileTabletLayoutProps> = (
   onWatchPress,
   onClose,
   isWatching = false,
+  recentActivity = [],
   contributions = [],
   repositories = [],
   pinnedRepoNames = [],
+  contributedRepos = [],
+  organizations = [],
   onRepoPress,
+  onOrgPress,
+  onOwnerPress,
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const layout = useWindowDimensions();
+  const { token } = useAuthContext();
+  const [tabIndex, setTabIndex] = useState(0);
+  const [routes] = useState([
+    { key: 'activity', title: 'Activity' },
+    { key: 'repos', title: 'Repos' },
+    { key: 'orgs', title: 'Orgs' },
+  ]);
+
+  // State for full repository details
+  const [contributedReposDetails, setContributedReposDetails] = useState<GitHubRepository[]>([]);
+  const [loadingContributedRepos, setLoadingContributedRepos] = useState(false);
 
   // Calculate stats from contributions
   const commitsThisYear = contributions.reduce((sum, day) => sum + day.count, 0);
   const totalRepos = repositories.length;
+
+  // Detect landscape orientation
+  const isLandscape = layout.width > layout.height;
+
+  // Fetch full repository details for contributed repos
+  useEffect(() => {
+    if (!token || contributedRepos.length === 0) {
+      setContributedReposDetails([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchFullRepoDetails = async () => {
+      setLoadingContributedRepos(true);
+
+      try {
+        // Fetch full details for each contributed repo
+        const detailsPromises = contributedRepos.map((repo) =>
+          fetchRepository(token, repo.owner, repo.name).catch((err) => {
+            console.warn(`Failed to fetch details for ${repo.nameWithOwner}:`, err);
+            return null;
+          })
+        );
+
+        const details = await Promise.all(detailsPromises);
+
+        if (!cancelled) {
+          // Filter out null values (failed fetches)
+          setContributedReposDetails(details.filter((d): d is GitHubRepository => d !== null));
+          setLoadingContributedRepos(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to fetch contributed repo details:', err);
+          setLoadingContributedRepos(false);
+        }
+      }
+    };
+
+    fetchFullRepoDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, contributedRepos]);
 
   // Render skeleton loading state
   if (loading) {
@@ -109,6 +177,218 @@ export const UserProfileTabletLayout: React.FC<UserProfileTabletLayoutProps> = (
   const userName = name!;
   const userUsername = username!;
 
+  // Activity Tab Content
+  const ActivityRoute = () => (
+    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+      <View style={styles.tabContent}>
+        {/* Recent Commits Section */}
+        {recentActivity.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Recent Commits
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>
+              Last 24 hours
+            </Text>
+            <View style={styles.activityList}>
+              {recentActivity.map((group) => {
+                const repoName = group.repo.includes('/') ? group.repo.split('/')[1] : group.repo;
+                return (
+                  <TouchableOpacity
+                    key={group.id}
+                    style={[styles.activityCard, { backgroundColor: theme.colors.surface }]}
+                    onPress={() => {
+                      if (onRepoPress) {
+                        onRepoPress(group.repoOwner, repoName, group.repo);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (onOwnerPress) {
+                          onOwnerPress(group.repoOwner, group.repoOwnerType);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Image
+                        source={{ uri: group.repoOwnerAvatar }}
+                        style={styles.activityAvatar}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.activityInfo}>
+                      <Text style={[styles.activityRepoName, { color: theme.colors.text }]} numberOfLines={1}>
+                        {repoName}
+                      </Text>
+                      <Text style={[styles.activityOwner, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                        {group.repoOwner}
+                      </Text>
+                    </View>
+                    <View style={styles.activityStats}>
+                      <Text style={[styles.activityTime, { color: theme.colors.textSecondary }]}>
+                        {group.hoursAgo === 0 ? 'Just now' : group.hoursAgo === 1 ? '1h ago' : `${group.hoursAgo}h ago`}
+                      </Text>
+                      <Text style={[styles.activityCommits, { color: theme.colors.textSecondary }]}>
+                        {group.commitCount} {group.commitCount === 1 ? 'commit' : 'commits'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Contributed Repositories Section */}
+        {contributedRepos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Contributed Repositories
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>
+              Past 5 months
+            </Text>
+            {loadingContributedRepos ? (
+              <View style={styles.loadingReposContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={[styles.loadingReposText, { color: theme.colors.textSecondary }]}>
+                  Loading repository details...
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.contributedReposList, isLandscape && styles.repositoriesListLandscape]}>
+                {contributedReposDetails.map((repo) => {
+                  const [owner, name] = repo.full_name.split('/');
+                  return (
+                    <View key={repo.id} style={isLandscape ? styles.repoCardContainer : undefined}>
+                      <TabletRepoCard
+                        owner={owner}
+                        name={name}
+                        fullName={repo.full_name}
+                        description={repo.description}
+                        language={repo.language}
+                        stars={repo.stargazers_count}
+                        updatedAt={repo.updated_at}
+                        onPress={() => {
+                          if (onRepoPress) {
+                            onRepoPress(owner, name, repo.full_name);
+                          }
+                        }}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Empty state */}
+        {recentActivity.length === 0 && contributedRepos.length === 0 && (
+          <View style={styles.emptyStateContainer}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
+              No recent activity
+            </Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  // Repos Tab Content
+  const ReposRoute = () => (
+    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+      <View style={styles.tabContent}>
+        {repositories.length > 0 ? (
+          <View style={[styles.repositoriesList, isLandscape && styles.repositoriesListLandscape]}>
+            {repositories.slice(0, 9).map((item) => {
+              const [owner, name] = item.full_name.split('/');
+              return (
+                <View key={item.id} style={isLandscape ? styles.repoCardContainer : undefined}>
+                  <TabletRepoCard
+                    owner={owner}
+                    name={name}
+                    fullName={item.full_name}
+                    description={item.description}
+                    language={item.language}
+                    stars={item.stargazers_count}
+                    updatedAt={item.updated_at}
+                    isPinned={pinnedRepoNames.includes(item.full_name)}
+                    onPress={() => {
+                      if (onRepoPress) {
+                        onRepoPress(owner, name, item.full_name);
+                      }
+                    }}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
+              No repositories found
+            </Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  // Orgs Tab Content
+  const OrgsRoute = () => (
+    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+      <View style={styles.tabContent}>
+        {organizations.length > 0 ? (
+          <View style={styles.orgsList}>
+            {organizations.map((org) => (
+              <TouchableOpacity
+                key={org.id}
+                style={[styles.orgCard, { backgroundColor: theme.colors.surface }]}
+                onPress={() => {
+                  if (onOrgPress) {
+                    onOrgPress(org.login);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: org.avatar_url }}
+                  style={styles.orgAvatar}
+                  resizeMode="cover"
+                />
+                <View style={styles.orgInfo}>
+                  <Text style={[styles.orgName, { color: theme.colors.text }]} numberOfLines={1}>
+                    {org.login}
+                  </Text>
+                  {org.description && (
+                    <Text style={[styles.orgDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+                      {org.description}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
+              No organizations
+            </Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  const renderScene = SceneMap({
+    activity: ActivityRoute,
+    repos: ReposRoute,
+    orgs: OrgsRoute,
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Close button */}
@@ -123,202 +403,137 @@ export const UserProfileTabletLayout: React.FC<UserProfileTabletLayoutProps> = (
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.scrollView}>
-        {/* Activity Heatmap Banner */}
-        <View style={[styles.heatmapBanner, { marginTop: insets.top }]}>
-          <ContributionGrid
-            contributions={contributions}
-            layout="weeks"
-            months={12}
-            loading={contributions.length === 0}
-            scrollToEnd={true}
+      {/* Activity Heatmap Banner */}
+      <View style={[styles.heatmapBanner, { marginTop: insets.top }]}>
+        <ContributionGrid
+          contributions={contributions}
+          layout="weeks"
+          months={12}
+          loading={contributions.length === 0}
+          scrollToEnd={true}
+        />
+      </View>
+
+      {/* Profile Header with overlapping avatar */}
+      <View style={styles.profileHeader}>
+        <View style={styles.avatarAndStats}>
+          {/* Avatar - overlaps banner */}
+          <Image
+            source={{ uri: userAvatarUrl }}
+            style={[styles.avatar, { borderColor: theme.colors.background }]}
+            resizeMode="cover"
           />
-        </View>
 
-        {/* Profile Header with overlapping avatar */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarAndStats}>
-            {/* Avatar - overlaps banner */}
-            <Image
-              source={{ uri: userAvatarUrl }}
-              style={[styles.avatar, { borderColor: theme.colors.background }]}
-              resizeMode="cover"
-            />
-
-            {/* Stats Row */}
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {formatNumber(commitsThisYear)}
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                  commits this year
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {formatNumber(totalRepos)}
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                  projects
-                </Text>
-              </View>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                {formatNumber(commitsThisYear)}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+                commits this year
+              </Text>
             </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                {formatNumber(totalRepos)}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+                projects
+              </Text>
+            </View>
+          </View>
 
-            {/* Action Button - right aligned */}
-            <TouchableOpacity
+          {/* Action Button - right aligned */}
+          <TouchableOpacity
+            style={[
+              styles.watchButton,
+              {
+                backgroundColor: isWatching
+                  ? theme.colors.surface
+                  : theme.colors.primary,
+                borderColor: theme.colors.primary,
+              },
+            ]}
+            onPress={onWatchPress}
+          >
+            <Text
               style={[
-                styles.watchButton,
+                styles.watchButtonText,
                 {
-                  backgroundColor: isWatching
-                    ? theme.colors.surface
-                    : theme.colors.primary,
-                  borderColor: theme.colors.primary,
+                  color: isWatching ? theme.colors.primary : theme.colors.text,
                 },
               ]}
-              onPress={onWatchPress}
             >
-              <Text
-                style={[
-                  styles.watchButtonText,
-                  {
-                    color: isWatching ? theme.colors.primary : theme.colors.text,
-                  },
-                ]}
-              >
-                {isWatching ? 'Watching' : 'Watch'}
+              {isWatching ? 'Watching' : 'Watch'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Name + Username */}
+        <View style={styles.nameSection}>
+          <Text style={[styles.name, { color: theme.colors.text }]}>
+            {userName}
+          </Text>
+          <View style={styles.socialHandles}>
+            <TouchableOpacity
+              style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
+              onPress={() => Linking.openURL(`https://github.com/${userUsername}`)}
+              activeOpacity={0.7}
+            >
+              <LucideIcon name="Github" size={14} color={theme.colors.textSecondary} />
+              <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
+                {userUsername}
               </Text>
             </TouchableOpacity>
+            {twitterHandle && (
+              <>
+                <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary }]}>•</Text>
+                <TouchableOpacity
+                  style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
+                  onPress={() => Linking.openURL(`https://twitter.com/${twitterHandle}`)}
+                  activeOpacity={0.7}
+                >
+                  <LucideIcon name="Twitter" size={14} color={theme.colors.textSecondary} />
+                  <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
+                    {twitterHandle}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-
-          {/* Name + Username */}
-          <View style={styles.nameSection}>
-            <Text style={[styles.name, { color: theme.colors.text }]}>
-              {userName}
-            </Text>
-            <View style={styles.socialHandles}>
-              <TouchableOpacity
-                style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
-                onPress={() => Linking.openURL(`https://github.com/${userUsername}`)}
-                activeOpacity={0.7}
-              >
-                <LucideIcon name="Github" size={14} color={theme.colors.textSecondary} />
-                <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
-                  {userUsername}
-                </Text>
-              </TouchableOpacity>
-              {twitterHandle && (
-                <>
-                  <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary }]}>•</Text>
-                  <TouchableOpacity
-                    style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
-                    onPress={() => Linking.openURL(`https://twitter.com/${twitterHandle}`)}
-                    activeOpacity={0.7}
-                  >
-                    <LucideIcon name="Twitter" size={14} color={theme.colors.textSecondary} />
-                    <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
-                      {twitterHandle}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-
-          {/* Bio */}
-          {bio && (
-            <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
-              {bio}
-            </Text>
-          )}
         </View>
 
-        {/* Repositories Section */}
-        <View style={styles.repositoriesSection}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Popular repositories
+        {/* Bio */}
+        {bio && (
+          <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
+            {bio}
           </Text>
+        )}
+      </View>
 
-          {repositories.length > 0 ? (
-            <FlatList
-              data={repositories}
-              scrollEnabled={false}
-              numColumns={2}
-              columnWrapperStyle={styles.repositoryRow}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => {
-                const [owner, name] = item.full_name.split('/');
-                return (
-                  <TouchableOpacity
-                    style={[styles.repoCard, { backgroundColor: theme.colors.surface }]}
-                    onPress={() => {
-                      if (onRepoPress) {
-                        onRepoPress(owner, name, item.full_name);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.repoHeader}>
-                      <LucideIcon name="GitBranch" size={16} color={theme.colors.accent} />
-                      <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      {pinnedRepoNames.includes(item.full_name) && (
-                        <LucideIcon name="Pin" size={14} color={theme.colors.accent} />
-                      )}
-                    </View>
-
-                    {item.description && (
-                      <Text
-                        style={[styles.repoDescription, { color: theme.colors.textSecondary }]}
-                        numberOfLines={2}
-                      >
-                        {item.description}
-                      </Text>
-                    )}
-
-                    <View style={styles.repoStats}>
-                      <View style={styles.repoStat}>
-                        <LucideIcon name="Star" size={12} color={theme.colors.textTertiary} />
-                        <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
-                          {formatNumber(item.stargazers_count)}
-                        </Text>
-                      </View>
-                      {item.language && (
-                        <View style={styles.repoStat}>
-                          <View style={[styles.languageDot, { backgroundColor: theme.colors.accent }]} />
-                          <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
-                            {item.language}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <Text style={[styles.repoUpdated, { color: theme.colors.textTertiary }]}>
-                      {formatUpdateTime(item.updated_at)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          ) : (
-            <View style={[styles.emptyState, { backgroundColor: theme.colors.surface }]}>
-              <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
-                No repositories found
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+      {/* Tab View */}
+      <TabView
+        navigationState={{ index: tabIndex, routes }}
+        renderScene={renderScene}
+        renderTabBar={(props) => (
+          <TabBar
+            {...props}
+            indicatorStyle={{ backgroundColor: theme.colors.primary }}
+            style={{ backgroundColor: theme.colors.background }}
+            activeColor={theme.colors.text}
+            inactiveColor={theme.colors.textSecondary}
+          />
+        )}
+        onIndexChange={setTabIndex}
+        initialLayout={{ width: layout.width }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  scrollView: {
     flex: 1,
   },
   loadingContainer: {
@@ -437,75 +652,124 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  repositoriesSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+  tabContent: {
+    padding: 16,
+  },
+  section: {
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
     marginBottom: 16,
   },
-  repositoryRow: {
-    gap: 16,
-    marginBottom: 16,
+  activityList: {
+    gap: 12,
   },
-  repoCard: {
-    flex: 1,
+  activityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     borderRadius: 12,
+    gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
-  repoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+  activityAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
   },
-  repoName: {
-    fontSize: 16,
-    fontWeight: '600',
+  activityInfo: {
     flex: 1,
   },
-  repoDescription: {
+  activityRepoName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  activityOwner: {
+    fontSize: 14,
+  },
+  activityStats: {
+    alignItems: 'flex-end',
+  },
+  activityTime: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  activityCommits: {
+    fontSize: 13,
+  },
+  contributedReposList: {
+    // Container for TabletRepoCard components
+  },
+  loadingReposContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingReposText: {
+    fontSize: 14,
+  },
+  repositoriesList: {
+    // Container for the list of TabletRepoCard components
+  },
+  repositoriesListLandscape: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8, // Negative margin to offset container padding
+  },
+  repoCardContainer: {
+    width: '50%',
+    paddingHorizontal: 8,
+  },
+  orgsList: {
+    gap: 12,
+  },
+  orgCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  orgAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+  },
+  orgInfo: {
+    flex: 1,
+  },
+  orgName: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  orgDescription: {
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 12,
-    minHeight: 40, // Keep cards aligned
   },
-  repoStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  repoStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  repoStatText: {
-    fontSize: 12,
-  },
-  languageDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  repoUpdated: {
-    fontSize: 12,
-  },
-  emptyState: {
+  emptyStateContainer: {
     padding: 40,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyStateText: {
-    fontSize: 14,
+    fontSize: 16,
   },
 });

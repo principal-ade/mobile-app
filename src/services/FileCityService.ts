@@ -10,6 +10,7 @@ import {
 } from '@principal-ai/file-city-builder';
 import type { CityData, HighlightLayer, FileTypeIconConfig } from '@principal-ai/file-city-builder';
 import { apiConfig } from '../utils/config';
+import { GitHubAccountType } from '../types/github';
 
 // Types matching the web-ade API response
 interface GitHubTreeEntry {
@@ -35,6 +36,7 @@ interface GitHubRepoInfoResponse {
   owner: {
     login: string;
     avatar_url: string;
+    type: GitHubAccountType;
   };
   description: string | null;
   stargazers_count: number;
@@ -48,6 +50,7 @@ interface GitHubRepoInfoResponse {
 
 export interface RepoInfo {
   ownerAvatarUrl: string;
+  ownerType: GitHubAccountType;
   description: string | null;
   stargazersCount: number;
   forksCount: number;
@@ -178,6 +181,7 @@ export async function getFileCityForRepo(
   // Extract repo info
   const repoInfo: RepoInfo = {
     ownerAvatarUrl: repoInfoResponse.owner.avatar_url,
+    ownerType: repoInfoResponse.owner.type,
     description: repoInfoResponse.description,
     stargazersCount: repoInfoResponse.stargazers_count,
     forksCount: repoInfoResponse.forks_count,

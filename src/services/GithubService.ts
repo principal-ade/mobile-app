@@ -53,6 +53,16 @@ export async function fetchRepositories(token: string): Promise<GitHubRepository
   return request<GitHubRepository[]>('/user/repos?per_page=100&sort=updated', token);
 }
 
+export async function fetchRepository(
+  token: string,
+  owner: string,
+  repo: string,
+): Promise<GitHubRepository> {
+  const encodedOwner = encodeRepositorySegment(owner);
+  const encodedRepo = encodeRepositorySegment(repo);
+  return request<GitHubRepository>(`/repos/${encodedOwner}/${encodedRepo}`, token);
+}
+
 export async function fetchUserRepositories(
   token: string,
   username: string,
@@ -210,6 +220,34 @@ export async function fetchOrganizationMembers(
 
   if (!response.ok) {
     throw new Error(`Failed to fetch organization members: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+export interface Contributor {
+  id: number;
+  login: string;
+  avatar_url: string;
+  contributions: number;
+  type: 'User' | 'Bot' | 'Organization';
+}
+
+export async function fetchRepositoryContributors(
+  owner: string,
+  repo: string,
+): Promise<Contributor[]> {
+  const encodedOwner = encodeRepositorySegment(owner);
+  const encodedRepo = encodeRepositorySegment(repo);
+  const response = await fetch(`${BASE_URL}/repos/${encodedOwner}/${encodedRepo}/contributors?per_page=30`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch repository contributors: ${response.status}`);
   }
 
   return await response.json();

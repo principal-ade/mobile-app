@@ -16,7 +16,10 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  useWindowDimensions,
+  Modal,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -30,7 +33,7 @@ import { getRepoContributions } from '../../services/GitHubSearchService';
 import { useFeedPreferences } from '../../context/FeedPreferencesContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { LucideIcon } from '../../components/LucideIcon';
-import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
+import { fetchRepoReadme, fetchRepositoryContributors, type Contributor } from '../../services/GithubService';
 
 type RouteProps = RouteProp<FeedStackParamList, 'RepoFileCity'>;
 
@@ -69,9 +72,43 @@ function getRepositoryAge(createdAt: string): string {
   return `${diffYears} year${diffYears !== 1 ? 's' : ''}`;
 }
 
+/**
+ * Generate HTML for README display
+ */
+function getReadmeHTML(readme: string, backgroundColor: string): string {
+  const isDark = backgroundColor === '#000000' ||
+                 backgroundColor === '#000' ||
+                 backgroundColor.toLowerCase().startsWith('#0') ||
+                 backgroundColor.toLowerCase().startsWith('#1');
+
+  return `
+    <!DOCTYPE html>
+    <html data-color-mode="${isDark ? 'dark' : 'light'}" data-dark-theme="dark">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown${isDark ? '-dark' : ''}.min.css">
+        <style>
+          body {
+            margin: 0;
+            padding: 16px;
+            background-color: ${backgroundColor};
+          }
+          .markdown-body {
+            background-color: transparent;
+          }
+        </style>
+      </head>
+      <body class="markdown-body">
+        ${readme}
+      </body>
+    </html>
+  `;
+}
+
 export function RepoFileCityTabletLayout() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const layout = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<FeedStackParamList>>();
   const route = useRoute<RouteProps>();
   const { isAuthenticated, token } = useAuthContext();
@@ -89,6 +126,14 @@ export function RepoFileCityTabletLayout() {
   const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null);
   const [contributions, setContributions] = useState<DailyContribution[]>([]);
   const [contributionsLoading, setContributionsLoading] = useState(true);
+  const [readme, setReadme] = useState<string>('');
+  const [readmeLoading, setReadmeLoading] = useState(true);
+  const [readmeModalVisible, setReadmeModalVisible] = useState(false);
+  const [contributors, setContributors] = useState<Contributor[]>([]);
+  const [contributorsLoading, setContributorsLoading] = useState(true);
+
+  // Detect landscape orientation
+  const isLandscape = layout.width > layout.height;
 
   // Check if repo is being watched
   const isRepoWatching = React.useMemo(() => {
@@ -182,6 +227,64 @@ export function RepoFileCityTabletLayout() {
     };
   }, [isAuthenticated, token, owner, name]);
 
+  // Fetch README
+  useEffect(() => {
+    if (!token) {
+      setReadmeLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadReadme() {
+      try {
+        const content = await fetchRepoReadme(token!, owner, name);
+        if (!cancelled) {
+          setReadme(content);
+          setReadmeLoading(false);
+        }
+      } catch (err) {
+        console.warn('Failed to load README:', err);
+        if (!cancelled) {
+          setReadmeLoading(false);
+        }
+      }
+    }
+
+    loadReadme();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, owner, name]);
+
+  // Fetch contributors
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadContributors() {
+      try {
+        setContributorsLoading(true);
+        const data = await fetchRepositoryContributors(owner, name);
+        if (!cancelled) {
+          setContributors(data);
+          setContributorsLoading(false);
+        }
+      } catch (err) {
+        console.warn('Failed to load contributors:', err);
+        if (!cancelled) {
+          setContributorsLoading(false);
+        }
+      }
+    }
+
+    loadContributors();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [owner, name]);
+
   const handleToggleStar = async () => {
     if (!token || starToggling) return;
 
@@ -266,11 +369,11 @@ export function RepoFileCityTabletLayout() {
                 {/* Owner Avatar - overlaps banner */}
                 <TouchableOpacity
                   onPress={() => {
-                    const isBot = isBotLogin(owner);
-                    const cleanLogin = cleanBotLogin(owner);
+                    const ownerType = repoInfo?.ownerType;
                     navigation.navigate('UserProfile', {
-                      username: cleanLogin,
-                      isBot,
+                      username: owner,
+                      isOrganization: ownerType === 'Organization',
+                      isBot: ownerType === 'Bot',
                     });
                   }}
                 >
@@ -358,6 +461,20 @@ export function RepoFileCityTabletLayout() {
                       color={isRepoWatching ? theme.colors.background : theme.colors.textSecondary}
                     />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                    ]}
+                    onPress={() => setReadmeModalVisible(true)}
+                    disabled={readmeLoading || !readme}
+                  >
+                    <LucideIcon
+                      name="FileText"
+                      size={16}
+                      color={theme.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -384,31 +501,132 @@ export function RepoFileCityTabletLayout() {
               )}
             </View>
 
-            {/* File City 3D Section */}
-            <View style={styles.fileCityContainer}>
-              {cityData ? (
-                <FileCityCanvas
-                  cityData={cityData}
-                  highlightLayers={highlightLayers}
-                  iconMap={iconMap}
-                  showFileTypeIcons={true}
-                  backgroundColor="transparent"
-                  defaultDistrictColor="#4B5155"
-                  buildingBorderRadius={0}
-                  showDirectoryLabels={false}
-                  enableZoom={true}
-                  enablePan={true}
-                />
-              ) : (
-                <View style={styles.noDataContainer}>
-                  <Text style={[styles.noDataText, { color: theme.colors.textSecondary }]}>
-                    No city data available
-                  </Text>
-                </View>
-              )}
+            {/* Split View: File City + README */}
+            <View style={[styles.contentContainer, isLandscape && styles.contentContainerLandscape]}>
+              {/* File City Section */}
+              <View style={[styles.fileCityContainer, isLandscape && styles.fileCityContainerLandscape]}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                  File City
+                </Text>
+                {cityData ? (
+                  <FileCityCanvas
+                    cityData={cityData}
+                    highlightLayers={highlightLayers}
+                    iconMap={iconMap}
+                    showFileTypeIcons={true}
+                    backgroundColor="transparent"
+                    defaultDistrictColor="#4B5155"
+                    buildingBorderRadius={0}
+                    showDirectoryLabels={false}
+                    enableZoom={true}
+                    enablePan={true}
+                  />
+                ) : (
+                  <View style={styles.noDataContainer}>
+                    <Text style={[styles.noDataText, { color: theme.colors.textSecondary }]}>
+                      No city data available
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Contributors Section */}
+              <View style={[styles.contributorsContainer, isLandscape && styles.contributorsContainerLandscape]}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                  Contributors
+                </Text>
+                {contributorsLoading ? (
+                  <View style={styles.contributorsLoading}>
+                    <LoadingSpinner size="small" color={theme.colors.primary} />
+                  </View>
+                ) : contributors.length > 0 ? (
+                  <ScrollView
+                    style={styles.contributorsList}
+                    contentContainerStyle={styles.contributorsGrid}
+                  >
+                    {contributors.map((contributor) => (
+                      <TouchableOpacity
+                        key={contributor.id}
+                        style={styles.contributorItem}
+                        onPress={() => {
+                          navigation.navigate('UserProfile', {
+                            username: contributor.login,
+                            isOrganization: contributor.type === 'Organization',
+                            isBot: contributor.type === 'Bot',
+                          });
+                        }}
+                      >
+                        <Image
+                          source={{ uri: contributor.avatar_url }}
+                          style={styles.contributorAvatar}
+                          resizeMode="cover"
+                        />
+                        <Text
+                          style={[styles.contributorLogin, { color: theme.colors.text }]}
+                          numberOfLines={1}
+                        >
+                          {contributor.login}
+                        </Text>
+                        <Text style={[styles.contributorCount, { color: theme.colors.textSecondary }]}>
+                          {formatNumber(contributor.contributions)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <View style={styles.noContributorsContainer}>
+                    <Text style={[styles.noContributorsText, { color: theme.colors.textSecondary }]}>
+                      No contributors found
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </ScrollView>
       )}
+
+      {/* README Bottom Sheet Modal */}
+      <Modal
+        visible={readmeModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setReadmeModalVisible(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
+          {/* Modal Header */}
+          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border, paddingTop: insets.top + 12 }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>README</Text>
+            <TouchableOpacity
+              onPress={() => setReadmeModalVisible(false)}
+              style={styles.modalCloseButton}
+            >
+              <LucideIcon name="X" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* README Content */}
+          {readmeLoading ? (
+            <View style={styles.modalLoading}>
+              <LoadingSpinner size="large" color={theme.colors.primary} />
+              <Text style={[styles.modalLoadingText, { color: theme.colors.textSecondary }]}>
+                Loading README...
+              </Text>
+            </View>
+          ) : readme ? (
+            <WebView
+              source={{ html: getReadmeHTML(readme, theme.colors.background) }}
+              style={styles.modalWebview}
+              scrollEnabled={true}
+            />
+          ) : (
+            <View style={styles.modalNoContent}>
+              <Text style={[styles.modalNoContentText, { color: theme.colors.textSecondary }]}>
+                No README available
+              </Text>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -556,12 +774,28 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  contentContainerLandscape: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
   fileCityContainer: {
     height: 400,
-    marginHorizontal: 16,
     marginBottom: 24,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  fileCityContainerLandscape: {
+    flex: 1,
+    marginBottom: 0,
   },
   noDataContainer: {
     flex: 1,
@@ -569,6 +803,92 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noDataText: {
+    fontSize: 14,
+  },
+  contributorsContainer: {
+    marginBottom: 24,
+  },
+  contributorsContainerLandscape: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  contributorsLoading: {
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contributorsList: {
+    height: 400,
+  },
+  contributorsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    padding: 8,
+  },
+  contributorItem: {
+    width: 80,
+    alignItems: 'center',
+    gap: 6,
+  },
+  contributorAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  contributorLogin: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  contributorCount: {
+    fontSize: 10,
+  },
+  noContributorsContainer: {
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noContributorsText: {
+    fontSize: 14,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalLoadingText: {
+    fontSize: 14,
+  },
+  modalWebview: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  modalNoContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalNoContentText: {
     fontSize: 14,
   },
 });

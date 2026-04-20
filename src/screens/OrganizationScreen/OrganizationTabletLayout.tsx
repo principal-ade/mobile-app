@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  FlatList,
+  useWindowDimensions,
 } from 'react-native';
+import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@principal-ade/industry-theme';
 import { LucideIcon } from '../../components/LucideIcon';
 import { GitHubRepository } from '../../types/github';
-import { formatUpdateTime, formatNumber } from './utils';
+import { formatNumber } from './utils';
+import { TabletRepoCard } from '../../components/TabletRepoCard';
 
 export interface OrgMember {
   id: number;
@@ -56,10 +58,19 @@ export const OrganizationTabletLayout: React.FC<OrganizationTabletLayoutProps> =
   members = [],
   onClose,
   onRepoPress,
-  onMemberPress: _onMemberPress,
+  onMemberPress,
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const layout = useWindowDimensions();
+  const [tabIndex, setTabIndex] = useState(0);
+  const [routes] = useState([
+    { key: 'repos', title: 'Repos' },
+    { key: 'members', title: 'Members' },
+  ]);
+
+  // Detect landscape orientation
+  const isLandscape = layout.width > layout.height;
 
   if (loading || !organization) {
     return (
@@ -86,8 +97,94 @@ export const OrganizationTabletLayout: React.FC<OrganizationTabletLayoutProps> =
   const orgName = organization.name || organization.login;
   const orgLogin = organization.login;
 
+  // Repos Tab Content
+  const ReposRoute = () => (
+    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+      <View style={styles.tabContent}>
+        {repositories.length > 0 ? (
+          <View style={[styles.repositoriesList, isLandscape && styles.repositoriesListLandscape]}>
+            {repositories.slice(0, 9).map((item) => {
+              const [owner, name] = item.full_name.split('/');
+              return (
+                <View key={item.id} style={isLandscape ? styles.repoCardContainer : undefined}>
+                  <TabletRepoCard
+                    owner={owner}
+                    name={name}
+                    fullName={item.full_name}
+                    description={item.description}
+                    language={item.language}
+                    stars={item.stargazers_count}
+                    updatedAt={item.updated_at}
+                    isPinned={pinnedRepoNames.includes(item.full_name)}
+                    onPress={() => {
+                      if (onRepoPress) {
+                        onRepoPress(owner, name, item.full_name);
+                      }
+                    }}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
+              No repositories found
+            </Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  // Members Tab Content
+  const MembersRoute = () => (
+    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+      <View style={styles.tabContent}>
+        {members.length > 0 ? (
+          <View style={[styles.membersList, isLandscape && styles.membersListLandscape]}>
+            {members.map((member) => (
+              <View key={member.id} style={isLandscape ? styles.memberCardContainer : undefined}>
+                <TouchableOpacity
+                  style={[styles.memberCard, { backgroundColor: theme.colors.surface }]}
+                  onPress={() => {
+                    if (onMemberPress) {
+                      onMemberPress(member.login);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: member.avatar_url }}
+                    style={styles.memberAvatar}
+                    resizeMode="cover"
+                  />
+                  <Text style={[styles.memberName, { color: theme.colors.text }]} numberOfLines={1}>
+                    {member.login}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
+              No members found
+            </Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  const renderScene = SceneMap({
+    repos: ReposRoute,
+    members: MembersRoute,
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Close button */}
       {onClose && (
         <TouchableOpacity
           style={[styles.closeButton, { top: insets.top + 12 }]}
@@ -99,166 +196,101 @@ export const OrganizationTabletLayout: React.FC<OrganizationTabletLayoutProps> =
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.scrollView}>
-        {/* Profile Header */}
-        <View style={[styles.profileHeader, { marginTop: insets.top + 24 }]}>
-          <View style={styles.avatarAndStats}>
-            {/* Avatar - rounded square for orgs */}
-            <Image
-              source={{ uri: organization.avatar_url }}
-              style={[styles.avatar, { borderColor: theme.colors.background }]}
-              resizeMode="cover"
-            />
+      {/* Profile Header */}
+      <View style={[styles.profileHeader, { marginTop: insets.top + 24 }]}>
+        <View style={styles.avatarAndStats}>
+          {/* Avatar - rounded square for orgs */}
+          <Image
+            source={{ uri: organization.avatar_url }}
+            style={[styles.avatar, { borderColor: theme.colors.background }]}
+            resizeMode="cover"
+          />
 
-            {/* Stats Row */}
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {formatNumber(organization.public_repos)}
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                  projects
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  {formatNumber(members.length)}
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                  members
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Name + Username */}
-          <View style={styles.nameSection}>
-            <Text style={[styles.name, { color: theme.colors.text }]}>
-              {orgName}
-            </Text>
-            <View style={styles.socialHandles}>
-              <TouchableOpacity
-                style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
-                onPress={() => Linking.openURL(`https://github.com/${orgLogin}`)}
-                activeOpacity={0.7}
-              >
-                <LucideIcon name="Github" size={14} color={theme.colors.textSecondary} />
-                <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
-                  {orgLogin}
-                </Text>
-              </TouchableOpacity>
-              {organization.twitter_username && (
-                <>
-                  <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary }]}>•</Text>
-                  <TouchableOpacity
-                    style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
-                    onPress={() => Linking.openURL(`https://twitter.com/${organization.twitter_username}`)}
-                    activeOpacity={0.7}
-                  >
-                    <LucideIcon name="Twitter" size={14} color={theme.colors.textSecondary} />
-                    <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
-                      {organization.twitter_username}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-
-          {/* Description */}
-          {organization.description && (
-            <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
-              {organization.description}
-            </Text>
-          )}
-        </View>
-
-        {/* Repositories Section */}
-        <View style={styles.repositoriesSection}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            Public repositories
-          </Text>
-
-          {repositories.length > 0 ? (
-            <FlatList
-              data={repositories}
-              scrollEnabled={false}
-              numColumns={2}
-              columnWrapperStyle={styles.repositoryRow}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => {
-                const [owner, name] = item.full_name.split('/');
-                return (
-                  <TouchableOpacity
-                    style={[styles.repoCard, { backgroundColor: theme.colors.surface }]}
-                    onPress={() => {
-                      if (onRepoPress) {
-                        onRepoPress(owner, name, item.full_name);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.repoHeader}>
-                      <LucideIcon name="GitBranch" size={16} color={theme.colors.accent} />
-                      <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      {pinnedRepoNames.includes(item.full_name) && (
-                        <LucideIcon name="Pin" size={14} color={theme.colors.accent} />
-                      )}
-                    </View>
-
-                    {item.description && (
-                      <Text
-                        style={[styles.repoDescription, { color: theme.colors.textSecondary }]}
-                        numberOfLines={2}
-                      >
-                        {item.description}
-                      </Text>
-                    )}
-
-                    <View style={styles.repoStats}>
-                      <View style={styles.repoStat}>
-                        <LucideIcon name="Star" size={12} color={theme.colors.textTertiary} />
-                        <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
-                          {formatNumber(item.stargazers_count)}
-                        </Text>
-                      </View>
-                      {item.language && (
-                        <View style={styles.repoStat}>
-                          <View style={[styles.languageDot, { backgroundColor: theme.colors.accent }]} />
-                          <Text style={[styles.repoStatText, { color: theme.colors.textTertiary }]}>
-                            {item.language}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <Text style={[styles.repoUpdated, { color: theme.colors.textTertiary }]}>
-                      {formatUpdateTime(item.updated_at)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          ) : (
-            <View style={[styles.emptyState, { backgroundColor: theme.colors.surface }]}>
-              <Text style={[styles.emptyStateText, { color: theme.colors.textTertiary }]}>
-                No repositories found
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                {formatNumber(organization.public_repos)}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+                projects
               </Text>
             </View>
-          )}
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                {formatNumber(members.length)}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+                members
+              </Text>
+            </View>
+          </View>
         </View>
-      </ScrollView>
+
+        {/* Name + Username */}
+        <View style={styles.nameSection}>
+          <Text style={[styles.name, { color: theme.colors.text }]}>
+            {orgName}
+          </Text>
+          <View style={styles.socialHandles}>
+            <TouchableOpacity
+              style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
+              onPress={() => Linking.openURL(`https://github.com/${orgLogin}`)}
+              activeOpacity={0.7}
+            >
+              <LucideIcon name="Github" size={14} color={theme.colors.textSecondary} />
+              <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
+                {orgLogin}
+              </Text>
+            </TouchableOpacity>
+            {organization.twitter_username && (
+              <>
+                <Text style={[styles.handleSeparator, { color: theme.colors.textTertiary }]}>•</Text>
+                <TouchableOpacity
+                  style={[styles.socialHandle, { backgroundColor: theme.colors.surface }]}
+                  onPress={() => Linking.openURL(`https://twitter.com/${organization.twitter_username}`)}
+                  activeOpacity={0.7}
+                >
+                  <LucideIcon name="Twitter" size={14} color={theme.colors.textSecondary} />
+                  <Text style={[styles.handleText, { color: theme.colors.textSecondary }]}>
+                    {organization.twitter_username}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Description */}
+        {organization.description && (
+          <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
+            {organization.description}
+          </Text>
+        )}
+      </View>
+
+      {/* Tab View */}
+      <TabView
+        navigationState={{ index: tabIndex, routes }}
+        renderScene={renderScene}
+        renderTabBar={(props) => (
+          <TabBar
+            {...props}
+            indicatorStyle={{ backgroundColor: theme.colors.primary }}
+            style={{ backgroundColor: theme.colors.background }}
+            activeColor={theme.colors.text}
+            inactiveColor={theme.colors.textSecondary}
+          />
+        )}
+        onIndexChange={setTabIndex}
+        initialLayout={{ width: layout.width }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  scrollView: {
     flex: 1,
   },
   loadingContainer: {
@@ -359,77 +391,64 @@ const styles = StyleSheet.create({
   bio: {
     fontSize: 16,
     lineHeight: 24,
-    marginBottom: 24,
-  },
-  repositoriesSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
     marginBottom: 16,
   },
-  repositoryRow: {
-    gap: 16,
-    marginBottom: 16,
+  tabContent: {
+    padding: 16,
   },
-  repoCard: {
-    flex: 1,
+  repositoriesList: {
+    // Container for TabletRepoCard components
+  },
+  repositoriesListLandscape: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+  },
+  repoCardContainer: {
+    width: '50%',
+    paddingHorizontal: 8,
+  },
+  membersList: {
+    gap: 12,
+  },
+  membersListLandscape: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+  },
+  memberCardContainer: {
+    width: '50%',
+    paddingHorizontal: 8,
+    marginBottom: 12,
+  },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     borderRadius: 12,
+    gap: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
-  repoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
-  repoName: {
+  memberName: {
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
   },
-  repoDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    minHeight: 40,
-  },
-  repoStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  repoStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  repoStatText: {
-    fontSize: 12,
-  },
-  languageDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  repoUpdated: {
-    fontSize: 12,
-  },
-  emptyState: {
+  emptyStateContainer: {
     padding: 40,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyStateText: {
-    fontSize: 14,
+    fontSize: 16,
   },
 });
