@@ -23,6 +23,8 @@ export interface Collection {
   name: string;
   description?: string;
   icon?: string; // Optional Lucide icon name for the collection
+  ownerType?: 'user' | 'org';
+  ownerLogin?: string; // Org login when ownerType is 'org'
   repos: CollectionRepo[];
   users: CollectionUser[];
   createdAt: string;

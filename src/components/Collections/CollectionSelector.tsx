@@ -8,10 +8,16 @@ import {
   ScrollView,
   TextInput,
   Pressable,
+  Image,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { LucideIcon, type LucideIconName } from '../LucideIcon';
 import type { Collection, CollectionItemType } from '../../types/collections';
+
+export interface OrgOption {
+  login: string;
+  avatarUrl: string;
+}
 
 export interface CollectionSelectorProps {
   visible: boolean;
@@ -19,10 +25,11 @@ export interface CollectionSelectorProps {
   selectedCollectionIds: string[];
   itemType: CollectionItemType;
   itemName: string; // Display name of the item being added
+  userOrgs?: OrgOption[];
   onClose: () => void;
   onSelectCollection: (collectionId: string) => void;
   onDeselectCollection: (collectionId: string) => void;
-  onCreateCollection: (name: string, icon?: string) => void;
+  onCreateCollection: (name: string, icon?: string, orgLogin?: string) => void;
   onDone: () => void;
 }
 
@@ -49,6 +56,7 @@ export function CollectionSelector({
   selectedCollectionIds,
   itemType,
   itemName,
+  userOrgs = [],
   onClose,
   onSelectCollection,
   onDeselectCollection,
@@ -59,12 +67,14 @@ export function CollectionSelector({
   const [isCreating, setIsCreating] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(ICON_OPTIONS[0]);
+  const [selectedOrgLogin, setSelectedOrgLogin] = useState<string | undefined>(undefined);
 
   const handleCreate = () => {
     if (newCollectionName.trim()) {
-      onCreateCollection(newCollectionName.trim(), selectedIcon);
+      onCreateCollection(newCollectionName.trim(), selectedIcon, selectedOrgLogin);
       setNewCollectionName('');
       setSelectedIcon(ICON_OPTIONS[0]);
+      setSelectedOrgLogin(undefined);
       setIsCreating(false);
     }
   };
@@ -141,6 +151,74 @@ export function CollectionSelector({
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                {userOrgs.length > 0 && (
+                  <View style={styles.ownerSection}>
+                    <Text style={[styles.ownerLabel, { color: theme.colors.textSecondary }]}>
+                      Owner
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ownerScroll}>
+                      <TouchableOpacity
+                        style={[
+                          styles.ownerChip,
+                          {
+                            backgroundColor: selectedOrgLogin === undefined
+                              ? theme.colors.primary
+                              : theme.colors.surface,
+                            borderColor: selectedOrgLogin === undefined
+                              ? theme.colors.primary
+                              : theme.colors.border,
+                          },
+                        ]}
+                        onPress={() => setSelectedOrgLogin(undefined)}
+                      >
+                        <LucideIcon
+                          name="User"
+                          size={14}
+                          color={selectedOrgLogin === undefined ? theme.colors.textOnPrimary : theme.colors.text}
+                        />
+                        <Text
+                          style={[
+                            styles.ownerChipText,
+                            { color: selectedOrgLogin === undefined ? theme.colors.textOnPrimary : theme.colors.text },
+                          ]}
+                        >
+                          Personal
+                        </Text>
+                      </TouchableOpacity>
+                      {userOrgs.map((org) => (
+                        <TouchableOpacity
+                          key={org.login}
+                          style={[
+                            styles.ownerChip,
+                            {
+                              backgroundColor: selectedOrgLogin === org.login
+                                ? theme.colors.primary
+                                : theme.colors.surface,
+                              borderColor: selectedOrgLogin === org.login
+                                ? theme.colors.primary
+                                : theme.colors.border,
+                            },
+                          ]}
+                          onPress={() => setSelectedOrgLogin(org.login)}
+                        >
+                          <Image
+                            source={{ uri: org.avatarUrl }}
+                            style={styles.orgAvatar}
+                          />
+                          <Text
+                            style={[
+                              styles.ownerChipText,
+                              { color: selectedOrgLogin === org.login ? theme.colors.textOnPrimary : theme.colors.text },
+                            ]}
+                          >
+                            {org.login}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
                 <TextInput
                   style={[
@@ -222,9 +300,19 @@ export function CollectionSelector({
                           />
                         </View>
                         <View style={styles.collectionText}>
-                          <Text style={[styles.collectionName, { color: theme.colors.text }]}>
-                            {collection.name}
-                          </Text>
+                          <View style={styles.collectionNameRow}>
+                            <Text style={[styles.collectionName, { color: theme.colors.text }]}>
+                              {collection.name}
+                            </Text>
+                            {collection.ownerType === 'org' && collection.ownerLogin && (
+                              <View style={[styles.orgBadge, { backgroundColor: theme.colors.backgroundSecondary, borderColor: theme.colors.border }]}>
+                                <LucideIcon name="Users" size={10} color={theme.colors.textSecondary} />
+                                <Text style={[styles.orgBadgeText, { color: theme.colors.textSecondary }]}>
+                                  {collection.ownerLogin}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                           <Text style={[styles.collectionCount, { color: theme.colors.textSecondary }]}>
                             {itemCount} {itemType === 'repo' ? 'repos' : 'users'}
                           </Text>
@@ -404,13 +492,63 @@ const styles = StyleSheet.create({
   collectionText: {
     flex: 1,
   },
+  collectionNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 2,
+  },
   collectionName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
+  },
+  orgBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  orgBadgeText: {
+    fontSize: 11,
   },
   collectionCount: {
     fontSize: 12,
+  },
+  ownerSection: {
+    marginBottom: 12,
+  },
+  ownerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  ownerScroll: {
+    flexGrow: 0,
+  },
+  ownerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  ownerChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  orgAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
   },
   checkbox: {
     width: 24,

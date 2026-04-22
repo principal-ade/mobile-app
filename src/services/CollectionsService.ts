@@ -27,6 +27,7 @@ export interface CreateCollectionRequest {
   name: string;
   description?: string;
   icon?: string;
+  orgLogin?: string;
 }
 
 export interface UpdateCollectionRequest {

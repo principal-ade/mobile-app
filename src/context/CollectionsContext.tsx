@@ -25,7 +25,7 @@ interface CollectionsContextValue extends CollectionsState {
   isOnline: boolean;
 
   // Collection mutations
-  createCollection: (name: string, icon?: string) => string;
+  createCollection: (name: string, icon?: string, orgLogin?: string) => string;
   deleteCollection: (collectionId: string) => void;
   updateCollection: (collectionId: string, updates: Partial<Pick<Collection, 'name' | 'icon' | 'description'>>) => void;
 
@@ -147,13 +147,15 @@ export function CollectionsProvider({
     persist();
   }, [state.collections, isLoading, onCollectionsChange]);
 
-  const createCollection = useCallback((name: string, icon?: string): string => {
+  const createCollection = useCallback((name: string, icon?: string, orgLogin?: string): string => {
     // Optimistic update with temp ID
     const tempId = Date.now().toString();
     const tempCollection: Collection = {
       id: tempId,
       name,
       icon,
+      ownerType: orgLogin ? 'org' : 'user',
+      ownerLogin: orgLogin,
       repos: [],
       users: [],
       createdAt: new Date().toISOString(),
@@ -167,7 +169,7 @@ export function CollectionsProvider({
 
     // Sync to server in background
     if (token && isOnline) {
-      CollectionsService.createCollection(token, { name, icon })
+      CollectionsService.createCollection(token, { name, icon, orgLogin })
         .then((serverCollection) => {
           // Replace temp collection with server version (preserving server ID)
           setState((prev) => ({

@@ -15,6 +15,7 @@ import { LucideIcon } from '../LucideIcon';
 import { StarredRepoCard } from './StarredRepoCard';
 import { CollectionSelector } from './CollectionSelector';
 import type { StarredRepo, Collection } from '../../types/collections';
+import type { OrgOption } from './CollectionSelector';
 
 export interface StarredReposViewProps {
   repos: StarredRepo[];
@@ -22,11 +23,12 @@ export interface StarredReposViewProps {
   isLoading?: boolean;
   showHeader?: boolean;
   title?: string;
+  userOrgs?: OrgOption[];
   onRefresh?: () => void;
   onRepoPress?: (repo: StarredRepo) => void;
   onAddRepoToCollection?: (repoFullName: string, collectionIds: string[]) => void;
   onRemoveRepoFromCollection?: (repoFullName: string, collectionId: string) => void;
-  onCreateCollection?: (name: string, icon?: string) => void;
+  onCreateCollection?: (name: string, icon?: string, orgLogin?: string) => void;
 }
 
 export function StarredReposView({
@@ -35,6 +37,7 @@ export function StarredReposView({
   isLoading = false,
   showHeader = true,
   title = 'Starred Repos',
+  userOrgs = [],
   onRefresh,
   onRepoPress,
   onAddRepoToCollection,
@@ -97,9 +100,9 @@ export function StarredReposView({
     setSelectedCollectionIds((prev) => prev.filter((id) => id !== collectionId));
   };
 
-  const handleCreateCollection = (name: string, emoji?: string) => {
+  const handleCreateCollection = (name: string, icon?: string, orgLogin?: string) => {
     if (onCreateCollection) {
-      onCreateCollection(name, emoji);
+      onCreateCollection(name, icon, orgLogin);
     }
   };
 
@@ -223,6 +226,7 @@ export function StarredReposView({
           selectedCollectionIds={selectedCollectionIds}
           itemType="repo"
           itemName={selectedRepo.full_name}
+          userOrgs={userOrgs}
           onClose={handleCloseSelector}
           onSelectCollection={handleSelectCollection}
           onDeselectCollection={handleDeselectCollection}

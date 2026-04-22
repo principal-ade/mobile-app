@@ -6,13 +6,16 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { ToursTabScreen } from './ToursTabScreen';
 import { StarredReposView } from '../components/Collections/StarredReposView';
+import { CollectionsView } from '../components/Collections/CollectionsView';
 import { getSuggestedRepos } from '../services/GitHubSearchService';
+import { fetchUserOrganizations } from '../services/GithubService';
 import { useAuthContext } from '../context/AuthContext';
 import { useCollections } from '../context/CollectionsContext';
 import type { StarredRepo } from '../types/collections';
+import type { OrgOption } from '../components/Collections/CollectionSelector';
 import type { StarredStackParamList } from '../navigation/types';
 
-type TabType = 'tours' | 'starred';
+type TabType = 'starred' | 'collections' | 'tours';
 type NavigationProp = StackNavigationProp<StarredStackParamList>;
 
 export function StarredTabScreen() {
@@ -20,9 +23,10 @@ export function StarredTabScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
-  const { collections, createCollection, addRepoToCollection, removeRepoFromCollection, syncWithServer } = useCollections();
+  const { collections, createCollection, updateCollection, deleteCollection, addRepoToCollection, removeRepoFromCollection, syncWithServer } = useCollections();
   const [activeTab, setActiveTab] = useState<TabType>('starred');
   const [starredRepos, setStarredRepos] = useState<StarredRepo[]>([]);
+  const [userOrgs, setUserOrgs] = useState<OrgOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Sync collections from server when screen comes into focus
@@ -36,26 +40,30 @@ export function StarredTabScreen() {
     }, [token, syncWithServer])
   );
 
-  // Fetch starred repos on mount
+  // Fetch starred repos and user orgs on mount
   useEffect(() => {
-    async function loadStarredRepos() {
+    async function loadData() {
       if (!token) {
         setStarredRepos([]);
+        setUserOrgs([]);
         return;
       }
 
       setIsLoading(true);
       try {
-        const { repos } = await getSuggestedRepos(token);
-        // Filter to only starred repos and ensure avatar URL
+        const [{ repos }, orgs] = await Promise.all([
+          getSuggestedRepos(token),
+          fetchUserOrganizations(token).catch(() => []),
+        ]);
+
         const starred = repos
           .filter((r) => r.source === 'starred')
           .map((repo) => ({
             ...repo,
-            // Fallback to GitHub avatar URL if not provided
             owner_avatar_url: repo.owner_avatar_url || `https://github.com/${repo.owner}.png`,
           }));
         setStarredRepos(starred);
+        setUserOrgs(orgs.map((org) => ({ login: org.login, avatarUrl: org.avatar_url })));
       } catch (error) {
         console.error('Failed to load starred repos:', error);
         setStarredRepos([]);
@@ -64,7 +72,7 @@ export function StarredTabScreen() {
       }
     }
 
-    loadStarredRepos();
+    loadData();
   }, [token]);
 
   return (
@@ -80,70 +88,69 @@ export function StarredTabScreen() {
             },
           ]}
         >
-          <TouchableOpacity
-            style={[
-              styles.segmentButton,
-              activeTab === 'starred' && {
-                backgroundColor: theme.colors.surface,
-              },
-            ]}
-            onPress={() => setActiveTab('starred')}
-          >
-            <Text
+          {(['starred', 'collections', 'tours'] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
               style={[
-                styles.segmentText,
-                {
-                  color:
-                    activeTab === 'starred'
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary,
-                  fontWeight: activeTab === 'starred' ? '600' : '500',
-                },
+                styles.segmentButton,
+                activeTab === tab && { backgroundColor: theme.colors.surface },
               ]}
+              onPress={() => setActiveTab(tab)}
             >
-              Repos
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.segmentButton,
-              activeTab === 'tours' && {
-                backgroundColor: theme.colors.surface,
-              },
-            ]}
-            onPress={() => setActiveTab('tours')}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                {
-                  color:
-                    activeTab === 'tours'
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary,
-                  fontWeight: activeTab === 'tours' ? '600' : '500',
-                },
-              ]}
-            >
-              Tours
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.segmentText,
+                  {
+                    color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary,
+                    fontWeight: activeTab === tab ? '600' : '500',
+                  },
+                ]}
+              >
+                {tab === 'starred' ? 'Repos' : tab === 'collections' ? 'Collections' : 'Tours'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
       {/* Content */}
-      {activeTab === 'starred' ? (
+      {activeTab === 'collections' ? (
+        <CollectionsView
+          collections={collections}
+          isLoading={isLoading}
+          userOrgs={userOrgs}
+          onRefresh={async () => {
+            if (!token) return;
+            setIsLoading(true);
+            try {
+              await syncWithServer().catch((error) => {
+                console.warn('Failed to sync collections on refresh:', error);
+              });
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+          onCreateCollection={(name, icon, orgLogin) => {
+            createCollection(name, icon, orgLogin);
+          }}
+          onUpdateCollection={(collectionId, updates) => {
+            updateCollection(collectionId, updates);
+          }}
+          onDeleteCollection={(collectionId) => {
+            deleteCollection(collectionId);
+          }}
+        />
+      ) : activeTab === 'starred' ? (
         <StarredReposView
           repos={starredRepos}
           collections={collections}
           showHeader={false}
           isLoading={isLoading}
+          userOrgs={userOrgs}
           onRefresh={async () => {
             if (!token) return;
             setIsLoading(true);
             try {
-              // Sync collections and starred repos in parallel
               await Promise.all([
                 syncWithServer().catch((error) => {
                   console.warn('Failed to sync collections on refresh:', error);
@@ -158,6 +165,9 @@ export function StarredTabScreen() {
                     }));
                   setStarredRepos(starred);
                 })(),
+                fetchUserOrganizations(token)
+                  .then((orgs) => setUserOrgs(orgs.map((org) => ({ login: org.login, avatarUrl: org.avatar_url }))))
+                  .catch(() => {}),
               ]);
             } catch (error) {
               console.error('Failed to refresh:', error);
@@ -192,8 +202,8 @@ export function StarredTabScreen() {
             const [owner, repo] = repoFullName.split('/');
             removeRepoFromCollection(collectionId, owner, repo);
           }}
-          onCreateCollection={(name, icon) => {
-            createCollection(name, icon);
+          onCreateCollection={(name, icon, orgLogin) => {
+            createCollection(name, icon, orgLogin);
           }}
         />
       ) : (
