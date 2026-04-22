@@ -1446,6 +1446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     zIndex: 1,
+    flexShrink: 0,
   },
   tourButton: {
     paddingHorizontal: 12,
@@ -1469,9 +1470,11 @@ const styles = StyleSheet.create({
   },
   headerCenter: {
     flex: 1,
+    flexShrink: 1,
     alignItems: 'flex-start',
     justifyContent: 'center',
     marginLeft: 12,
+    marginRight: 8,
     zIndex: 1,
   },
   title: {
