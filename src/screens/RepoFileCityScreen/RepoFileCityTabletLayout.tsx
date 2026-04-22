@@ -8,7 +8,7 @@
  * - File City 3D visualization at bottom
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,12 @@ import {
   Image,
   ScrollView,
   useWindowDimensions,
-  Modal,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { FileCityCanvas } from '../../components/FileCity';
 import type { CityData, HighlightLayer, FileTypeIconConfig } from '../../components/FileCity';
 import { getFileCityForRepo, type RepoInfo } from '../../services/FileCityService';
@@ -128,9 +128,12 @@ export function RepoFileCityTabletLayout() {
   const [contributionsLoading, setContributionsLoading] = useState(true);
   const [readme, setReadme] = useState<string>('');
   const [readmeLoading, setReadmeLoading] = useState(true);
-  const [readmeModalVisible, setReadmeModalVisible] = useState(false);
   const [contributors, setContributors] = useState<Contributor[]>([]);
   const [contributorsLoading, setContributorsLoading] = useState(true);
+
+  // Bottom sheet ref and snap points
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ['50%', '70%'], []);
 
   // Detect landscape orientation
   const isLandscape = layout.width > layout.height;
@@ -322,6 +325,14 @@ export function RepoFileCityTabletLayout() {
     }
   };
 
+  const handleOpenReadme = useCallback(() => {
+    bottomSheetRef.current?.expand();
+  }, []);
+
+  const handleCloseReadme = useCallback(() => {
+    bottomSheetRef.current?.close();
+  }, []);
+
   // Calculate total commits from contributions
   const totalCommits = contributions.reduce((sum, day) => sum + day.count, 0);
 
@@ -466,7 +477,7 @@ export function RepoFileCityTabletLayout() {
                       styles.actionButton,
                       { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
                     ]}
-                    onPress={() => setReadmeModalVisible(true)}
+                    onPress={handleOpenReadme}
                     disabled={readmeLoading || !readme}
                   >
                     <LucideIcon
@@ -585,20 +596,22 @@ export function RepoFileCityTabletLayout() {
           </ScrollView>
       )}
 
-      {/* README Bottom Sheet Modal */}
-      <Modal
-        visible={readmeModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setReadmeModalVisible(false)}
+      {/* README Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backgroundStyle={{ backgroundColor: theme.colors.background }}
+        handleIndicatorStyle={{ backgroundColor: theme.colors.textSecondary }}
       >
-        <View style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
-          {/* Modal Header */}
-          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border, paddingTop: insets.top + 12 }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>README</Text>
+        <BottomSheetView style={styles.bottomSheetContainer}>
+          {/* Header */}
+          <View style={[styles.bottomSheetHeader, { borderBottomColor: theme.colors.border }]}>
+            <Text style={[styles.bottomSheetTitle, { color: theme.colors.text }]}>README</Text>
             <TouchableOpacity
-              onPress={() => setReadmeModalVisible(false)}
-              style={styles.modalCloseButton}
+              onPress={handleCloseReadme}
+              style={styles.bottomSheetCloseButton}
             >
               <LucideIcon name="X" size={24} color={theme.colors.text} />
             </TouchableOpacity>
@@ -606,27 +619,30 @@ export function RepoFileCityTabletLayout() {
 
           {/* README Content */}
           {readmeLoading ? (
-            <View style={styles.modalLoading}>
+            <View style={styles.bottomSheetLoading}>
               <LoadingSpinner size="large" color={theme.colors.primary} />
-              <Text style={[styles.modalLoadingText, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.bottomSheetLoadingText, { color: theme.colors.textSecondary }]}>
                 Loading README...
               </Text>
             </View>
           ) : readme ? (
-            <WebView
-              source={{ html: getReadmeHTML(readme, theme.colors.background) }}
-              style={styles.modalWebview}
-              scrollEnabled={true}
-            />
+            <View style={styles.bottomSheetWebviewContainer}>
+              <WebView
+                source={{ html: getReadmeHTML(readme, theme.colors.background) }}
+                style={styles.bottomSheetWebview}
+                scrollEnabled={true}
+                originWhitelist={['*']}
+              />
+            </View>
           ) : (
-            <View style={styles.modalNoContent}>
-              <Text style={[styles.modalNoContentText, { color: theme.colors.textSecondary }]}>
+            <View style={styles.bottomSheetNoContent}>
+              <Text style={[styles.bottomSheetNoContentText, { color: theme.colors.textSecondary }]}>
                 No README available
               </Text>
             </View>
           )}
-        </View>
-      </Modal>
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }
@@ -852,43 +868,46 @@ const styles = StyleSheet.create({
   noContributorsText: {
     fontSize: 14,
   },
-  modalContainer: {
+  bottomSheetContainer: {
     flex: 1,
   },
-  modalHeader: {
+  bottomSheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  modalTitle: {
+  bottomSheetTitle: {
     fontSize: 20,
     fontWeight: '700',
   },
-  modalCloseButton: {
+  bottomSheetCloseButton: {
     padding: 8,
   },
-  modalLoading: {
+  bottomSheetLoading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
   },
-  modalLoadingText: {
+  bottomSheetLoadingText: {
     fontSize: 14,
+    marginTop: 12,
   },
-  modalWebview: {
+  bottomSheetWebviewContainer: {
+    flex: 1,
+  },
+  bottomSheetWebview: {
     flex: 1,
     backgroundColor: 'transparent',
   },
-  modalNoContent: {
+  bottomSheetNoContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalNoContentText: {
+  bottomSheetNoContentText: {
     fontSize: 14,
   },
 });
