@@ -30,7 +30,6 @@
       "y": 50,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Feed Load Started",
       "pv": {
         "status": "draft",
@@ -69,7 +68,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Feed Load Success",
       "pv": {
         "status": "draft",
@@ -112,7 +110,6 @@
       "y": 50,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Feed Load Error",
       "pv": {
         "status": "draft",
@@ -150,7 +147,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#4b5563",
       "label": "Feed Empty",
       "pv": {
         "status": "draft",
@@ -188,7 +184,6 @@
       "y": 350,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Card Viewed",
       "pv": {
         "status": "draft",
@@ -237,7 +232,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#f59e0b",
       "label": "Card Passed (Seen)",
       "pv": {
         "status": "draft",
@@ -291,7 +285,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Card Saved",
       "pv": {
         "status": "draft",
@@ -335,7 +328,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#6d28d9",
       "label": "Card Undo",
       "pv": {
         "status": "draft",
@@ -373,7 +365,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Card Tapped",
       "pv": {
         "status": "draft",
@@ -416,7 +407,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Pass API Success",
       "pv": {
         "status": "draft",
@@ -454,7 +444,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Pass API Error",
       "pv": {
         "status": "draft",
@@ -492,7 +481,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Save API Success",
       "pv": {
         "status": "draft",
@@ -525,7 +513,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Save API Error",
       "pv": {
         "status": "draft",
@@ -563,7 +550,6 @@
       "y": 800,
       "width": 200,
       "height": 100,
-      "color": "#4b5563",
       "label": "Stack Exhausted",
       "pv": {
         "status": "draft",

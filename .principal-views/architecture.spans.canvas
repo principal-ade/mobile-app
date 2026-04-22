@@ -20,7 +20,7 @@
       "otel": {
         "spanPattern": "activity-feed.init",
         "spanKind": "internal",
-        "status": "draft"
+        "status": "implemented"
       }
     },
     {
@@ -35,7 +35,7 @@
       "otel": {
         "spanPattern": "activity-feed.refresh",
         "spanKind": "internal",
-        "status": "draft"
+        "status": "implemented"
       }
     },
     {
@@ -50,7 +50,7 @@
       "otel": {
         "spanPattern": "activity-feed.interaction",
         "spanKind": "internal",
-        "status": "draft"
+        "status": "implemented"
       }
     }
   ],

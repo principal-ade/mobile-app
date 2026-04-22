@@ -30,7 +30,6 @@
       "y": 50,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Feed Init Started",
       "pv": {
         "status": "draft",
@@ -69,7 +68,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#6d28d9",
       "label": "Batch Fetch Repos",
       "pv": {
         "status": "draft",
@@ -102,7 +100,6 @@
       "y": 350,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Repo Commits Loaded",
       "pv": {
         "status": "draft",
@@ -140,7 +137,6 @@
       "y": 350,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Repo Fetch Error",
       "pv": {
         "status": "draft",
@@ -183,7 +179,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Feed Ready",
       "pv": {
         "status": "draft",
@@ -222,7 +217,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#4b5563",
       "label": "Feed Empty",
       "pv": {
         "status": "draft",
@@ -255,7 +249,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Init Error",
       "pv": {
         "status": "draft",
@@ -288,7 +281,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#1d4ed8",
       "label": "Refresh Started",
       "pv": {
         "status": "draft",
@@ -322,7 +314,6 @@
       "y": 350,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Refresh Complete",
       "pv": {
         "status": "draft",
@@ -360,7 +351,6 @@
       "y": 50,
       "width": 200,
       "height": 100,
-      "color": "#4b5563",
       "label": "App State Change",
       "pv": {
         "status": "draft",
@@ -398,7 +388,6 @@
       "y": 700,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Card Swipe",
       "pv": {
         "status": "draft",
@@ -446,7 +435,6 @@
       "y": 850,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Commit Swipe",
       "pv": {
         "status": "draft",
@@ -499,7 +487,6 @@
       "y": 1000,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "File City Loaded",
       "pv": {
         "status": "draft",
@@ -547,7 +534,6 @@
       "y": 1000,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "File City Error",
       "pv": {
         "status": "draft",
@@ -590,7 +576,6 @@
       "y": 850,
       "width": 200,
       "height": 100,
-      "color": "#6d28d9",
       "label": "Commit Tap",
       "pv": {
         "status": "draft",
@@ -633,7 +618,6 @@
       "y": 700,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Author Tap",
       "pv": {
         "status": "draft",

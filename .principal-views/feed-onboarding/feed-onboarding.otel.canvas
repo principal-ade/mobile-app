@@ -30,7 +30,6 @@
       "y": 50,
       "width": 200,
       "height": 100,
-      "color": "#4b5563",
       "label": "Check Onboarding Needed",
       "pv": {
         "status": "draft",
@@ -78,7 +77,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Onboarding Started",
       "pv": {
         "status": "draft",
@@ -111,7 +109,6 @@
       "y": 350,
       "width": 200,
       "height": 100,
-      "color": "#1d4ed8",
       "label": "Step 1: Select Users",
       "pv": {
         "status": "draft",
@@ -144,7 +141,6 @@
       "y": 350,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "User Selected",
       "pv": {
         "status": "draft",
@@ -187,7 +183,6 @@
       "y": 200,
       "width": 200,
       "height": 100,
-      "color": "#6d28d9",
       "label": "User Search",
       "pv": {
         "status": "draft",
@@ -225,7 +220,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Step 1 Complete",
       "pv": {
         "status": "draft",
@@ -263,7 +257,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#1d4ed8",
       "label": "Step 2: Select Repos",
       "pv": {
         "status": "draft",
@@ -301,7 +294,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#0891b2",
       "label": "Repo Selected",
       "pv": {
         "status": "draft",
@@ -344,7 +336,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#6d28d9",
       "label": "Repo Search",
       "pv": {
         "status": "draft",
@@ -382,7 +373,6 @@
       "y": 800,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Onboarding Complete",
       "pv": {
         "status": "draft",
@@ -425,7 +415,6 @@
       "y": 800,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Follow User Success",
       "pv": {
         "status": "draft",
@@ -459,7 +448,6 @@
       "y": 650,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Follow User Error",
       "pv": {
         "status": "draft",
@@ -498,7 +486,6 @@
       "y": 950,
       "width": 200,
       "height": 100,
-      "color": "#16a34a",
       "label": "Follow Repo Success",
       "pv": {
         "status": "draft",
@@ -532,7 +519,6 @@
       "y": 500,
       "width": 200,
       "height": 100,
-      "color": "#dc2626",
       "label": "Follow Repo Error",
       "pv": {
         "status": "draft",
@@ -571,7 +557,6 @@
       "y": 800,
       "width": 200,
       "height": 100,
-      "color": "#f59e0b",
       "label": "Onboarding Skipped",
       "pv": {
         "status": "draft",
