@@ -70,10 +70,23 @@ export function CollectionsView({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isCreating, setIsCreating] = useState(false);
   const [editModal, setEditModal] = useState<EditModalState | null>(null);
+  const [filterOwner, setFilterOwner] = useState<'all' | 'personal' | string>('all');
   const [form, setForm] = useState<CreateFormState>({
     name: '',
     icon: ICON_OPTIONS[0],
     orgLogin: undefined,
+  });
+
+  const orgLoginsInCollections = [...new Set(
+    collections
+      .filter((c) => c.ownerType === 'org' && c.ownerLogin)
+      .map((c) => c.ownerLogin!)
+  )];
+
+  const filteredCollections = collections.filter((c) => {
+    if (filterOwner === 'all') return true;
+    if (filterOwner === 'personal') return c.ownerType !== 'org';
+    return c.ownerType === 'org' && c.ownerLogin === filterOwner;
   });
 
   const toggleExpanded = (id: string) => {
@@ -126,23 +139,41 @@ export function CollectionsView({
   const renderHeader = () => (
     <View>
       <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Collections</Text>
-        <Text style={[styles.count, { color: theme.colors.textSecondary }]}>
-          {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
-        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {(['all', 'personal', ...orgLoginsInCollections] as const).map((option) => {
+            const isActive = filterOwner === option;
+            const label = option === 'all' ? 'All' : option === 'personal' ? 'Personal' : option;
+            return (
+              <TouchableOpacity
+                key={option}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: isActive ? theme.colors.primary : theme.colors.backgroundSecondary,
+                    borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                  },
+                ]}
+                onPress={() => setFilterOwner(option)}
+              >
+                <Text style={[styles.filterChipText, { color: isActive ? theme.colors.textOnPrimary : theme.colors.text }]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {!isCreating && (
+          <TouchableOpacity
+            onPress={() => setIsCreating(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.addButton}
+          >
+            <LucideIcon name="Plus" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {!isCreating ? (
-        <TouchableOpacity
-          style={[styles.newButton, { borderColor: theme.colors.primary }]}
-          onPress={() => setIsCreating(true)}
-        >
-          <LucideIcon name="Plus" size={16} color={theme.colors.primary} />
-          <Text style={[styles.newButtonText, { color: theme.colors.primary }]}>
-            New Collection
-          </Text>
-        </TouchableOpacity>
-      ) : (
+      {isCreating && (
         <View style={[styles.createForm, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.formTitle, { color: theme.colors.text }]}>New Collection</Text>
 
@@ -397,14 +428,14 @@ export function CollectionsView({
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <FlatList
-        data={collections}
+        data={filteredCollections}
         keyExtractor={(item) => item.id}
         renderItem={renderCollection}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={[
           styles.listContent,
-          collections.length === 0 && !isCreating && styles.emptyListContent,
+          filteredCollections.length === 0 && !isCreating && styles.emptyListContent,
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -537,32 +568,27 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 12,
     paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  count: {
-    fontSize: 14,
-  },
-  newButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    borderWidth: 2,
-    borderRadius: 10,
-    borderStyle: 'dashed',
-    marginBottom: 16,
   },
-  newButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+  filterScroll: {
+    flex: 1,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  addButton: {
+    paddingLeft: 4,
   },
   createForm: {
     borderRadius: 12,

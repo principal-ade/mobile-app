@@ -24,7 +24,7 @@ export function StarredTabScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
   const { collections, createCollection, updateCollection, deleteCollection, addRepoToCollection, removeRepoFromCollection, syncWithServer } = useCollections();
-  const [activeTab, setActiveTab] = useState<TabType>('starred');
+  const [activeTab, setActiveTab] = useState<TabType>('collections');
   const [starredRepos, setStarredRepos] = useState<StarredRepo[]>([]);
   const [userOrgs, setUserOrgs] = useState<OrgOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,7 +106,7 @@ export function StarredTabScreen() {
                   },
                 ]}
               >
-                {tab === 'starred' ? 'Repos' : tab === 'collections' ? 'Collections' : 'Tours'}
+                {tab === 'starred' ? 'Starred' : tab === 'collections' ? 'Collections' : 'Tours'}
               </Text>
             </TouchableOpacity>
           ))}
