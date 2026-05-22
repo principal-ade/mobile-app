@@ -259,6 +259,83 @@ export async function deleteInboxEntry(
   }
 }
 
+// ============================================================================
+// Recently visited
+// ============================================================================
+
+/**
+ * One trail in the signed-in user's "recently visited" manifest. Populated
+ * by `recordTrailVisit` on every open. Shape mirrors
+ * `TrailRecentlyVisitedEntry` in web-ade — kept local so we don't drag the
+ * full lib/trails/types surface across the wire.
+ */
+export interface TrailRecentlyVisitedEntry {
+  id: string;
+  title: string;
+  owner: string;
+  repo: string;
+  /** The trail's own updatedAt at visit time. */
+  updatedAt: string;
+  /** ISO 8601 — when this user last opened the trail. */
+  lastVisitedAt: string;
+  visitCount: number;
+  /** Creator's GitHub login, optional (visits route doesn't always know). */
+  createdByLogin?: string;
+}
+
+interface ListRecentlyVisitedResponse {
+  entries: TrailRecentlyVisitedEntry[];
+}
+
+/**
+ * Per-user "recently visited" listing. The route is intentionally
+ * unauthenticated server-side (each trail self-gates on read), so the
+ * token is forwarded only when present for parity with other reads.
+ */
+export async function getRecentlyVisited(
+  githubId: number,
+  githubToken?: string,
+): Promise<TrailRecentlyVisitedEntry[]> {
+  const url = `${API_BASE}/recently-visited/by-user/${encodeURIComponent(
+    String(githubId),
+  )}`;
+  const response = await fetch(url, {
+    headers: githubToken ? authHeaders(githubToken) : undefined,
+  });
+  if (!response.ok) {
+    await throwFromResponse(
+      response,
+      `Failed to list recently-visited trails: ${response.status}`,
+    );
+  }
+  const body = (await response.json()) as ListRecentlyVisitedResponse;
+  return body.entries;
+}
+
+/**
+ * Record a trail open for the signed-in user — fire-and-forget on the
+ * detail screen. The server idempotently upserts the entry in the
+ * per-user manifest so the next `getRecentlyVisited` reflects this visit.
+ */
+export async function recordTrailVisit(
+  trailId: string,
+  githubToken: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/by-id/${encodeURIComponent(trailId)}/visits`,
+    {
+      method: 'POST',
+      headers: authHeaders(githubToken),
+    },
+  );
+  if (!response.ok) {
+    await throwFromResponse(
+      response,
+      `Failed to record visit: ${response.status}`,
+    );
+  }
+}
+
 // Re-export the entry type so callers can `import type { InboxIndexEntry }`
 // from this module without reaching into /types — matches the
 // CollectionsService pattern.

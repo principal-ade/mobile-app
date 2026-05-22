@@ -3,7 +3,7 @@
  * `industry-themed-file-city-panels/src/panels/FileCityTrailExplorerPanel/overlays/TrailBriefCard.tsx`.
  *
  * Same visual unit: header → Description / Route tab switch → body → footer,
- * plus the REVIEWED BY / NOTES BY / VISITED BY avatar strips below. The
+ * plus the REVIEWED BY / NOTES BY avatar strips below. The
  * surrounding modal chrome (backdrop, fade-on-commit) lives elsewhere so
  * this can be rendered standalone (stories, preview screens).
  *
@@ -30,13 +30,22 @@ import {
 } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { useTheme, type Theme } from '@principal-ade/industry-theme';
-import { IndustryMarkdown } from '../IndustryMarkdown';
+import { IndustryMarkdownInline } from '../IndustryMarkdown';
 import type {
   TrailMarkerKind,
   TrailPurpose,
   TrailSignOff,
 } from '../../types/Trail';
 import { mixColors, withAlpha } from './colorMix';
+
+/**
+ * Kill-switch for the 80×80 sign-off stamp slot in the card header
+ * (the dashed `TRAIL UNREVIEWED` placeholder, and the landed-stamp
+ * variant when `signedByCurrentUser`). The slot is fully wired but
+ * the sign-off flow isn't being used yet. Flip back to `false` when
+ * sign-offs land. Mirrors the web card.
+ */
+const STAMP_SLOT_DISABLED = true;
 
 export interface TrailBriefCardStop {
   id?: string;
@@ -47,15 +56,18 @@ export interface TrailBriefCardStop {
    * their label with the eyebrow color to direct the reader's focus.
    */
   kind?: TrailMarkerKind;
+  /**
+   * Optional marker description. When present, tapping the row expands
+   * it inline so the reader can preview the stop's prose without
+   * leaving the brief. Rows without a description fall back to the
+   * existing `onBeginAtStop` navigation.
+   */
+  description?: string;
 }
 
 export interface TrailBriefCardProps {
   /** Markdown body — typically the trail's `summary`. */
   body: string;
-  /** Whether the trail has a Mermaid diagram available. */
-  hasDiagram?: boolean;
-  /** Called when the reader taps the footer `DIAGRAM` button. */
-  onOpenDiagram?: () => void;
   /**
    * Short verb phrase shown as the main heading on shared trails
    * (e.g. `"Verify Direction"`). When unset, the heading falls back
@@ -74,21 +86,12 @@ export interface TrailBriefCardProps {
   fileCount?: number;
   /** Stop rundown shown when the Route tab is selected. */
   stops?: TrailBriefCardStop[];
-  /** Called when the reader taps Start to commit the trail. */
-  onBegin: (mode: 'city' | 'doc') => void;
-  /** Called when the reader taps a stop in the route list. */
-  onBeginAtStop?: (stopIndex: number, mode: 'city' | 'doc') => void;
   /** Persisted reviewer LGTMs. */
   signOffs?: TrailSignOff[];
   /** Whether the *current viewer* is one of the signers. */
   signedByCurrentUser?: boolean;
   /** Display names of distinct note-authors. */
   notedBy?: string[];
-  /** Visit roster for the `VISITED BY` row. */
-  visitedBy?: {
-    verified: string[];
-    anonymousCount: number;
-  };
   /**
    * Optional `author → markerIds[]` map. Avatars become tappable; tap
    * jumps to the route view filtered to that author's marker-scoped
@@ -100,20 +103,56 @@ export interface TrailBriefCardProps {
   /** Trail's state-of-being tag. Defaults to `'investigation'`. */
   purpose?: TrailPurpose;
   /**
-   * Optional delete handler. When provided, the card grows a `DELETE`
-   * button in the footer's left slot.
+   * Fired whenever the selection changes (row tapped or row deselected).
+   * Use this to mirror selection state at the host so the host can
+   * render its own bottom panel layout — typically combined with
+   * `hideSelectedPanel: true` to suppress the in-card render.
    */
-  onDelete?: () => void;
-  /** Whether to render the primary `Start` button. Defaults to `false`. */
-  showStart?: boolean;
+  onSelectionChange?: (selection: TrailBriefSelection) => void;
+  /**
+   * Suppresses the in-card SelectedStopPanel render. Use when the host
+   * is rendering its own panel (e.g. pinned to the bottom of the
+   * screen). Selection still tracks internally and the row highlight
+   * still updates — only the below-card slot is hidden.
+   */
+  hideSelectedPanel?: boolean;
+  /**
+   * Suppresses the cohort strips below the card body — `REVIEWED BY`
+   * and `NOTES BY`. Set when the brief is competing for vertical
+   * space with other UI.
+   */
+  hideCohortStrips?: boolean;
   /**
    * Max card width in pixels. Defaults to 640. The card renders at
-   * `min(maxWidth, container width)` via flex.
+   * `min(maxWidth, container width)` via flex. Ignored in `'screen'`
+   * presentation, which always fills the parent.
    */
   maxWidth?: number;
+  /**
+   * Layout preset.
+   *
+   * - `'modal'` (default): the historical floating card — bordered,
+   *   rounded, capped at `maxWidth`, body height bounded between
+   *   220–360px, route rendered inside its own `ScrollView`. Designed
+   *   to sit on top of another experience (the city/code view on web).
+   * - `'screen'`: the brief *is* the screen. Drops the card chrome
+   *   (border, radius, max-width), unbounds the body height, and
+   *   defers scrolling to the host — the route renders inline and the
+   *   description body uses `IndustryMarkdownInline` (no FlatList) so
+   *   a wrapping `ScrollView` can drive the scroll.
+   */
+  presentation?: 'modal' | 'screen';
 }
 
-type TabKey = 'description' | 'route';
+/**
+ * Tagged shape for the currently-selected row in the route list. Mirrors
+ * the internal `Selection` type — exported so hosts that listen via
+ * `onSelectionChange` can pattern-match without re-deriving the union.
+ */
+export type TrailBriefSelection =
+  | { kind: 'overview' }
+  | { kind: 'stop'; index: number }
+  | null;
 
 type ExplanationSegment = { text: string; bold?: boolean };
 
@@ -121,6 +160,19 @@ interface EyebrowMeta {
   label: string;
   color: string;
   explanation: ExplanationSegment[];
+}
+
+/**
+ * Hosts that render their own selected-stop panel (e.g. pinned to the
+ * screen bottom in `TrailDetailScreen`) can call this to match the
+ * trail-purpose-derived eyebrow tint the in-card panel uses.
+ */
+export function getTrailEyebrowColor(
+  theme: Theme,
+  purpose: TrailPurpose | undefined,
+  signOffsCount: number,
+): string {
+  return resolveEyebrow(theme, purpose, signOffsCount).color;
 }
 
 const resolveEyebrow = (
@@ -197,8 +249,6 @@ const formatRelative = (iso: string | undefined): string | null => {
 
 export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   body,
-  hasDiagram = false,
-  onOpenDiagram,
   request,
   title,
   author,
@@ -206,19 +256,19 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   repoCount,
   fileCount,
   stops,
-  onBegin,
-  onBeginAtStop,
   signOffs,
   signedByCurrentUser = false,
   notedBy,
-  visitedBy,
   notesByAuthor,
   isShared = false,
   purpose,
-  onDelete,
-  showStart = false,
+  onSelectionChange,
+  hideSelectedPanel = false,
+  hideCohortStrips = false,
   maxWidth = 640,
+  presentation = 'modal',
 }) => {
+  const isScreen = presentation === 'screen';
   const { theme } = useTheme();
 
   const isInformative = !isShared || !request || request.trim().length === 0;
@@ -226,16 +276,17 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   const headingLine = isInformative ? title : (request as string);
   const stampText = isInformative ? 'ACK' : 'LGTM';
 
-  const [activeTab, setActiveTab] = React.useState<TabKey>('description');
   const [showExplanation, setShowExplanation] = React.useState(false);
   const [noteAuthorFilter, setNoteAuthorFilter] = React.useState<string | null>(null);
-  const [expandedPaths, setExpandedPaths] = React.useState<Set<number>>(
-    () => new Set(),
-  );
-
-  const showRoute = activeTab === 'route';
-  const canExpandRoute = !!(stops && stops.length > 0);
-  const diagramButtonVisible = hasDiagram && !!onOpenDiagram;
+  // Current row selection in the route list.
+  //   - `null`            → nothing selected; cohort strips show below.
+  //   - `'overview'`      → the synthetic row 00 (renders the trail
+  //                         body in the SelectedStopPanel).
+  //   - `number`          → real stop index in `stops`.
+  // Selection drives the below-card slot; the strips re-appear when
+  // the reader deselects.
+  type Selection = 'overview' | number | null;
+  const [selection, setSelection] = React.useState<Selection>(null);
 
   const filteredMarkerIds = React.useMemo<Set<string> | null>(() => {
     if (!noteAuthorFilter) return null;
@@ -248,31 +299,36 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
     (avatarAuthor: string) => {
       const markerIds = notesByAuthor?.[avatarAuthor];
       if (!markerIds || markerIds.length === 0) return;
-      setNoteAuthorFilter((prev) => (prev === avatarAuthor ? null : avatarAuthor));
-      setActiveTab('route');
+      setNoteAuthorFilter((prev) =>
+        prev === avatarAuthor ? null : avatarAuthor,
+      );
     },
     [notesByAuthor],
   );
 
-  React.useEffect(() => {
-    if (!showRoute) setNoteAuthorFilter(null);
-  }, [showRoute]);
-
-  React.useEffect(() => {
-    if (!showRoute) setExpandedPaths(new Set());
-  }, [showRoute]);
-
-  const togglePathExpansion = React.useCallback((index: number) => {
-    setExpandedPaths((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+  const toggleOverviewSelection = React.useCallback(() => {
+    setSelection((prev) => (prev === 'overview' ? null : 'overview'));
   }, []);
 
-  const visitTotal =
-    (visitedBy?.verified.length ?? 0) + (visitedBy?.anonymousCount ?? 0);
+  const toggleStopSelection = React.useCallback((index: number) => {
+    setSelection((prev) => (prev === index ? null : index));
+  }, []);
+
+  // Mirror the internal Selection union into the public tagged shape on
+  // every change so hosts that want to render their own panel can stay
+  // in sync without learning the internal `'overview' | number | null`
+  // representation.
+  React.useEffect(() => {
+    if (!onSelectionChange) return;
+    if (selection === 'overview') {
+      onSelectionChange({ kind: 'overview' });
+    } else if (typeof selection === 'number') {
+      onSelectionChange({ kind: 'stop', index: selection });
+    } else {
+      onSelectionChange(null);
+    }
+  }, [selection, onSelectionChange]);
+
   const dateStamp = React.useMemo(() => formatRelative(createdAt), [createdAt]);
 
   const routeParts: string[] = [];
@@ -287,21 +343,15 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   const borderColor = mixColors(eyebrow.color, 0.55, theme.colors.border);
   const cardRadius = isShared ? 0 : theme.radii[4];
 
-  // Outer container — width capped at `maxWidth`, but shrinks on narrower
-  // viewports. Layout column so explanation popover + card + avatar
-  // strips stack vertically.
-  const containerStyle: ViewStyle = {
-    width: '100%',
-    maxWidth,
-    alignSelf: 'center',
-  };
-
-  const showFooter = !!onDelete || diagramButtonVisible || showStart;
-  const footerSlotCount = (onDelete ? 1 : 0) + (showStart ? 1 : 0) + (diagramButtonVisible ? 1 : 0);
+  // Outer container — width capped at `maxWidth` and centered in modal
+  // mode; in screen mode the brief IS the viewport so flex to fill the
+  // available height (the host is responsible for sizing the parent).
+  const containerStyle: ViewStyle = isScreen
+    ? { width: '100%', flex: 1 }
+    : { width: '100%', maxWidth, alignSelf: 'center' };
 
   const headerHasRouteRow = routeParts.length > 0 || !!dateStamp;
-  const headerHasFromRow =
-    (author && author.trim().length > 0) || (isShared && visitTotal > 0);
+  const headerHasFromRow = !!(author && author.trim().length > 0);
 
   return (
     <View style={containerStyle}>
@@ -316,14 +366,21 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
       ) : null}
 
       <View
-        style={{
-          backgroundColor: theme.colors.backgroundSecondary,
-          borderRadius: cardRadius,
-          borderWidth: 1,
-          borderStyle: borderStyle as ViewStyle['borderStyle'],
-          borderColor,
-          overflow: 'hidden',
-        }}
+        style={
+          isScreen
+            ? {
+                flex: 1,
+                backgroundColor: theme.colors.backgroundSecondary,
+              }
+            : {
+                backgroundColor: theme.colors.backgroundSecondary,
+                borderRadius: cardRadius,
+                borderWidth: 1,
+                borderStyle: borderStyle as ViewStyle['borderStyle'],
+                borderColor,
+                overflow: 'hidden',
+              }
+        }
       >
         {/* Header */}
         <View
@@ -380,24 +437,11 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                 {author && author.trim().length > 0 ? (
                   <MetaPair theme={theme} label="FROM" value={author} />
                 ) : null}
-                {isShared && visitTotal > 0 ? (
-                  <Text
-                    style={{
-                      fontFamily: theme.fonts.monospace,
-                      fontSize: theme.fontSizes[0],
-                      color: theme.colors.textTertiary,
-                      letterSpacing: 0.5,
-                      lineHeight: theme.fontSizes[0] * 1.55,
-                    }}
-                  >
-                    {visitTotal} {visitTotal === 1 ? 'visit' : 'visits'}
-                  </Text>
-                ) : null}
               </View>
             ) : null}
           </View>
 
-          {isShared ? (
+          {isShared && !STAMP_SLOT_DISABLED ? (
             <StampPlaceholder
               theme={theme}
               signed={signedByCurrentUser}
@@ -406,246 +450,197 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
           ) : null}
         </View>
 
-        {/* Tab bar */}
-        <View style={{ flexDirection: 'row' }}>
-          {(['description', 'route'] as const).map((tabKey) => {
-            const active = activeTab === tabKey;
-            const enabled = tabKey === 'description' ? true : canExpandRoute;
-            const label = tabKey === 'description' ? 'Description' : 'Trail Route';
-            return (
-              <Pressable
-                key={tabKey}
-                disabled={!enabled}
-                onPress={() => {
-                  if (!enabled) return;
-                  setActiveTab(tabKey);
-                  setShowExplanation(false);
-                }}
+        {/* Body — single route list. Row 00 is the synthetic Overview
+            (trail body); the rest are real stops. Selecting any row
+            surfaces its content in the SelectedStopPanel below the
+            card. Scroll is always internal to the route ScrollView —
+            in modal mode the body is bounded 220–360px; in screen
+            mode it flexes to whatever space the host gave the card. */}
+        <View
+          style={
+            isScreen ? { flex: 1 } : { minHeight: 220, maxHeight: 360 }
+          }
+        >
+          <View style={{ flex: 1 }}>
+            {noteAuthorFilter ? (
+              <View
                 style={{
-                  flex: 1,
-                  paddingTop: 14,
-                  paddingBottom: 10,
-                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  paddingHorizontal: 18,
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.colors.border,
+                  flexDirection: 'row',
                   alignItems: 'center',
-                  opacity: enabled ? 1 : 0.5,
+                  gap: 8,
                 }}
               >
                 <Text
                   style={{
-                    color: active ? eyebrow.color : theme.colors.textTertiary,
-                    fontFamily: theme.fonts.body,
-                    fontSize: theme.fontSizes[1],
-                    fontWeight: String(
-                      active ? theme.fontWeights.semibold : theme.fontWeights.medium,
-                    ) as TextStyle['fontWeight'],
-                    letterSpacing: 0.3,
+                    fontFamily: theme.fonts.monospace,
+                    fontSize: theme.fontSizes[0],
+                    color: theme.colors.textTertiary,
+                    letterSpacing: 0.4,
+                    flex: 1,
                   }}
                 >
-                  {label}
+                  NOTES BY{' '}
+                  <Text style={{ color: theme.colors.text }}>{noteAuthorFilter}</Text>
                 </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Body */}
-        <View style={{ minHeight: 220, maxHeight: 360 }}>
-          {activeTab === 'description' ? (
-            // `IndustryMarkdown` wraps `react-native-marked`, which renders
-            // a FlatList. Don't wrap it in a ScrollView — nesting a
-            // virtualized list inside a plain ScrollView with the same
-            // orientation throws the "VirtualizedLists should never be
-            // nested" warning and breaks windowing. The bounded
-            // min/maxHeight on this parent is what lets the FlatList
-            // measure itself and scroll internally.
-            <IndustryMarkdown
-              containerStyle={{ paddingVertical: 4, paddingHorizontal: 18 }}
-            >
-              {body.trim()}
-            </IndustryMarkdown>
-          ) : null}
-          {showRoute && stops && stops.length > 0 ? (
-            <View style={{ flex: 1 }}>
-              {noteAuthorFilter ? (
-                <View
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 18,
-                    borderBottomWidth: 1,
-                    borderBottomColor: theme.colors.border,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: theme.fonts.monospace,
-                      fontSize: theme.fontSizes[0],
-                      color: theme.colors.textTertiary,
-                      letterSpacing: 0.4,
-                      flex: 1,
-                    }}
-                  >
-                    NOTES BY{' '}
-                    <Text style={{ color: theme.colors.text }}>{noteAuthorFilter}</Text>
-                  </Text>
-                  <Pressable
-                    onPress={() => setNoteAuthorFilter(null)}
-                    hitSlop={8}
-                    accessibilityLabel="Clear filter"
-                  >
-                    <Text
-                      style={{
-                        color: theme.colors.textTertiary,
-                        fontSize: theme.fontSizes[1],
-                        lineHeight: theme.fontSizes[1],
-                      }}
-                    >
-                      ×
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : null}
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingVertical: 15, paddingHorizontal: 19 }}
-              >
-                {stops.map((stop, i) => (
-                  <RouteStopRow
-                    key={stop.id ?? i}
-                    theme={theme}
-                    index={i}
-                    stop={stop}
-                    eyebrowColor={eyebrow.color}
-                    isLast={i === stops.length - 1}
-                    matchesFilter={
-                      filteredMarkerIds != null &&
-                      stop.id != null &&
-                      filteredMarkerIds.has(stop.id)
-                    }
-                    dimmed={
-                      filteredMarkerIds != null &&
-                      !(stop.id != null && filteredMarkerIds.has(stop.id))
-                    }
-                    pathExpanded={expandedPaths.has(i)}
-                    onTogglePath={() => togglePathExpansion(i)}
-                    onPress={
-                      onBeginAtStop ? () => onBeginAtStop(i, 'city') : undefined
-                    }
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
-        </View>
-
-        {/* Footer */}
-        {showFooter ? (
-          <View
-            style={{
-              paddingVertical: 14,
-              paddingHorizontal: 18,
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <View style={{ flex: 1, alignItems: 'flex-start' }}>
-              {onDelete ? (
-                <FooterButton
-                  theme={theme}
-                  label="Delete"
-                  color={theme.colors.error}
-                  borderColor={mixColors(theme.colors.error, 0.5, theme.colors.border)}
-                  onPress={onDelete}
-                />
-              ) : null}
-            </View>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              {showStart ? (
                 <Pressable
-                  onPress={() => onBegin('city')}
-                  style={{
-                    backgroundColor: theme.colors.accent,
-                    borderColor: theme.colors.accent,
-                    borderWidth: 1,
-                    borderRadius: theme.radii[3],
-                    paddingVertical: 6,
-                    paddingHorizontal: 18,
-                  }}
+                  onPress={() => setNoteAuthorFilter(null)}
+                  hitSlop={8}
+                  accessibilityLabel="Clear filter"
                 >
                   <Text
                     style={{
-                      fontFamily: theme.fonts.body,
+                      color: theme.colors.textTertiary,
                       fontSize: theme.fontSizes[1],
-                      fontWeight: String(
-                        theme.fontWeights.semibold,
-                      ) as TextStyle['fontWeight'],
-                      color: theme.colors.background,
+                      lineHeight: theme.fontSizes[1],
                     }}
                   >
-                    Start
+                    ×
                   </Text>
                 </Pressable>
-              ) : null}
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              {diagramButtonVisible ? (
-                <FooterButton
-                  theme={theme}
-                  label="Diagram"
-                  color={theme.colors.textSecondary}
-                  borderColor={theme.colors.border}
-                  onPress={() => onOpenDiagram?.()}
-                />
-              ) : null}
-            </View>
-            {/* Suppress lint about unused var when no slots are filled. */}
-            {footerSlotCount === 0 ? null : null}
+              </View>
+            ) : null}
+            {(() => {
+              // Route list always lives in its own ScrollView so the
+              // header above stays fixed and only the rows scroll. The
+              // host must NOT wrap the card in another ScrollView with
+              // the same orientation, or RN will warn about nested
+              // virtualization. (In screen mode the host gives the
+              // card a flex parent; in modal mode the card is sized
+              // by maxWidth/min-maxHeight.)
+              const RouteContainer: React.FC<{ children: React.ReactNode }> =
+                ({ children }) => (
+                  <ScrollView
+                    style={{ flex: 1 }}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{
+                      paddingVertical: 15,
+                      paddingLeft: 10,
+                      paddingRight: 19,
+                    }}
+                  >
+                    {children}
+                  </ScrollView>
+                );
+              const hasStops = !!(stops && stops.length > 0);
+              return (
+                <RouteContainer>
+                  <RouteStopRow
+                    theme={theme}
+                    numberLabel="00"
+                    label="Overview"
+                    eyebrowColor={eyebrow.color}
+                    kind="subject"
+                    isLast={!hasStops}
+                    matchesFilter={false}
+                    dimmed={filteredMarkerIds != null}
+                    selected={selection === 'overview'}
+                    onPress={toggleOverviewSelection}
+                  />
+                  {hasStops
+                    ? stops!.map((stop, i) => (
+                        <RouteStopRow
+                          key={stop.id ?? i}
+                          theme={theme}
+                          numberLabel={String(i + 1).padStart(2, '0')}
+                          label={stop.label}
+                          eyebrowColor={eyebrow.color}
+                          kind={stop.kind}
+                          isLast={i === stops!.length - 1}
+                          matchesFilter={
+                            filteredMarkerIds != null &&
+                            stop.id != null &&
+                            filteredMarkerIds.has(stop.id)
+                          }
+                          dimmed={
+                            filteredMarkerIds != null &&
+                            !(stop.id != null && filteredMarkerIds.has(stop.id))
+                          }
+                          selected={selection === i}
+                          onPress={() => toggleStopSelection(i)}
+                        />
+                      ))
+                    : null}
+                </RouteContainer>
+              );
+            })()}
           </View>
-        ) : null}
+        </View>
+
       </View>
 
-      {/* Avatar strips */}
-      {isShared && signOffs && signOffs.length > 0 ? (
-        <AvatarStrip
-          theme={theme}
-          label="REVIEWED BY"
-          ringed
-          entries={signOffs.map((s) => {
-            const hasNotes = (notesByAuthor?.[s.author]?.length ?? 0) > 0;
-            return {
-              key: s.id,
-              name: s.author,
-              onPress: hasNotes ? () => handleAvatarPress(s.author) : undefined,
-              active: noteAuthorFilter === s.author,
-            };
-          })}
-        />
+      {/*
+       * Below-card slot — mutually exclusive between:
+       *   - SelectedStopPanel: row 00 (Overview, renders the trail
+       *     body) or a real stop (label / path / description).
+       *   - Cohort strips (REVIEWED BY / NOTES BY): the idle state
+       *     when nothing is selected.
+       * Selection wins; the strips re-appear when the reader deselects.
+       */}
+      {!hideSelectedPanel && selection === 'overview' ? (
+        <View style={{ marginTop: 10 }}>
+          <SelectedStopPanel
+            theme={theme}
+            eyebrowColor={eyebrow.color}
+            description={body}
+          />
+        </View>
       ) : null}
-      {notedBy && notedBy.length > 0 ? (
-        <AvatarStrip
-          theme={theme}
-          label="NOTES BY"
-          entries={notedBy.map((name) => {
-            const hasNotes = (notesByAuthor?.[name]?.length ?? 0) > 0;
-            return {
-              key: name,
-              name,
-              onPress: hasNotes ? () => handleAvatarPress(name) : undefined,
-              active: noteAuthorFilter === name,
-            };
-          })}
-        />
+      {!hideSelectedPanel &&
+      typeof selection === 'number' &&
+      stops &&
+      stops[selection] ? (
+        <View style={{ marginTop: 10 }}>
+          <SelectedStopPanel
+            theme={theme}
+            eyebrowColor={eyebrow.color}
+            sourcePath={stops[selection].sourcePath}
+            description={stops[selection].description}
+          />
+        </View>
       ) : null}
-      {isShared && visitedBy && visitedBy.verified.length > 0 ? (
-        <AvatarStrip
-          theme={theme}
-          label="VISITED BY"
-          entries={visitedBy.verified.map((name) => ({ key: name, name }))}
-        />
+      {selection == null ? (
+        <>
+          {!hideCohortStrips && isShared && signOffs && signOffs.length > 0 ? (
+            <AvatarStrip
+              theme={theme}
+              label="REVIEWED BY"
+              ringed
+              entries={signOffs.map((s) => {
+                const hasNotes =
+                  (notesByAuthor?.[s.author]?.length ?? 0) > 0;
+                return {
+                  key: s.id,
+                  name: s.author,
+                  onPress: hasNotes
+                    ? () => handleAvatarPress(s.author)
+                    : undefined,
+                  active: noteAuthorFilter === s.author,
+                };
+              })}
+            />
+          ) : null}
+          {!hideCohortStrips && notedBy && notedBy.length > 0 ? (
+            <AvatarStrip
+              theme={theme}
+              label="NOTES BY"
+              entries={notedBy.map((name) => {
+                const hasNotes = (notesByAuthor?.[name]?.length ?? 0) > 0;
+                return {
+                  key: name,
+                  name,
+                  onPress: hasNotes
+                    ? () => handleAvatarPress(name)
+                    : undefined,
+                  active: noteAuthorFilter === name,
+                };
+              })}
+            />
+          ) : null}
+        </>
       ) : null}
     </View>
   );
@@ -833,37 +828,39 @@ const StampPlaceholder: React.FC<{
 
 const RouteStopRow: React.FC<{
   theme: Theme;
-  index: number;
-  stop: TrailBriefCardStop;
+  numberLabel: string;
+  label: string;
+  kind?: TrailMarkerKind;
   eyebrowColor: string;
   isLast: boolean;
   matchesFilter: boolean;
   dimmed: boolean;
-  pathExpanded: boolean;
-  onTogglePath: () => void;
+  selected: boolean;
   onPress?: () => void;
 }> = ({
   theme,
-  index,
-  stop,
+  numberLabel,
+  label,
+  kind,
   eyebrowColor,
   isLast,
   matchesFilter,
   dimmed,
-  pathExpanded,
-  onTogglePath,
+  selected,
   onPress,
 }) => {
-  const fileName = stop.sourcePath
-    ? stop.sourcePath.split('/').pop() || stop.sourcePath
-    : null;
-  const rowBackground = matchesFilter
-    ? withAlpha(theme.colors.accent, 0.18)
-    : 'transparent';
-  const labelColor =
-    stop.kind === 'subject' ? eyebrowColor : theme.colors.text;
+  // Selection is the higher-signal state (the reader actively picked
+  // this row); the cohort-filter highlight only kicks in when nothing
+  // is selected. Selected rows use the trail's eyebrow color so they
+  // tie back to the purpose pill in the header.
+  const rowBackground = selected
+    ? withAlpha(eyebrowColor, 0.22)
+    : matchesFilter
+      ? withAlpha(theme.colors.accent, 0.18)
+      : 'transparent';
+  const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
   const numberColor =
-    stop.kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
+    kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
 
   return (
     <View
@@ -882,111 +879,116 @@ const RouteStopRow: React.FC<{
           borderRadius: theme.radii[1],
           backgroundColor: rowBackground,
           borderLeftWidth: 3,
-          borderLeftColor: matchesFilter ? theme.colors.accent : 'transparent',
+          borderLeftColor: selected
+            ? eyebrowColor
+            : matchesFilter
+              ? theme.colors.accent
+              : 'transparent',
           paddingLeft: 8,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Pressable
-            disabled={!onPress}
-            onPress={onPress}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-          >
-            <Text
-              style={{
-                color: numberColor,
-                minWidth: 24,
-                fontFamily: theme.fonts.monospace,
-                fontSize: theme.fontSizes[1],
-              }}
-            >
-              {String(index + 1).padStart(2, '0')}
-            </Text>
-            <Text
-              style={{
-                flex: 1,
-                color: labelColor,
-                fontFamily: theme.fonts.monospace,
-                fontSize: theme.fontSizes[1],
-                lineHeight: theme.fontSizes[1] * 1.6,
-              }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {stop.label}
-            </Text>
-          </Pressable>
-          {fileName ? (
-            <Pressable
-              onPress={onTogglePath}
-              accessibilityState={{ expanded: pathExpanded }}
-              style={{ maxWidth: '50%', marginLeft: 8 }}
-            >
-              <Text
-                style={{
-                  color: pathExpanded ? theme.colors.text : theme.colors.textTertiary,
-                  fontFamily: theme.fonts.monospace,
-                  fontSize: theme.fontSizes[1],
-                  textDecorationLine: pathExpanded ? 'underline' : 'none',
-                }}
-                numberOfLines={1}
-                ellipsizeMode="middle"
-              >
-                {fileName}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-        {pathExpanded && stop.sourcePath ? (
+        <Pressable
+          disabled={!onPress}
+          onPress={onPress}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
           <Text
             style={{
-              marginTop: 4,
-              marginLeft: 36,
+              color: numberColor,
+              minWidth: 24,
               fontFamily: theme.fonts.monospace,
-              fontSize: theme.fontSizes[0],
-              color: theme.colors.textTertiary,
-              lineHeight: theme.fontSizes[0] * 1.4,
+              fontSize: theme.fontSizes[1],
             }}
           >
-            {stop.sourcePath}
+            {numberLabel}
           </Text>
-        ) : null}
+          <Text
+            style={{
+              flex: 1,
+              color: labelColor,
+              fontFamily: theme.fonts.monospace,
+              fontSize: theme.fontSizes[1],
+              lineHeight: theme.fontSizes[1] * 1.6,
+            }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {label}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
 };
 
-const FooterButton: React.FC<{
+/**
+ * The detail panel that appears below the card when the reader selects
+ * a row in the route — either the synthetic Overview row (renders the
+ * trail body) or a real stop (renders its label / path / description).
+ * Occupies the same vertical slot as REVIEWED BY / NOTES BY,
+ * replacing them while a selection is active.
+ */
+export interface SelectedStopPanelProps {
   theme: Theme;
-  label: string;
-  color: string;
-  borderColor: string;
-  onPress: () => void;
-}> = ({ theme, label, color, borderColor, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    style={{
-      borderWidth: 1,
-      borderColor,
-      borderRadius: theme.radii[2],
-      paddingVertical: 5,
-      paddingHorizontal: 10,
-    }}
-  >
-    <Text
+  eyebrowColor: string;
+  sourcePath?: string;
+  description?: string;
+}
+
+export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
+  theme,
+  eyebrowColor,
+  sourcePath,
+  description,
+}) => {
+  const hasDescription = !!description && description.trim().length > 0;
+  return (
+    <View
       style={{
-        fontFamily: theme.fonts.monospace,
-        fontSize: theme.fontSizes[0],
-        color,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        fontWeight: String(theme.fontWeights.medium) as TextStyle['fontWeight'],
+        // `flex: 1` so the panel fills whatever container the host
+        // sized for it (e.g. the 30% slot in TrailDetailScreen). In
+        // non-flex parents this is a no-op and the panel sizes to
+        // content, which is what the in-card render path wants.
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        backgroundColor: theme.colors.backgroundSecondary,
+        borderWidth: 1,
+        borderColor: mixColors(eyebrowColor, 0.55, theme.colors.border),
       }}
     >
-      {label}
-    </Text>
-  </Pressable>
-);
+      {sourcePath ? (
+        <Text
+          style={{
+            fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0],
+            color: theme.colors.textTertiary,
+            lineHeight: theme.fontSizes[0] * 1.4,
+          }}
+        >
+          {sourcePath}
+        </Text>
+      ) : null}
+      {hasDescription ? (
+        // Internal scroll for just the markdown body — sourcePath above
+        // stays pinned, only the prose scrolls when it overflows the
+        // panel's height.
+        <ScrollView
+          style={{ flex: 1, marginTop: sourcePath ? 8 : 0 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <IndustryMarkdownInline>
+            {(description ?? '').trim()}
+          </IndustryMarkdownInline>
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+};
 
 interface AvatarStripEntry {
   key: string;
@@ -1060,7 +1062,7 @@ const AvatarStrip: React.FC<{
           );
         return (
           <Wrapper key={entry.key}>
-            <Avatar theme={theme} name={entry.name} size={24} ringed={ringed} />
+            <Avatar theme={theme} name={entry.name} size={32} ringed={ringed} />
             <Text
               style={{
                 fontFamily: theme.fonts.body,

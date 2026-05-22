@@ -31,7 +31,11 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Linking, Alert, Text, ViewStyle } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
-import Markdown, { Renderer, type MarkedStyles } from 'react-native-marked';
+import Markdown, {
+  Renderer,
+  useMarkdown,
+  type MarkedStyles,
+} from 'react-native-marked';
 
 export interface IndustryMarkdownProps {
   /** Markdown content to render */
@@ -144,3 +148,99 @@ const styles = StyleSheet.create({
     // Container uses theme from parent
   },
 });
+
+export interface IndustryMarkdownInlineProps {
+  /** Markdown content to render */
+  children: string;
+  /** Callback when a link is clicked. If not provided, opens in browser. */
+  onLinkPress?: (url: string) => void;
+  /** Container style */
+  containerStyle?: ViewStyle;
+}
+
+/**
+ * Same look as `IndustryMarkdown`, but renders via the `useMarkdown` hook
+ * into a plain `View` instead of the library's `FlatList`-backed component.
+ * Use when the markdown is being placed inside another `ScrollView` /
+ * `FlatList` and the nested-virtualized-list warning would otherwise fire.
+ * For standalone bodies, prefer `IndustryMarkdown` so windowing kicks in.
+ */
+export const IndustryMarkdownInline: React.FC<IndustryMarkdownInlineProps> = ({
+  children,
+  onLinkPress,
+  containerStyle = {},
+}) => {
+  const { theme } = useTheme();
+
+  const renderer = useMemo(() => {
+    class CustomRenderer extends Renderer {
+      link(
+        linkChildren: string | React.ReactNode[],
+        href: string,
+        linkStyles?: object,
+        _title?: string,
+      ) {
+        const handlePress = () => {
+          if (onLinkPress) {
+            onLinkPress(href);
+          } else {
+            Linking.canOpenURL(href).then((supported) => {
+              if (supported) {
+                Linking.openURL(href);
+              } else {
+                Alert.alert('Cannot open URL', `Unable to open: ${href}`);
+              }
+            });
+          }
+        };
+        return (
+          <Text key={`link-${href}`} style={linkStyles} onPress={handlePress}>
+            {linkChildren}
+          </Text>
+        );
+      }
+    }
+    return new CustomRenderer();
+  }, [onLinkPress]);
+
+  const inlineStyles: Partial<MarkedStyles> = useMemo(
+    () => ({
+      codespan: {
+        backgroundColor:
+          theme.colors.backgroundSecondary || theme.colors.muted,
+        fontFamily: theme.fonts.monospace,
+        fontSize: theme.fontSizes[1],
+        paddingHorizontal: theme.space[1],
+        paddingVertical: 2,
+        borderRadius: theme.radii[1],
+      },
+      code: {
+        backgroundColor:
+          theme.colors.backgroundSecondary || theme.colors.muted,
+        fontFamily: theme.fonts.monospace,
+        fontSize: theme.fontSizes[1],
+        padding: theme.space[3],
+        borderRadius: theme.radii[2],
+        marginVertical: theme.space[2],
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+      },
+    }),
+    [theme],
+  );
+
+  const nodes = useMarkdown(children, {
+    renderer,
+    styles: inlineStyles,
+    theme: {
+      colors: {
+        text: theme.colors.text,
+        link: theme.colors.primary,
+        code: theme.colors.primary,
+        border: theme.colors.border,
+      },
+    },
+  });
+
+  return <View style={containerStyle}>{nodes}</View>;
+};

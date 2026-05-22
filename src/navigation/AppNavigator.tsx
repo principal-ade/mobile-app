@@ -9,7 +9,7 @@ import * as Clipboard from 'expo-clipboard';
 import {
   RootStackParamList,
   MainTabParamList,
-  FeedStackParamList,
+  TrailsStackParamList,
   WatchStackParamList,
   SearchStackParamList,
   StarredStackParamList,
@@ -22,16 +22,15 @@ import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
 import AddUserScreen from '../screens/AddUserScreen';
 import AddRepoScreen from '../screens/AddRepoScreen';
-import SwipeFeedScreen from '../screens/SwipeFeedScreen';
-import FeedTabScreen from '../screens/FeedTabScreen';
+import TrailsTabScreen from '../screens/TrailsTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
 import UserActivityScreen from '../screens/UserActivityScreen';
 import StarredTabScreen from '../screens/StarredTabScreen';
-import CardDetailScreen from '../screens/CardDetailScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import { RepoFileCityScreen } from '../screens/RepoFileCityScreen';
+import { TrailDetailScreen } from '../screens/TrailDetailScreen';
 import RepoReadmeScreen from '../screens/RepoReadmeScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
@@ -42,6 +41,7 @@ import { useMultiAccount } from '../context/MultiAccountContext';
 import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { parseGitHubUrl } from '../utils/githubUrlParser';
+import { extractTrailId } from '../utils/trailUrlParser';
 import { saveClickedResult } from '../utils/searchStorage';
 
 const prefix = Linking.createURL('/');
@@ -59,13 +59,10 @@ const linking: LinkingOptions<RootStackParamList> = {
       },
       MainTabs: {
         screens: {
-          Feed: {
-            path: 'feed',
+          Trails: {
+            path: 'trails',
             screens: {
-              FeedHome: '',
-              SwipeFeed: 'swipe',
-              CardDetail: 'card/:owner/:repo',
-              SavedCards: 'saved',
+              TrailsHome: '',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
@@ -125,7 +122,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 const RootStack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
-const FeedStack = createStackNavigator<FeedStackParamList>();
+const TrailsStack = createStackNavigator<TrailsStackParamList>();
 const WatchStack = createStackNavigator<WatchStackParamList>();
 const SearchStack = createStackNavigator<SearchStackParamList>();
 const StarredStack = createStackNavigator<StarredStackParamList>();
@@ -141,13 +138,12 @@ function UserAvatarIcon({ avatarUrl, color }: { avatarUrl: string; color: string
   );
 }
 
-// Feed Stack Navigator
-function FeedStackNavigator() {
+// Trails Stack Navigator
+function TrailsStackNavigator() {
   const { theme } = useTheme();
-  const { isAuthenticated } = useAuth();
 
   return (
-    <FeedStack.Navigator
+    <TrailsStack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.colors.surface,
@@ -158,79 +154,47 @@ function FeedStackNavigator() {
         },
       }}
     >
-      <FeedStack.Screen
-        name="FeedHome"
-        component={FeedTabScreen}
+      <TrailsStack.Screen
+        name="TrailsHome"
+        component={TrailsTabScreen}
         options={{ headerShown: false }}
       />
-      <FeedStack.Screen
-        name="CommitDetail"
-        component={CommitDetailScreen}
-        options={{
-          headerShown: false,
-          presentation: 'card',
-        }}
+      <TrailsStack.Screen
+        name="TrailDetail"
+        component={TrailDetailScreen}
+        options={{ title: 'Trail' }}
       />
-      {isAuthenticated && (
-        <>
-          <FeedStack.Screen
-            name="SwipeFeed"
-            component={SwipeFeedScreen}
-            options={{ headerShown: false }}
-          />
-          <FeedStack.Screen
-            name="CardDetail"
-            component={CardDetailScreen}
-            options={{ headerShown: false, presentation: 'modal' }}
-          />
-          <FeedStack.Screen
-            name="SavedCards"
-            component={SavedCardsScreen}
-            options={{ title: 'Saved Cards' }}
-          />
-          <FeedStack.Screen
-            name="FeedCustomization"
-            component={FeedCustomizationScreen}
-            options={{ headerShown: false }}
-          />
-          <FeedStack.Screen
-            name="AddUser"
-            component={AddUserScreen}
-            options={{ headerShown: false, presentation: 'modal' }}
-          />
-          <FeedStack.Screen
-            name="AddRepo"
-            component={AddRepoScreen}
-            options={{ headerShown: false, presentation: 'modal' }}
-          />
-        </>
-      )}
-      <FeedStack.Screen
+      <TrailsStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
         options={{ headerShown: false }}
       />
-      <FeedStack.Screen
+      <TrailsStack.Screen
         name="RepoReadme"
         component={RepoReadmeScreen}
         options={{ headerShown: false }}
       />
-      <FeedStack.Screen
+      <TrailsStack.Screen
         name="TourFileCity"
         component={TourFileCityScreen}
         options={{ headerShown: false }}
       />
-      <FeedStack.Screen
+      <TrailsStack.Screen
         name="UserProfile"
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
       />
-      <FeedStack.Screen
+      <TrailsStack.Screen
         name="Organization"
         component={OrganizationScreenContainer}
         options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
       />
-    </FeedStack.Navigator>
+      <TrailsStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{ headerShown: false }}
+      />
+    </TrailsStack.Navigator>
   );
 }
 
@@ -314,6 +278,11 @@ function SearchStackNavigator() {
         name="SearchHome"
         component={SearchTabScreen}
         options={{ headerShown: false }}
+      />
+      <SearchStack.Screen
+        name="TrailDetail"
+        component={TrailDetailScreen}
+        options={{ title: 'Trail' }}
       />
       <SearchStack.Screen
         name="RepoFileCity"
@@ -494,10 +463,10 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="Feed"
-        component={FeedStackNavigator}
+        name="Trails"
+        component={TrailsStackNavigator}
         options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="List" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <LucideIcon name="Footprints" size={24} color={color} />,
         }}
       />
       <Tab.Screen
@@ -531,10 +500,27 @@ function MainTabs() {
                   return;
                 }
 
-                const parseResult = parseGitHubUrl(clipboardContent.trim());
+                const trimmed = clipboardContent.trim();
+
+                // Trail share URLs / bare UUIDs take priority — they
+                // can never overlap with the github.com URL shapes
+                // parseGitHubUrl accepts, so checking first is safe.
+                const trailId = extractTrailId(trimmed);
+                if (trailId) {
+                  navigation.navigate('Search', {
+                    screen: 'TrailDetail',
+                    params: { trailId },
+                  });
+                  return;
+                }
+
+                const parseResult = parseGitHubUrl(trimmed);
 
                 if (parseResult.type === 'invalid') {
-                  Alert.alert('Invalid URL', 'Clipboard does not contain a valid GitHub URL');
+                  Alert.alert(
+                    'Invalid URL',
+                    'Clipboard does not contain a valid GitHub or trail URL',
+                  );
                   return;
                 }
 
