@@ -329,6 +329,11 @@ function StarredStackNavigator() {
         options={{ headerShown: false }}
       />
       <StarredStack.Screen
+        name="TrailDetail"
+        component={TrailDetailScreen}
+        options={{ title: 'Trail' }}
+      />
+      <StarredStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
         options={{ headerShown: false }}

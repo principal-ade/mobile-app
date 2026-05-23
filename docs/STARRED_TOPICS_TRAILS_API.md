@@ -74,6 +74,12 @@ interface StarredTopicEntry {
   topicId: string;                   // FK into topics/_by-id/{id}.json
   starredAt: string;                 // ISO 8601, server-stamped
   snapshot: TopicByUserEntry;        // title, descriptionPreview, trailCount, …
+  /**
+   * Server-set on GET responses only — never stored. `true` when the
+   * underlying `topics/_by-id/{topicId}.json` 404s at read time, so the
+   * client can render a "no longer available" row.
+   */
+  gone?: true;
 }
 
 interface StarredTrailsIndex {
@@ -88,6 +94,8 @@ interface StarredTrailEntry {
   owner: string;                     // duplicated from by-id pointer
   repo: string;
   snapshot: SharedTrailIndexEntry;
+  /** Server-set on GET responses only — see `StarredTopicEntry.gone`. */
+  gone?: true;
 }
 ```
 
@@ -95,16 +103,20 @@ Mutations use ETag-locked read-modify-write (same pattern as inbox / topic
 record). Soft cap **500 entries per list** — past that, oldest-by-`starredAt`
 is pruned on append.
 
+<a id="snapshot-freshness"></a>
 ### Snapshot freshness
 
-Snapshot is captured at star-time and refreshed lazily when the user opens
-the item from the starred list: server re-reads the live record, and if
-`updatedAt` advanced, patches the snapshot in the index. Cheap because the
-list is already loaded.
+Snapshot is captured at star-time. It is **only** refreshed when the user
+opens the item from the starred list — the detail-fetch path re-reads the
+live record, and if `updatedAt` advanced, patches the snapshot in the
+index on the way through. `GET /starred` itself never fans out and never
+refreshes snapshots; rows may be slightly stale (e.g. an old title) until
+tapped. This is the cheap path on purpose.
 
 If the underlying topic/trail is deleted, the star entry stays until the
 user removes it — list rows render with a "no longer available" affordance
-(server flags `gone: true` on read when the by-id key 404s).
+driven by `gone: true` on each entry (server sets the flag on `GET /starred`
+when the by-id key 404s; see the entry type in [§3 Proposed storage](#3-proposed-storage)).
 
 ## 4. Proposed routes
 
@@ -119,7 +131,8 @@ Star the topic for the authenticated user.
 
 - 404 → `NOT_FOUND` if the topic doesn't exist.
 - Idempotent. Re-starring refreshes `starredAt` and `snapshot`; no error.
-- **Response (200):** `{ entry: StarredTopicEntry }`
+- **Response (200):** `{ entry: StarredTopicEntry; warnings?: string[] }` —
+  `warnings` is omitted when empty; see [§4 Warnings](#warnings).
 
 #### `DELETE /api/topics/by-id/{id}/star`
 Unstar. Idempotent (404 on the topic itself is still a 200 — the goal is
@@ -131,8 +144,10 @@ Unstar. Idempotent (404 on the topic itself is still a 200 — the goal is
 List the caller's starred topics.
 
 - **Response (200):** `{ entries: StarredTopicEntry[] }` — sorted by
-  `starredAt` desc. Snapshots may be patched server-side on this read if
-  `updatedAt` advanced.
+  `starredAt` desc. Snapshots are returned as stored; they are **not**
+  refreshed on this read (see [§3 Snapshot freshness](#snapshot-freshness)).
+  Entries whose underlying record 404s at read time are returned with
+  `gone: true`.
 
 ### Trails
 
@@ -143,7 +158,8 @@ Mirror the topic routes under the existing trails surface.
   something you can read. 403 → `NO_REPO_ACCESS`.
 - 404 → `NOT_FOUND`.
 - Idempotent.
-- **Response (200):** `{ entry: StarredTrailEntry }`
+- **Response (200):** `{ entry: StarredTrailEntry; warnings?: string[] }` —
+  see [§4 Warnings](#warnings).
 
 #### `DELETE /api/trails/by-id/{id}/star`
 - No repo-access check — unstarring after losing access must still work.
@@ -151,7 +167,10 @@ Mirror the topic routes under the existing trails surface.
 - **Response (204):** no body
 
 #### `GET /api/trails/starred`
-- **Response (200):** `{ entries: StarredTrailEntry[] }`
+- **Response (200):** `{ entries: StarredTrailEntry[] }` — sorted by
+  `starredAt` desc. Snapshots are returned as stored; not refreshed on this
+  read (see [§3 Snapshot freshness](#snapshot-freshness)). Entries whose
+  underlying record 404s at read time are returned with `gone: true`.
 
 ### Error codes (additions)
 
@@ -159,11 +178,42 @@ Mirror the topic routes under the existing trails surface.
 NOT_AUTHENTICATED   // existing
 NOT_FOUND           // existing
 NO_REPO_ACCESS      // existing (trails only)
-STAR_LIMIT_REACHED  // new — 500-entry cap hit, oldest pruned (advisory; 200, not error)
 ```
 
-`STAR_LIMIT_REACHED` is reported as a `warning` field on the 200 response,
-not raised. Hitting the cap should never block a star.
+No new error codes. Hitting the 500-entry cap is reported via the
+warnings channel below, not raised.
+
+<a id="warnings"></a>
+### Warnings
+
+Star routes return a `warnings?: string[]` field on the 200 response when
+something advisory happened during the mutation. Field is omitted when
+empty. Defined warning codes:
+
+```
+STAR_LIMIT_REACHED  // 500-entry cap hit on append; oldest entry pruned
+```
+
+Warnings never block the operation. Mobile may surface them (e.g. a one-
+time toast on `STAR_LIMIT_REACHED`) or ignore them entirely.
+
+### `starred` field on by-id GETs
+
+To let the trail / topic detail screen render the star toggle's initial
+state without a second request, the existing detail routes are extended:
+
+- `GET /api/topics/by-id/{id}` — response gains `starred: boolean`.
+- `GET /api/trails/by-id/{id}` — response gains `starred: boolean`.
+
+Rules:
+
+- For an **authenticated caller**, the server reads the caller's starred
+  index and sets `starred` to whether `id` appears in it. One small S3
+  GET per detail fetch.
+- For an **anonymous caller** (allowed on public-repo trails and on all
+  topics), `starred` is always `false` — no per-user read.
+- The field reflects index membership only; `gone` semantics do not apply
+  here (the by-id read already 404s if the target is missing).
 
 ## 5. Mobile integration
 
@@ -217,8 +267,11 @@ cheap.
 1. **web-ade:** types + storage helpers (`lib/stars/`); ETag-locked
    read-modify-write for the index. Unit tests around concurrent star /
    unstar and the 500-entry prune.
-2. **web-ade:** the six routes above. Integration tests cover idempotency,
-   repo-access gate (trails only), and 404-on-deleted-target.
+2. **web-ade:** the six star routes above, plus the `starred: boolean`
+   field on `GET /api/topics/by-id/{id}` and `GET /api/trails/by-id/{id}`.
+   Integration tests cover idempotency, repo-access gate (trails only),
+   404-on-deleted-target, and `starred` correctness for authed-with-star /
+   authed-without-star / anonymous callers.
 3. **mobile:** `StarsApiService` + types. Wire the Starred tab segments to
    real data — empty state stays as the zero-entry fallback.
 4. **mobile:** star toggle in `TrailDetailScreen` header.

@@ -37,6 +37,12 @@ export interface TrailFetchResponse {
   repo: string;
   entry: SharedTrailIndexEntry;
   payload: TrailPayload;
+  /**
+   * Whether the authenticated caller has this trail starred. Always `false`
+   * for anonymous callers. Drives the star toggle's initial state in the
+   * trail-detail header without a second request.
+   */
+  starred: boolean;
 }
 
 export interface ListTrailsResponse {

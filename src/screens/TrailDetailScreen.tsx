@@ -13,10 +13,12 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Svg, { Polygon } from 'react-native-svg';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 
@@ -33,12 +35,13 @@ import {
   recordTrailVisit,
   TrailsApiError,
 } from '../services/TrailsApiService';
+import { starTrail, unstarTrail } from '../services/StarsApiService';
 import type { SearchStackParamList } from '../navigation/types';
 import type { TrailFetchResponse } from '../services/TrailsApiService';
 
 type Props = StackScreenProps<SearchStackParamList, 'TrailDetail'>;
 
-export const TrailDetailScreen: React.FC<Props> = ({ route }) => {
+export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { trailId } = route.params;
   const { theme } = useTheme();
   const { token } = useAuth();
@@ -48,6 +51,9 @@ export const TrailDetailScreen: React.FC<Props> = ({ route }) => {
     | { status: 'error'; message: string }
   >({ status: 'loading' });
   const [selection, setSelection] = React.useState<TrailBriefSelection>(null);
+  // Tracks an in-flight star/unstar so the toggle can't double-fire while
+  // the optimistic update is reconciling.
+  const [starInFlight, setStarInFlight] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -83,6 +89,68 @@ export const TrailDetailScreen: React.FC<Props> = ({ route }) => {
       cancelled = true;
     };
   }, [trailId, token]);
+
+  const isStarred = state.status === 'ok' ? state.data.starred : false;
+  const canStar = state.status === 'ok' && !!token;
+
+  const toggleStar = React.useCallback(async () => {
+    if (state.status !== 'ok' || !token || starInFlight) return;
+    const previous = state.data.starred;
+    // Optimistic flip — revert on failure. The toggle is idempotent on the
+    // server side; a failed call leaves the index untouched.
+    setState({ status: 'ok', data: { ...state.data, starred: !previous } });
+    setStarInFlight(true);
+    try {
+      if (previous) {
+        await unstarTrail(trailId, token);
+      } else {
+        await starTrail(trailId, token);
+      }
+    } catch {
+      setState((s) =>
+        s.status === 'ok'
+          ? { status: 'ok', data: { ...s.data, starred: previous } }
+          : s,
+      );
+    } finally {
+      setStarInFlight(false);
+    }
+  }, [state, token, trailId, starInFlight]);
+
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () =>
+        canStar ? (
+          <Pressable
+            onPress={() => void toggleStar()}
+            hitSlop={12}
+            disabled={starInFlight}
+            style={({ pressed }) => [
+              styles.headerButton,
+              { opacity: pressed || starInFlight ? 0.5 : 1 },
+            ]}
+            accessibilityLabel={isStarred ? 'Unstar trail' : 'Star trail'}
+            accessibilityRole="button"
+          >
+            <StarIcon
+              size={22}
+              color={
+                isStarred ? theme.colors.accent : theme.colors.textSecondary
+              }
+              filled={isStarred}
+            />
+          </Pressable>
+        ) : undefined,
+    });
+  }, [
+    navigation,
+    canStar,
+    isStarred,
+    starInFlight,
+    toggleStar,
+    theme.colors.accent,
+    theme.colors.textSecondary,
+  ]);
 
   if (state.status === 'loading') {
     return (
@@ -179,6 +247,31 @@ export const TrailDetailScreen: React.FC<Props> = ({ route }) => {
   );
 };
 
+/**
+ * Header star icon — supports a filled state, which the shared `LucideIcon`
+ * doesn't (it hardcodes `fill: 'none'`). Same path as the Lucide Star, just
+ * with a togglable fill so the active state reads at a glance.
+ */
+const STAR_POINTS =
+  '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
+
+const StarIcon: React.FC<{ size: number; color: string; filled: boolean }> = ({
+  size,
+  color,
+  filled,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Polygon
+      points={STAR_POINTS}
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill={filled ? color : 'none'}
+    />
+  </Svg>
+);
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -196,5 +289,9 @@ const styles = StyleSheet.create({
     // fill the remaining ~70%. The panel handles its own internal
     // scroll for the description text.
     height: '30%',
+  },
+  headerButton: {
+    paddingHorizontal: 12,
+    justifyContent: 'center',
   },
 });

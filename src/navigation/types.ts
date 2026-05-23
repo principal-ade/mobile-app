@@ -242,6 +242,10 @@ export type SearchStackParamList = {
 // Stack params for Starred tab
 export type StarredStackParamList = {
   StarredHome: undefined;
+  TrailDetail: {
+    /** UUID from the starred-trails list. */
+    trailId: string;
+  };
   RepoFileCity: {
     owner: string;
     name: string;
