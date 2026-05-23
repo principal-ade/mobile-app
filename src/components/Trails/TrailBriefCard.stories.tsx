@@ -160,6 +160,7 @@ export const ScreenPresentation: Story = {
     signOffs: SIGN_OFFS,
     notedBy: ['Dani Reyes', 'Bob Chen'],
     presentation: 'screen',
+    expandInline: true,
   },
 };
 

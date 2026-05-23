@@ -129,6 +129,13 @@ export interface TrailBriefCardProps {
    */
   maxWidth?: number;
   /**
+   * Expand the selected row inline (sourcePath + description rendered
+   * directly underneath the row's label) instead of surfacing them in
+   * the below-card SelectedStopPanel. When set, the in-card panel is
+   * suppressed even without `hideSelectedPanel`.
+   */
+  expandInline?: boolean;
+  /**
    * Layout preset.
    *
    * - `'modal'` (default): the historical floating card — bordered,
@@ -267,6 +274,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   hideCohortStrips = false,
   maxWidth = 640,
   presentation = 'modal',
+  expandInline = false,
 }) => {
   const isScreen = presentation === 'screen';
   const { theme } = useTheme();
@@ -278,15 +286,14 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
 
   const [showExplanation, setShowExplanation] = React.useState(false);
   const [noteAuthorFilter, setNoteAuthorFilter] = React.useState<string | null>(null);
-  // Current row selection in the route list.
-  //   - `null`            → nothing selected; cohort strips show below.
-  //   - `'overview'`      → the synthetic row 00 (renders the trail
-  //                         body in the SelectedStopPanel).
-  //   - `number`          → real stop index in `stops`.
-  // Selection drives the below-card slot; the strips re-appear when
-  // the reader deselects.
-  type Selection = 'overview' | number | null;
-  const [selection, setSelection] = React.useState<Selection>(null);
+  // Row selection set. Each entry is either `'overview'` (row 00) or a
+  // numeric stop index. Stored as a Set so `expandInline` can keep
+  // multiple rows open at once; non-inline modes are single-select
+  // (the toggle helpers clear the set before adding).
+  type SelectionKey = 'overview' | number;
+  const [selectionSet, setSelectionSet] = React.useState<Set<SelectionKey>>(
+    () => new Set(),
+  );
 
   const filteredMarkerIds = React.useMemo<Set<string> | null>(() => {
     if (!noteAuthorFilter) return null;
@@ -306,28 +313,51 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
     [notesByAuthor],
   );
 
-  const toggleOverviewSelection = React.useCallback(() => {
-    setSelection((prev) => (prev === 'overview' ? null : 'overview'));
-  }, []);
+  const toggleSelectionKey = React.useCallback(
+    (key: SelectionKey) => {
+      setSelectionSet((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          if (!expandInline) next.clear();
+          next.add(key);
+        }
+        return next;
+      });
+    },
+    [expandInline],
+  );
 
-  const toggleStopSelection = React.useCallback((index: number) => {
-    setSelection((prev) => (prev === index ? null : index));
-  }, []);
+  const toggleOverviewSelection = React.useCallback(
+    () => toggleSelectionKey('overview'),
+    [toggleSelectionKey],
+  );
 
-  // Mirror the internal Selection union into the public tagged shape on
-  // every change so hosts that want to render their own panel can stay
-  // in sync without learning the internal `'overview' | number | null`
-  // representation.
+  const toggleStopSelection = React.useCallback(
+    (index: number) => toggleSelectionKey(index),
+    [toggleSelectionKey],
+  );
+
+  // The pinned-panel API (`onSelectionChange`, in-card `SelectedStopPanel`)
+  // is single-selection. Multi-select only matters for `expandInline`, so
+  // we always surface a single Selection — the last-added key when the
+  // set has one entry, otherwise null.
+  const singleSelection: SelectionKey | null =
+    selectionSet.size === 1
+      ? (selectionSet.values().next().value as SelectionKey)
+      : null;
+
   React.useEffect(() => {
     if (!onSelectionChange) return;
-    if (selection === 'overview') {
+    if (singleSelection === 'overview') {
       onSelectionChange({ kind: 'overview' });
-    } else if (typeof selection === 'number') {
-      onSelectionChange({ kind: 'stop', index: selection });
+    } else if (typeof singleSelection === 'number') {
+      onSelectionChange({ kind: 'stop', index: singleSelection });
     } else {
       onSelectionChange(null);
     }
-  }, [selection, onSelectionChange]);
+  }, [singleSelection, onSelectionChange]);
 
   const dateStamp = React.useMemo(() => formatRelative(createdAt), [createdAt]);
 
@@ -503,70 +533,67 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                 </Pressable>
               </View>
             ) : null}
-            {(() => {
-              // Route list always lives in its own ScrollView so the
-              // header above stays fixed and only the rows scroll. The
-              // host must NOT wrap the card in another ScrollView with
-              // the same orientation, or RN will warn about nested
-              // virtualization. (In screen mode the host gives the
-              // card a flex parent; in modal mode the card is sized
-              // by maxWidth/min-maxHeight.)
-              const RouteContainer: React.FC<{ children: React.ReactNode }> =
-                ({ children }) => (
-                  <ScrollView
-                    style={{ flex: 1 }}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{
-                      paddingVertical: 15,
-                      paddingLeft: 10,
-                      paddingRight: 19,
-                    }}
-                  >
-                    {children}
-                  </ScrollView>
-                );
-              const hasStops = !!(stops && stops.length > 0);
-              return (
-                <RouteContainer>
-                  <RouteStopRow
-                    theme={theme}
-                    numberLabel="00"
-                    label="Overview"
-                    eyebrowColor={eyebrow.color}
-                    kind="subject"
-                    isLast={!hasStops}
-                    matchesFilter={false}
-                    dimmed={filteredMarkerIds != null}
-                    selected={selection === 'overview'}
-                    onPress={toggleOverviewSelection}
-                  />
-                  {hasStops
-                    ? stops!.map((stop, i) => (
-                        <RouteStopRow
-                          key={stop.id ?? i}
-                          theme={theme}
-                          numberLabel={String(i + 1).padStart(2, '0')}
-                          label={stop.label}
-                          eyebrowColor={eyebrow.color}
-                          kind={stop.kind}
-                          isLast={i === stops!.length - 1}
-                          matchesFilter={
-                            filteredMarkerIds != null &&
-                            stop.id != null &&
-                            filteredMarkerIds.has(stop.id)
-                          }
-                          dimmed={
-                            filteredMarkerIds != null &&
-                            !(stop.id != null && filteredMarkerIds.has(stop.id))
-                          }
-                          selected={selection === i}
-                          onPress={() => toggleStopSelection(i)}
-                        />
-                      ))
-                    : null}
-                </RouteContainer>
-              );
-            })()}
+            {/* Route list always lives in its own ScrollView so the
+                header above stays fixed and only the rows scroll. The
+                host must NOT wrap the card in another ScrollView with
+                the same orientation, or RN will warn about nested
+                virtualization. The ScrollView is inlined (rather than
+                wrapped in an in-render component) because a per-render
+                component identity remounts every row on selection
+                change, resetting any per-row animation state. */}
+            <ScrollView
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingVertical: 15,
+                paddingLeft: 10,
+                paddingRight: 19,
+              }}
+            >
+              <RouteStopRow
+                theme={theme}
+                numberLabel="00"
+                label="Overview"
+                eyebrowColor={eyebrow.color}
+                kind="subject"
+                isLast={!stops || stops.length === 0}
+                matchesFilter={false}
+                dimmed={filteredMarkerIds != null}
+                selected={selectionSet.has('overview')}
+                onPress={toggleOverviewSelection}
+                expandedDescription={expandInline ? body : undefined}
+                expanded={expandInline && selectionSet.has('overview')}
+              />
+              {stops && stops.length > 0
+                ? stops.map((stop, i) => (
+                    <RouteStopRow
+                      key={stop.id ?? i}
+                      theme={theme}
+                      numberLabel={String(i + 1).padStart(2, '0')}
+                      label={stop.label}
+                      eyebrowColor={eyebrow.color}
+                      kind={stop.kind}
+                      isLast={i === stops.length - 1}
+                      matchesFilter={
+                        filteredMarkerIds != null &&
+                        stop.id != null &&
+                        filteredMarkerIds.has(stop.id)
+                      }
+                      dimmed={
+                        filteredMarkerIds != null &&
+                        !(stop.id != null && filteredMarkerIds.has(stop.id))
+                      }
+                      selected={selectionSet.has(i)}
+                      onPress={() => toggleStopSelection(i)}
+                      sourcePath={stop.sourcePath}
+                      expandedDescription={
+                        expandInline ? stop.description : undefined
+                      }
+                      expanded={expandInline && selectionSet.has(i)}
+                    />
+                  ))
+                : null}
+            </ScrollView>
           </View>
         </View>
 
@@ -580,7 +607,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
        *     when nothing is selected.
        * Selection wins; the strips re-appear when the reader deselects.
        */}
-      {!hideSelectedPanel && selection === 'overview' ? (
+      {!hideSelectedPanel && !expandInline && singleSelection === 'overview' ? (
         <View style={{ marginTop: 10 }}>
           <SelectedStopPanel
             theme={theme}
@@ -590,19 +617,24 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
         </View>
       ) : null}
       {!hideSelectedPanel &&
-      typeof selection === 'number' &&
+      !expandInline &&
+      typeof singleSelection === 'number' &&
       stops &&
-      stops[selection] ? (
+      stops[singleSelection] ? (
         <View style={{ marginTop: 10 }}>
           <SelectedStopPanel
             theme={theme}
             eyebrowColor={eyebrow.color}
-            sourcePath={stops[selection].sourcePath}
-            description={stops[selection].description}
+            sourcePath={stops[singleSelection].sourcePath}
+            description={stops[singleSelection].description}
           />
         </View>
       ) : null}
-      {selection == null ? (
+      {/* Strips are mutually exclusive with the below-card panel, so
+          we hide them on selection in non-inline mode (the panel takes
+          their slot). In `expandInline` mode the panel never renders,
+          so the strips can always show. */}
+      {expandInline || selectionSet.size === 0 ? (
         <>
           {!hideCohortStrips && isShared && signOffs && signOffs.length > 0 ? (
             <AvatarStrip
@@ -837,6 +869,13 @@ const RouteStopRow: React.FC<{
   dimmed: boolean;
   selected: boolean;
   onPress?: () => void;
+  /** Path shown under the row label whenever provided (not gated on
+   *  expansion) — gives the reader the location at a glance. */
+  sourcePath?: string;
+  /** Optional markdown shown under the row when `expanded`. */
+  expandedDescription?: string;
+  /** Drives the inline expand animation (height + opacity). */
+  expanded?: boolean;
 }> = ({
   theme,
   numberLabel,
@@ -848,19 +887,64 @@ const RouteStopRow: React.FC<{
   dimmed,
   selected,
   onPress,
+  sourcePath,
+  expandedDescription,
+  expanded = false,
 }) => {
-  // Selection is the higher-signal state (the reader actively picked
-  // this row); the cohort-filter highlight only kicks in when nothing
-  // is selected. Selected rows use the trail's eyebrow color so they
-  // tie back to the purpose pill in the header.
-  const rowBackground = selected
+  const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
+  const numberColor =
+    kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
+
+  const hasExpandable = !!expandedDescription;
+  const [contentHeight, setContentHeight] = React.useState(0);
+  // Manual RAF-driven animation. RN core Animated.timing on `height`
+  // was completing on open but visibly snapping on close — the most
+  // likely cause is the parent's selection change interrupting the
+  // animation. Driving the value through React state guarantees the
+  // close runs to completion regardless of upstream re-renders.
+  const [renderedHeight, setRenderedHeight] = React.useState(0);
+
+  React.useEffect(() => {
+    const target = expanded && contentHeight > 0 ? contentHeight : 0;
+    const start = renderedHeight;
+    if (start === target) return;
+    const duration = 800;
+    const startTime =
+      typeof performance !== 'undefined' ? performance.now() : Date.now();
+    let rafId = 0;
+    let cancelled = false;
+    const easeInOut = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const tick = () => {
+      if (cancelled) return;
+      const now =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = easeInOut(progress);
+      setRenderedHeight(start + (target - start) * eased);
+      if (progress < 1) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+    // Intentionally omit `renderedHeight` so a new animation isn't
+    // restarted on every animated frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, contentHeight]);
+
+  // Hold the row highlight while the close animation is still in flight
+  // so the color band fades with the row instead of vanishing the
+  // instant the reader taps. Selection is the higher-signal state (the
+  // reader actively picked the row); the cohort-filter highlight only
+  // kicks in when nothing is selected.
+  const appearsActive = selected || renderedHeight > 0;
+  const rowBackground = appearsActive
     ? withAlpha(eyebrowColor, 0.22)
     : matchesFilter
       ? withAlpha(theme.colors.accent, 0.18)
       : 'transparent';
-  const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
-  const numberColor =
-    kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
 
   return (
     <View
@@ -873,13 +957,13 @@ const RouteStopRow: React.FC<{
     >
       <View
         style={{
-          paddingVertical: 6,
+          paddingVertical: 10,
           paddingHorizontal: 8,
           marginHorizontal: -8,
           borderRadius: theme.radii[1],
           backgroundColor: rowBackground,
           borderLeftWidth: 3,
-          borderLeftColor: selected
+          borderLeftColor: appearsActive
             ? eyebrowColor
             : matchesFilter
               ? theme.colors.accent
@@ -892,34 +976,90 @@ const RouteStopRow: React.FC<{
           onPress={onPress}
           style={{
             flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
+            alignItems: 'flex-start',
+            gap: 14,
           }}
         >
           <Text
             style={{
               color: numberColor,
-              minWidth: 24,
+              minWidth: 30,
               fontFamily: theme.fonts.monospace,
-              fontSize: theme.fontSizes[1],
+              fontSize: theme.fontSizes[2],
+              lineHeight: theme.fontSizes[2] * 1.5,
             }}
           >
             {numberLabel}
           </Text>
-          <Text
-            style={{
-              flex: 1,
-              color: labelColor,
-              fontFamily: theme.fonts.monospace,
-              fontSize: theme.fontSizes[1],
-              lineHeight: theme.fontSizes[1] * 1.6,
-            }}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {label}
-          </Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              style={{
+                color: labelColor,
+                fontFamily: theme.fonts.monospace,
+                fontSize: theme.fontSizes[2],
+                lineHeight: theme.fontSizes[2] * 1.5,
+              }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {label}
+            </Text>
+            {sourcePath ? (
+              <Text
+                style={{
+                  marginTop: 2,
+                  fontFamily: theme.fonts.monospace,
+                  fontSize: theme.fontSizes[0],
+                  color: theme.colors.textTertiary,
+                  lineHeight: theme.fontSizes[0] * 1.4,
+                }}
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {sourcePath}
+              </Text>
+            ) : null}
+          </View>
         </Pressable>
+        {hasExpandable ? (
+          // Animated wrapper: height interpolates 0 ↔ contentHeight so
+          // the row visibly grows. Inner content sits in normal flow
+          // with no height of its own — `overflow: hidden` on the
+          // wrapper clips it when the animated height is less than the
+          // content's natural height. `onLayout` reports that natural
+          // height because RN children don't shrink to fit a fixed-
+          // height parent.
+          <View
+            style={{ overflow: 'hidden', height: renderedHeight }}
+          >
+            <View
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0 && h !== contentHeight) setContentHeight(h);
+              }}
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: 0,
+                flexDirection: 'row',
+                gap: 12,
+                marginTop: 6,
+              }}
+            >
+              <View style={{ minWidth: 30 }} />
+              <View style={{ flex: 1 }}>
+                {expandedDescription && expandedDescription.trim().length > 0 ? (
+                  <View>
+                    <IndustryMarkdownInline>
+                      {expandedDescription.trim()}
+                    </IndustryMarkdownInline>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   );
