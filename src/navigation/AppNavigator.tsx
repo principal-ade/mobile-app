@@ -31,6 +31,7 @@ import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import { RepoFileCityScreen } from '../screens/RepoFileCityScreen';
 import { TrailDetailScreen } from '../screens/TrailDetailScreen';
+import { TopicDetailScreen } from '../screens/TopicDetailScreen';
 import RepoReadmeScreen from '../screens/RepoReadmeScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
@@ -42,6 +43,7 @@ import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { parseGitHubUrl } from '../utils/githubUrlParser';
 import { extractTrailId } from '../utils/trailUrlParser';
+import { extractTopicId } from '../utils/topicUrlParser';
 import { saveClickedResult } from '../utils/searchStorage';
 
 const prefix = Linking.createURL('/');
@@ -74,6 +76,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             path: 'search',
             screens: {
               SearchHome: '',
+              TopicDetail: 'topic/:topicId',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
@@ -85,6 +88,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             path: 'starred',
             screens: {
               StarredHome: '',
+              TopicDetail: 'topic/:topicId',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
@@ -274,6 +278,11 @@ function SearchStackNavigator() {
         options={{ title: 'Trail' }}
       />
       <SearchStack.Screen
+        name="TopicDetail"
+        component={TopicDetailScreen}
+        options={{ title: 'Topic' }}
+      />
+      <SearchStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
         options={{ headerShown: false }}
@@ -332,6 +341,11 @@ function StarredStackNavigator() {
         name="TrailDetail"
         component={TrailDetailScreen}
         options={{ title: 'Trail' }}
+      />
+      <StarredStack.Screen
+        name="TopicDetail"
+        component={TopicDetailScreen}
+        options={{ title: 'Topic' }}
       />
       <StarredStack.Screen
         name="RepoFileCity"
@@ -482,9 +496,13 @@ function MainTabs() {
 
                 const trimmed = clipboardContent.trim();
 
-                // Trail share URLs / bare UUIDs take priority — they
-                // can never overlap with the github.com URL shapes
+                // Trail / topic share URLs and bare UUIDs take priority
+                // — they can never overlap with the github.com URL shapes
                 // parseGitHubUrl accepts, so checking first is safe.
+                // Trails are checked before topics because a UUID alone
+                // is ambiguous and trails are the older / more common
+                // share target; an explicit `/topic/<id>` URL still wins
+                // because extractTrailId only matches `/trail/<id>`.
                 const trailId = extractTrailId(trimmed);
                 if (trailId) {
                   navigation.navigate('Search', {
@@ -494,12 +512,21 @@ function MainTabs() {
                   return;
                 }
 
+                const topicId = extractTopicId(trimmed);
+                if (topicId) {
+                  navigation.navigate('Search', {
+                    screen: 'TopicDetail',
+                    params: { topicId },
+                  });
+                  return;
+                }
+
                 const parseResult = parseGitHubUrl(trimmed);
 
                 if (parseResult.type === 'invalid') {
                   Alert.alert(
                     'Invalid URL',
-                    'Clipboard does not contain a valid GitHub or trail URL',
+                    'Clipboard does not contain a valid GitHub, trail, or topic URL',
                   );
                   return;
                 }

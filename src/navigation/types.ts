@@ -194,6 +194,10 @@ export type SearchStackParamList = {
     /** UUID extracted from a /trail/<id> clipboard URL. */
     trailId: string;
   };
+  TopicDetail: {
+    /** UUID extracted from a /topic/<id> clipboard URL. */
+    topicId: string;
+  };
   RepoFileCity: {
     owner: string;
     name: string;
@@ -245,6 +249,10 @@ export type StarredStackParamList = {
   TrailDetail: {
     /** UUID from the starred-trails list. */
     trailId: string;
+  };
+  TopicDetail: {
+    /** UUID from the starred-topics list. */
+    topicId: string;
   };
   RepoFileCity: {
     owner: string;

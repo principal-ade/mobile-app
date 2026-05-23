@@ -3,8 +3,8 @@
  *
  * Same visual rhythm as `StarredTrailRow`, with the snapshot's
  * `descriptionPreview` and a "{trailCount} trails" meta hint instead of
- * "{owner}/{repo}". `onPress` is optional — tapping topic rows is a no-op
- * until a mobile topic detail screen exists (build-spec step 5).
+ * "{owner}/{repo}". Tapping pushes onto `TopicDetail` via the parent's
+ * `onPress`.
  */
 
 import React from 'react';

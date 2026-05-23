@@ -3,9 +3,8 @@
  *
  * Pattern mirrors `TrailsTabScreen`: lazy-load each segment on first
  * activation, error banner, pull-to-refresh, empty state when the list is
- * zero. Topic rows don't navigate anywhere yet (no mobile topic detail
- * screen exists — see build-spec step 5); trail rows push onto the in-tab
- * TrailDetail screen.
+ * zero. Both row types push onto the in-tab detail screen — trails open
+ * `TrailDetail`, topics open `TopicDetail`.
  *
  * Snapshot freshness is handled server-side: list reads return snapshots
  * as stored, and the detail-fetch path refreshes them lazily. Gone targets
@@ -169,6 +168,13 @@ export function StarredTopicsTrailsScreen() {
     [navigation],
   );
 
+  const handleTopicRowPress = useCallback(
+    (entry: StarredTopicEntry) => {
+      navigation.navigate('TopicDetail', { topicId: entry.topicId });
+    },
+    [navigation],
+  );
+
   // Unauthenticated state — match the empty-state language to the rest of
   // the app's "sign in to see" treatment.
   if (!authLoading && !isAuthenticated) {
@@ -239,7 +245,9 @@ export function StarredTopicsTrailsScreen() {
           <FlatList
             data={topicsEntries}
             keyExtractor={(item) => item.topicId}
-            renderItem={({ item }) => <StarredTopicRow entry={item} />}
+            renderItem={({ item }) => (
+              <StarredTopicRow entry={item} onPress={handleTopicRowPress} />
+            )}
             refreshControl={
               <RefreshControl
                 refreshing={tabRefreshing}
