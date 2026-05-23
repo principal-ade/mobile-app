@@ -25,7 +25,7 @@ import AddRepoScreen from '../screens/AddRepoScreen';
 import TrailsTabScreen from '../screens/TrailsTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
 import UserActivityScreen from '../screens/UserActivityScreen';
-import StarredTabScreen from '../screens/StarredTabScreen';
+import { StarredTopicsTrailsScreen } from '../screens/StarredTopicsTrailsScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
 import SearchTabScreen from '../screens/SearchTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
@@ -63,18 +63,6 @@ const linking: LinkingOptions<RootStackParamList> = {
             path: 'trails',
             screens: {
               TrailsHome: '',
-              RepoFileCity: 'repo/:owner/:name',
-              RepoReadme: 'repo/:owner/:name/readme',
-              TourFileCity: 'tour/:owner/:name',
-              UserProfile: 'user/:username',
-              Organization: 'org/:orgLogin',
-            },
-          },
-          Watch: {
-            path: 'watch',
-            screens: {
-              WatchHome: '',
-              UserActivity: 'user/:username/activity',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
               TourFileCity: 'tour/:owner/:name',
@@ -198,7 +186,8 @@ function TrailsStackNavigator() {
   );
 }
 
-// Watch Stack Navigator
+// Watch Stack Navigator — currently unused; kept in case we resurrect the Watch tab.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function WatchStackNavigator() {
   const { theme } = useTheme();
 
@@ -336,7 +325,7 @@ function StarredStackNavigator() {
     >
       <StarredStack.Screen
         name="StarredHome"
-        component={StarredTabScreen}
+        component={StarredTopicsTrailsScreen}
         options={{ headerShown: false }}
       />
       <StarredStack.Screen
@@ -463,20 +452,6 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="Trails"
-        component={TrailsStackNavigator}
-        options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Footprints" size={24} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Watch"
-        component={WatchStackNavigator}
-        options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Grid3x3" size={24} color={color} />,
-        }}
-      />
-      <Tab.Screen
         name="Search"
         component={SearchStackNavigator}
         options={{
@@ -569,6 +544,13 @@ function MainTabs() {
             }
           },
         })}
+      />
+      <Tab.Screen
+        name="Trails"
+        component={TrailsStackNavigator}
+        options={{
+          tabBarIcon: ({ color }) => <LucideIcon name="Footprints" size={24} color={color} />,
+        }}
       />
       <Tab.Screen
         name="Starred"

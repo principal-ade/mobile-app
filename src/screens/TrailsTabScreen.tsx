@@ -230,8 +230,8 @@ export default function TrailsTabScreen() {
             iconColor={theme.colors.textSecondary}
             textColor={theme.colors.text}
             subtextColor={theme.colors.textSecondary}
-            title="No trails yet"
-            subtitle="Trails are authored walkthroughs of a codebase. When someone shares one with you, it will land here."
+            title="All caught up"
+            subtitle="No trails waiting on you right now. When someone shares one, it'll land here."
           />
         ) : (
           <FlatList
