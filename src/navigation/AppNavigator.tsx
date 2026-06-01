@@ -453,6 +453,7 @@ function MainTabs() {
 
   return (
     <Tab.Navigator
+      initialRouteName="Trails"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

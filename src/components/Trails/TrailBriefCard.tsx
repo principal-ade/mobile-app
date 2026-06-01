@@ -908,7 +908,7 @@ const RouteStopRow: React.FC<{
     const target = expanded && contentHeight > 0 ? contentHeight : 0;
     const start = renderedHeight;
     if (start === target) return;
-    const duration = 800;
+    const duration = 150;
     const startTime =
       typeof performance !== 'undefined' ? performance.now() : Date.now();
     let rafId = 0;

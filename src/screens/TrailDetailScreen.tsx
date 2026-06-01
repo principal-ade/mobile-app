@@ -4,10 +4,9 @@
  * the clipboard contains a `…/trail/<uuid>` URL, or from the Trails tab's
  * inbox / recently-visited row taps.
  *
- * Layout: the card's route list lives in a flex ScrollView that fills the
- * screen at rest. When the reader selects a row, the SelectedStopPanel
- * pins to the bottom 30% of the screen — the ScrollView compresses to
- * the remaining 70% and the route stays scrollable above the panel.
+ * Layout: the card fills the screen and owns its own scroll. Tapping a
+ * stop expands that row in place via `expandInline` — sourcePath and
+ * description render inside the row, no pinned bottom panel.
  */
 
 import React from 'react';
@@ -22,12 +21,7 @@ import Svg, { Polygon } from 'react-native-svg';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 
-import {
-  getTrailEyebrowColor,
-  SelectedStopPanel,
-  TrailBriefCard,
-  type TrailBriefSelection,
-} from '../components/Trails/TrailBriefCard';
+import { TrailBriefCard } from '../components/Trails/TrailBriefCard';
 import { trailPayloadToBriefProps } from '../components/Trails/trailBriefAdapter';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -50,7 +44,6 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     | { status: 'ok'; data: TrailFetchResponse }
     | { status: 'error'; message: string }
   >({ status: 'loading' });
-  const [selection, setSelection] = React.useState<TrailBriefSelection>(null);
   // Tracks an in-flight star/unstar so the toggle can't double-fire while
   // the optimistic update is reconciling.
   const [starInFlight, setStarInFlight] = React.useState(false);
@@ -58,7 +51,6 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   React.useEffect(() => {
     let cancelled = false;
     setState({ status: 'loading' });
-    setSelection(null);
     getTrailById(trailId, token ?? undefined)
       .then((data) => {
         if (cancelled) return;
@@ -189,60 +181,16 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { payload } = state.data;
   const briefProps = trailPayloadToBriefProps(payload);
-  const eyebrowColor = getTrailEyebrowColor(
-    theme,
-    briefProps.purpose,
-    briefProps.signOffs?.length ?? 0,
-  );
-
-  // Resolve what the bottom panel should render based on the card's
-  // current selection. Null when nothing is picked — in that state the
-  // panel is hidden and the route gets the full screen.
-  const panelContent = (() => {
-    if (selection?.kind === 'overview') {
-      return {
-        description: briefProps.body,
-        sourcePath: undefined as string | undefined,
-      };
-    }
-    if (selection?.kind === 'stop') {
-      const stop = briefProps.stops?.[selection.index];
-      if (!stop) return null;
-      return {
-        description: stop.description,
-        sourcePath: stop.sourcePath,
-      };
-    }
-    return null;
-  })();
 
   return (
     <View
       style={[styles.root, { backgroundColor: theme.colors.background }]}
     >
-      {/* Route + cohort strips. The card owns its own internal scroll
-          in screen mode, so we mount it directly in the flex root —
-          wrapping in a ScrollView here would re-introduce the
-          nested-virtualization warning and let the header scroll too. */}
-      <View style={styles.cardWrap}>
-        <TrailBriefCard
-          {...briefProps}
-          presentation="screen"
-          hideSelectedPanel
-          onSelectionChange={setSelection}
-        />
-      </View>
-
-      {panelContent ? (
-        <View style={styles.pinnedPanel}>
-          <SelectedStopPanel
-            theme={theme}
-            eyebrowColor={eyebrowColor}
-            sourcePath={panelContent.sourcePath}
-            description={panelContent.description}
-          />
-        </View>
-      ) : null}
+      <TrailBriefCard
+        {...briefProps}
+        presentation="screen"
+        expandInline
+      />
     </View>
   );
 };
@@ -276,19 +224,10 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  cardWrap: {
-    flex: 1,
-  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  pinnedPanel: {
-    // Fixed slice of screen height; the ScrollView above flexes to
-    // fill the remaining ~70%. The panel handles its own internal
-    // scroll for the description text.
-    height: '30%',
   },
   headerButton: {
     paddingHorizontal: 12,
