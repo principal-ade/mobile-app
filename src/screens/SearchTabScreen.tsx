@@ -1,3 +1,12 @@
+/**
+ * SearchTabScreen — GitHub repo/user search.
+ *
+ * NOTE: This screen is currently unmounted. The Paste tab replaced it (see
+ * PasteTabScreen), so nothing renders this anymore. It's kept intact in case we
+ * bring search back as its own tab. The double-tap-to-paste shortcut that used
+ * to live here now lives on the Paste tab in AppNavigator, backed by the shared
+ * readClipboardTarget helper in utils/clipboardPaste.
+ */
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -17,12 +26,15 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { searchRepos, searchUsers, formatStars } from '../services/GitHubSearchService';
 import type { GitHubRepo, GitHubUser } from '../services/GitHubSearchService';
-import type { SearchStackParamList } from '../navigation/types';
+// Typed against the Paste stack — the screen list it used to live on, which
+// still hosts RepoFileCity / UserProfile / Organization — until search is
+// remounted on its own stack.
+import type { PasteStackParamList } from '../navigation/types';
 import { LucideIcon } from '../components/LucideIcon';
 import { saveSearchQuery, getSearchHistory, clearSearchHistory, type SearchHistoryEntry, saveClickedResult, getClickedResults, type ClickedResult } from '../utils/searchStorage';
 import { isBotLogin, cleanBotLogin } from '../utils/githubHelpers';
 
-type NavigationProp = StackNavigationProp<SearchStackParamList>;
+type NavigationProp = StackNavigationProp<PasteStackParamList>;
 
 // Custom icon components (no emojis)
 function ClearIcon({ color, size = 14 }: { color: string; size?: number }) {

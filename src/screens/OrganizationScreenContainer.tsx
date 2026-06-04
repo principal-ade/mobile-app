@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, useNavigation, RouteProp, type NavigationProp } from '@react-navigation/native';
 import { OrganizationScreen, type OrganizationInfo } from './OrganizationScreen';
-import type { SearchStackParamList } from '../navigation/types';
+import type { PasteStackParamList } from '../navigation/types';
 import {
   fetchOrganizationDetails,
   fetchOrganizationRepositories,
@@ -19,11 +19,11 @@ import { getPinnedRepositories } from '../services/GitHubSearchService';
 import { GitHubRepository } from '../types/github';
 import { isBotLogin, cleanBotLogin } from '../utils/githubHelpers';
 
-type OrganizationRouteProp = RouteProp<SearchStackParamList, 'Organization'>;
+type OrganizationRouteProp = RouteProp<PasteStackParamList, 'Organization'>;
 
 export function OrganizationScreenContainer() {
   const route = useRoute<OrganizationRouteProp>();
-  const navigation = useNavigation<NavigationProp<SearchStackParamList>>();
+  const navigation = useNavigation<NavigationProp<PasteStackParamList>>();
   const { orgLogin } = route.params;
 
   const [isLoading, setIsLoading] = useState(true);

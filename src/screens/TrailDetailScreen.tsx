@@ -30,10 +30,10 @@ import {
   TrailsApiError,
 } from '../services/TrailsApiService';
 import { starTrail, unstarTrail } from '../services/StarsApiService';
-import type { SearchStackParamList } from '../navigation/types';
+import type { PasteStackParamList } from '../navigation/types';
 import type { TrailFetchResponse } from '../services/TrailsApiService';
 
-type Props = StackScreenProps<SearchStackParamList, 'TrailDetail'>;
+type Props = StackScreenProps<PasteStackParamList, 'TrailDetail'>;
 
 export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { trailId } = route.params;

@@ -1,17 +1,17 @@
 import React from 'react';
-import { View, StyleSheet, Image, Alert } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import * as Clipboard from 'expo-clipboard';
 import {
   RootStackParamList,
   MainTabParamList,
   TrailsStackParamList,
+  RecentStackParamList,
   WatchStackParamList,
-  SearchStackParamList,
+  PasteStackParamList,
   StarredStackParamList,
   AboutStackParamList,
 } from './types';
@@ -23,11 +23,12 @@ import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
 import AddUserScreen from '../screens/AddUserScreen';
 import AddRepoScreen from '../screens/AddRepoScreen';
 import TrailsTabScreen from '../screens/TrailsTabScreen';
+import RecentTabScreen from '../screens/RecentTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
 import UserActivityScreen from '../screens/UserActivityScreen';
 import { StarredTopicsTrailsScreen } from '../screens/StarredTopicsTrailsScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
-import SearchTabScreen from '../screens/SearchTabScreen';
+import { PasteTabScreen } from '../screens/PasteTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import { RepoFileCityScreen } from '../screens/RepoFileCityScreen';
 import { TrailDetailScreen } from '../screens/TrailDetailScreen';
@@ -41,10 +42,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
 import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { parseGitHubUrl } from '../utils/githubUrlParser';
-import { extractTrailId } from '../utils/trailUrlParser';
-import { extractTopicId } from '../utils/topicUrlParser';
-import { saveClickedResult } from '../utils/searchStorage';
+import { readClipboardTarget, alertClipboardPasteResult } from '../utils/clipboardPaste';
 
 const prefix = Linking.createURL('/');
 
@@ -72,10 +70,21 @@ const linking: LinkingOptions<RootStackParamList> = {
               Organization: 'org/:orgLogin',
             },
           },
-          Search: {
-            path: 'search',
+          Recent: {
+            path: 'recent',
             screens: {
-              SearchHome: '',
+              RecentHome: '',
+              RepoFileCity: 'repo/:owner/:name',
+              RepoReadme: 'repo/:owner/:name/readme',
+              TourFileCity: 'tour/:owner/:name',
+              UserProfile: 'user/:username',
+              Organization: 'org/:orgLogin',
+            },
+          },
+          Paste: {
+            path: 'paste',
+            screens: {
+              PasteHome: '',
               TopicDetail: 'topic/:topicId',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
@@ -115,8 +124,9 @@ const linking: LinkingOptions<RootStackParamList> = {
 const RootStack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const TrailsStack = createStackNavigator<TrailsStackParamList>();
+const RecentStack = createStackNavigator<RecentStackParamList>();
 const WatchStack = createStackNavigator<WatchStackParamList>();
-const SearchStack = createStackNavigator<SearchStackParamList>();
+const PasteStack = createStackNavigator<PasteStackParamList>();
 const StarredStack = createStackNavigator<StarredStackParamList>();
 const AboutStack = createStackNavigator<AboutStackParamList>();
 
@@ -190,6 +200,66 @@ function TrailsStackNavigator() {
   );
 }
 
+// Recent Stack Navigator
+function RecentStackNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <RecentStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+        },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <RecentStack.Screen
+        name="RecentHome"
+        component={RecentTabScreen}
+        options={{ headerShown: false }}
+      />
+      <RecentStack.Screen
+        name="TrailDetail"
+        component={TrailDetailScreen}
+        options={{ title: 'Trail' }}
+      />
+      <RecentStack.Screen
+        name="RepoFileCity"
+        component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <RecentStack.Screen
+        name="RepoReadme"
+        component={RepoReadmeScreen}
+        options={{ headerShown: false }}
+      />
+      <RecentStack.Screen
+        name="TourFileCity"
+        component={TourFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <RecentStack.Screen
+        name="UserProfile"
+        component={UserProfileScreenContainer}
+        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+      <RecentStack.Screen
+        name="Organization"
+        component={OrganizationScreenContainer}
+        options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
+      />
+      <RecentStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{ headerShown: false }}
+      />
+    </RecentStack.Navigator>
+  );
+}
+
 // Watch Stack Navigator — currently unused; kept in case we resurrect the Watch tab.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function WatchStackNavigator() {
@@ -251,12 +321,12 @@ function WatchStackNavigator() {
   );
 }
 
-// Search Stack Navigator
-function SearchStackNavigator() {
+// Paste Stack Navigator
+function PasteStackNavigator() {
   const { theme } = useTheme();
 
   return (
-    <SearchStack.Navigator
+    <PasteStack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.colors.surface,
@@ -267,52 +337,52 @@ function SearchStackNavigator() {
         },
       }}
     >
-      <SearchStack.Screen
-        name="SearchHome"
-        component={SearchTabScreen}
+      <PasteStack.Screen
+        name="PasteHome"
+        component={PasteTabScreen}
         options={{ headerShown: false }}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="TrailDetail"
         component={TrailDetailScreen}
         options={{ title: 'Trail' }}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="TopicDetail"
         component={TopicDetailScreen}
         options={{ title: 'Topic' }}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
         options={{ headerShown: false }}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="RepoReadme"
         component={RepoReadmeScreen}
         options={{ headerShown: false }}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="TourFileCity"
         component={TourFileCityScreen}
         options={{ headerShown: false }}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="UserProfile"
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="Organization"
         component={OrganizationScreenContainer}
         options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
       />
-      <SearchStack.Screen
+      <PasteStack.Screen
         name="CommitDetail"
         component={CommitDetailScreen}
         options={{ headerShown: false }}
       />
-    </SearchStack.Navigator>
+    </PasteStack.Navigator>
   );
 }
 
@@ -441,8 +511,8 @@ function AboutStackNavigator() {
   );
 }
 
-// Track last tap time for double-tap detection on Search and About tabs
-let lastSearchTabTap = 0;
+// Track last tap time for double-tap detection on Paste and About tabs
+let lastPasteTabTap = 0;
 let lastAboutTabTap = 0;
 const DOUBLE_TAP_DELAY = 300; // milliseconds
 
@@ -472,117 +542,11 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="Search"
-        component={SearchStackNavigator}
-        options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Search" size={24} color={color} />,
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: async (e) => {
-            const now = Date.now();
-            const timeSinceLastTap = now - lastSearchTabTap;
-
-            if (timeSinceLastTap < DOUBLE_TAP_DELAY && timeSinceLastTap > 0) {
-              // Double tap detected - prevent default navigation
-              e.preventDefault();
-              lastSearchTabTap = 0; // Reset
-
-              try {
-                const clipboardContent = await Clipboard.getStringAsync();
-
-                if (!clipboardContent?.trim()) {
-                  Alert.alert('Clipboard Empty', 'No content found in clipboard');
-                  return;
-                }
-
-                const trimmed = clipboardContent.trim();
-
-                // Trail / topic share URLs and bare UUIDs take priority
-                // — they can never overlap with the github.com URL shapes
-                // parseGitHubUrl accepts, so checking first is safe.
-                // Trails are checked before topics because a UUID alone
-                // is ambiguous and trails are the older / more common
-                // share target; an explicit `/topic/<id>` URL still wins
-                // because extractTrailId only matches `/trail/<id>`.
-                const trailId = extractTrailId(trimmed);
-                if (trailId) {
-                  navigation.navigate('Search', {
-                    screen: 'TrailDetail',
-                    params: { trailId },
-                  });
-                  return;
-                }
-
-                const topicId = extractTopicId(trimmed);
-                if (topicId) {
-                  navigation.navigate('Search', {
-                    screen: 'TopicDetail',
-                    params: { topicId },
-                  });
-                  return;
-                }
-
-                const parseResult = parseGitHubUrl(trimmed);
-
-                if (parseResult.type === 'invalid') {
-                  Alert.alert(
-                    'Invalid URL',
-                    'Clipboard does not contain a valid GitHub, trail, or topic URL',
-                  );
-                  return;
-                }
-
-                // Navigate to the appropriate screen
-                if (parseResult.type === 'repo') {
-                  const fullName = `${parseResult.owner}/${parseResult.repo}`;
-
-                  await saveClickedResult({
-                    type: 'repo',
-                    id: fullName,
-                    name: parseResult.repo,
-                    owner: parseResult.owner,
-                    avatarUrl: `https://github.com/${parseResult.owner}.png`,
-                  });
-
-                  navigation.navigate('Search', {
-                    screen: 'RepoFileCity',
-                    params: {
-                      owner: parseResult.owner,
-                      name: parseResult.repo,
-                      fullName,
-                    },
-                  });
-                } else if (parseResult.type === 'user') {
-                  await saveClickedResult({
-                    type: 'user',
-                    id: parseResult.username,
-                    name: parseResult.username,
-                    login: parseResult.username,
-                    avatarUrl: `https://github.com/${parseResult.username}.png`,
-                  });
-
-                  navigation.navigate('Search', {
-                    screen: 'UserProfile',
-                    params: {
-                      username: parseResult.username,
-                    },
-                  });
-                }
-              } catch {
-                Alert.alert('Error', 'Failed to read from clipboard');
-              }
-            } else {
-              // Single tap - allow default navigation
-              lastSearchTabTap = now;
-            }
-          },
-        })}
-      />
-      <Tab.Screen
         name="Trails"
         component={TrailsStackNavigator}
         options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Footprints" size={24} color={color} />,
+          tabBarLabel: 'Inbox',
+          tabBarIcon: ({ color }) => <LucideIcon name="Inbox" size={24} color={color} />,
         }}
       />
       <Tab.Screen
@@ -590,6 +554,78 @@ function MainTabs() {
         component={StarredStackNavigator}
         options={{
           tabBarIcon: ({ color }) => <LucideIcon name="Star" size={24} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Paste"
+        component={PasteStackNavigator}
+        options={{
+          tabBarLabel: 'Paste',
+          tabBarIcon: ({ color }) => <LucideIcon name="ClipboardPaste" size={24} color={color} />,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: async (e) => {
+            const now = Date.now();
+            const timeSinceLastTap = now - lastPasteTabTap;
+
+            if (timeSinceLastTap < DOUBLE_TAP_DELAY && timeSinceLastTap > 0) {
+              // Double tap detected - paste from clipboard instead of navigating.
+              // Shares readClipboardTarget with the Paste screen's button so both
+              // resolve and navigate identically.
+              e.preventDefault();
+              lastPasteTabTap = 0; // Reset
+
+              const result = await readClipboardTarget();
+
+              if (result.status !== 'ok') {
+                alertClipboardPasteResult(result.status);
+                return;
+              }
+
+              const { target } = result;
+              switch (target.type) {
+                case 'trail':
+                  navigation.navigate('Paste', {
+                    screen: 'TrailDetail',
+                    params: { trailId: target.trailId },
+                  });
+                  break;
+                case 'topic':
+                  navigation.navigate('Paste', {
+                    screen: 'TopicDetail',
+                    params: { topicId: target.topicId },
+                  });
+                  break;
+                case 'repo':
+                  navigation.navigate('Paste', {
+                    screen: 'RepoFileCity',
+                    params: {
+                      owner: target.owner,
+                      name: target.name,
+                      fullName: target.fullName,
+                    },
+                  });
+                  break;
+                case 'user':
+                  navigation.navigate('Paste', {
+                    screen: 'UserProfile',
+                    params: { username: target.username },
+                  });
+                  break;
+              }
+            } else {
+              // Single tap - allow default navigation
+              lastPasteTabTap = now;
+            }
+          },
+        })}
+      />
+      <Tab.Screen
+        name="Recent"
+        component={RecentStackNavigator}
+        options={{
+          tabBarLabel: 'Recent',
+          tabBarIcon: ({ color }) => <LucideIcon name="Clock" size={24} color={color} />,
         }}
       />
       <Tab.Screen

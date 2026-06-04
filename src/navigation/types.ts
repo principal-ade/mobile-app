@@ -52,6 +52,59 @@ export type TrailsStackParamList = {
   };
 };
 
+// Stack params for Recently Visited tab — mirrors the Trails (Inbox) stack
+// since both list trails and push the same downstream screens.
+export type RecentStackParamList = {
+  RecentHome: undefined;
+  TrailDetail: {
+    /** UUID resolved from the recently-visited list. */
+    trailId: string;
+  };
+  RepoFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
+  RepoReadme: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
+  TourFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+    forkOwner: string;
+    forkRepo: string;
+    tourPath: string;
+  };
+  UserProfile: {
+    username: string;
+    isOrganization?: boolean;
+    isBot?: boolean;
+  };
+  Organization: {
+    orgLogin: string;
+  };
+  CommitDetail: {
+    commit: {
+      repoOwner: string;
+      repoName: string;
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorEmail: string;
+      authorAvatarUrl: string | null;
+      date: string;
+      additions?: number;
+      deletions?: number;
+      filesChanged?: number;
+    };
+    fullName: string;
+  };
+};
+
 // Stack params for Feed tab
 export type FeedStackParamList = {
   FeedHome: undefined;
@@ -187,9 +240,9 @@ export type WatchStackParamList = {
   };
 };
 
-// Stack params for Search tab
-export type SearchStackParamList = {
-  SearchHome: undefined;
+// Stack params for Paste tab
+export type PasteStackParamList = {
+  PasteHome: undefined;
   TrailDetail: {
     /** UUID extracted from a /trail/<id> clipboard URL. */
     trailId: string;
@@ -322,8 +375,9 @@ export type AboutStackParamList = {
 
 export type MainTabParamList = {
   Trails: NavigatorScreenParams<TrailsStackParamList>;
+  Recent: NavigatorScreenParams<RecentStackParamList>;
   Watch: NavigatorScreenParams<WatchStackParamList>;
-  Search: NavigatorScreenParams<SearchStackParamList>;
+  Paste: NavigatorScreenParams<PasteStackParamList>;
   Starred: NavigatorScreenParams<StarredStackParamList>;
   About: NavigatorScreenParams<AboutStackParamList>;
 };
