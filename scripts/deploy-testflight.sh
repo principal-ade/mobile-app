@@ -21,7 +21,15 @@ fi
 
 # Get current version from app.json
 VERSION=$(node -p "require('./app.json').expo.version")
-echo "📦 Current version: $VERSION"
+BUILD_NUMBER=$(node -p "require('./app.json').expo.ios.buildNumber")
+echo "📦 Current version: $VERSION (build $BUILD_NUMBER)"
+echo ""
+
+# Sync app.json version/build number into the native iOS project. EAS reads the
+# build number from Info.plist (appVersionSource: local + committed ios/ dir),
+# so without this an app.json bump is ignored and you resubmit a duplicate build.
+echo "🔁 Syncing version to native project..."
+npm run sync-version
 echo ""
 
 # Build the app
