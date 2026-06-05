@@ -1,14 +1,14 @@
 /**
- * Topic detail screen — read + star + share view of a curated topic.
+ * Topic detail screen — read + bookmark + share view of a curated topic.
  *
  * Mirrors the read half of `web-ade/src/app/topic/[id]/page.tsx`: title,
  * author, markdown description, and an ordered list of trail summary
  * cards. Trail rows tap through to `TrailDetail` in the same stack;
- * Starred and Search both register `TrailDetail` so the route is always
+ * Bookmarked and Search both register `TrailDetail` so the route is always
  * reachable from here.
  *
  * Reached from:
- *   - Starred tab → topic row
+ *   - Bookmarked tab → topic row
  *   - Search tab clipboard double-tap on a `/topic/<id>` URL
  *   - Deep link  `principal-ai://…/topic/<id>`
  */
@@ -39,13 +39,13 @@ import {
   getTrailById,
   TrailsApiError,
 } from '../services/TrailsApiService';
-import { starTopic, unstarTopic } from '../services/StarsApiService';
+import { bookmarkTopic, removeBookmarkTopic } from '../services/BookmarksApiService';
 import { apiConfig } from '../utils/config';
-import type { StarredStackParamList } from '../navigation/types';
+import type { BookmarksStackParamList } from '../navigation/types';
 import type { GetTopicResponse } from '../types/Topic';
 import type { SharedTrailIndexEntry } from '../types/Inbox';
 
-type Props = StackScreenProps<StarredStackParamList, 'TopicDetail'>;
+type Props = StackScreenProps<BookmarksStackParamList, 'TopicDetail'>;
 
 // Web copy of the URL keeps the share link consistent across surfaces.
 // `apiConfig.baseUrl` ends in `/api`; strip it so we get the user-facing
@@ -79,9 +79,9 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     Record<string, TrailFetchResult>
   >({});
 
-  // Tracks an in-flight star/unstar so the toggle can't double-fire while
+  // Tracks an in-flight bookmark/removeBookmark so the toggle can't double-fire while
   // the optimistic update is reconciling.
-  const [starInFlight, setStarInFlight] = React.useState(false);
+  const [bookmarkInFlight, setBookmarkInFlight] = React.useState(false);
   const [shareCopied, setShareCopied] = React.useState(false);
 
   // ---- Load topic ---------------------------------------------------------
@@ -160,33 +160,33 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trailIdsKey, token]);
 
-  // ---- Star toggle --------------------------------------------------------
-  const isStarred = state.status === 'ok' ? state.data.starred : false;
-  const canStar = state.status === 'ok' && !!token;
+  // ---- Bookmark toggle --------------------------------------------------------
+  const isBookmarked = state.status === 'ok' ? state.data.bookmarked : false;
+  const canBookmark = state.status === 'ok' && !!token;
 
-  const toggleStar = React.useCallback(async () => {
-    if (state.status !== 'ok' || !token || starInFlight) return;
-    const previous = state.data.starred;
-    // Optimistic flip — revert on failure. Star toggles are idempotent on
+  const toggleBookmark = React.useCallback(async () => {
+    if (state.status !== 'ok' || !token || bookmarkInFlight) return;
+    const previous = state.data.bookmarked;
+    // Optimistic flip — revert on failure. Bookmark toggles are idempotent on
     // the server so a failed call leaves the index untouched.
-    setState({ status: 'ok', data: { ...state.data, starred: !previous } });
-    setStarInFlight(true);
+    setState({ status: 'ok', data: { ...state.data, bookmarked: !previous } });
+    setBookmarkInFlight(true);
     try {
       if (previous) {
-        await unstarTopic(topicId, token);
+        await removeBookmarkTopic(topicId, token);
       } else {
-        await starTopic(topicId, token);
+        await bookmarkTopic(topicId, token);
       }
     } catch {
       setState((s) =>
         s.status === 'ok'
-          ? { status: 'ok', data: { ...s.data, starred: previous } }
+          ? { status: 'ok', data: { ...s.data, bookmarked: previous } }
           : s,
       );
     } finally {
-      setStarInFlight(false);
+      setBookmarkInFlight(false);
     }
-  }, [state, token, topicId, starInFlight]);
+  }, [state, token, topicId, bookmarkInFlight]);
 
   // ---- Share --------------------------------------------------------------
   const handleShare = React.useCallback(async () => {
@@ -223,26 +223,26 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               }
             />
           </Pressable>
-          {canStar ? (
+          {canBookmark ? (
             <Pressable
-              onPress={() => void toggleStar()}
+              onPress={() => void toggleBookmark()}
               hitSlop={12}
-              disabled={starInFlight}
+              disabled={bookmarkInFlight}
               style={({ pressed }) => [
                 styles.headerButton,
-                { opacity: pressed || starInFlight ? 0.5 : 1 },
+                { opacity: pressed || bookmarkInFlight ? 0.5 : 1 },
               ]}
-              accessibilityLabel={isStarred ? 'Unstar topic' : 'Star topic'}
+              accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark topic'}
               accessibilityRole="button"
             >
-              <StarIcon
+              <BookmarkIcon
                 size={22}
                 color={
-                  isStarred
+                  isBookmarked
                     ? theme.colors.accent
                     : theme.colors.textSecondary
                 }
-                filled={isStarred}
+                filled={isBookmarked}
               />
             </Pressable>
           ) : null}
@@ -251,11 +251,11 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, [
     navigation,
-    canStar,
-    isStarred,
-    starInFlight,
+    canBookmark,
+    isBookmarked,
+    bookmarkInFlight,
     shareCopied,
-    toggleStar,
+    toggleBookmark,
     handleShare,
     theme.colors.accent,
     theme.colors.textSecondary,
@@ -478,15 +478,15 @@ const TrailCard: React.FC<TrailCardProps> = ({ trailId, result, onPress }) => {
 };
 
 /**
- * Header star icon — supports a filled state, which the shared `LucideIcon`
- * doesn't (it hardcodes `fill: 'none'`). Same path as the Lucide Star, just
+ * Header bookmark icon — supports a filled state, which the shared `LucideIcon`
+ * doesn't (it hardcodes `fill: 'none'`). Same path as the Lucide Bookmark, just
  * with a togglable fill so the active state reads at a glance. Copied from
  * TrailDetailScreen so both detail headers behave identically.
  */
 const STAR_POINTS =
   '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
 
-const StarIcon: React.FC<{ size: number; color: string; filled: boolean }> = ({
+const BookmarkIcon: React.FC<{ size: number; color: string; filled: boolean }> = ({
   size,
   color,
   filled,

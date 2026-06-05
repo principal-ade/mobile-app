@@ -2,7 +2,7 @@
  * Topic types — curated collection of trails on a single subject.
  *
  * Mirrors the read-side of `web-ade/src/lib/topics/types.ts`. Mobile is
- * read + star + share for v1, so we only carry the shapes the detail
+ * read + bookmark + share for v1, so we only carry the shapes the detail
  * screen needs. Owner-mutation types (create / update / suggestions /
  * comments) live on the web until mobile grows those surfaces.
  */
@@ -22,9 +22,9 @@ export interface TopicPayload {
 export interface GetTopicResponse {
   topic: TopicPayload;
   /**
-   * Whether the authenticated caller has this topic starred. Always
-   * `false` for anonymous callers. Drives the star toggle's initial
+   * Whether the authenticated caller has this topic bookmarked. Always
+   * `false` for anonymous callers. Drives the bookmark toggle's initial
    * state in the header without a second request.
    */
-  starred: boolean;
+  bookmarked: boolean;
 }

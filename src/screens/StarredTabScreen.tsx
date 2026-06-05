@@ -13,10 +13,10 @@ import { useAuthContext } from '../context/AuthContext';
 import { useCollections } from '../context/CollectionsContext';
 import type { StarredRepo } from '../types/collections';
 import type { OrgOption } from '../components/Collections/CollectionSelector';
-import type { StarredStackParamList } from '../navigation/types';
+import type { BookmarksStackParamList } from '../navigation/types';
 
 type TabType = 'starred' | 'collections' | 'tours';
-type NavigationProp = StackNavigationProp<StarredStackParamList>;
+type NavigationProp = StackNavigationProp<BookmarksStackParamList>;
 
 export function StarredTabScreen() {
   const { theme } = useTheme();

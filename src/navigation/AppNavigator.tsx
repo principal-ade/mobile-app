@@ -12,7 +12,7 @@ import {
   RecentStackParamList,
   WatchStackParamList,
   PasteStackParamList,
-  StarredStackParamList,
+  BookmarksStackParamList,
   AboutStackParamList,
 } from './types';
 import AboutScreen from '../screens/AboutScreen';
@@ -26,7 +26,7 @@ import TrailsTabScreen from '../screens/TrailsTabScreen';
 import RecentTabScreen from '../screens/RecentTabScreen';
 import WatchTabScreen from '../screens/WatchTabScreen';
 import UserActivityScreen from '../screens/UserActivityScreen';
-import { StarredTopicsTrailsScreen } from '../screens/StarredTopicsTrailsScreen';
+import { BookmarkedTopicsTrailsScreen } from '../screens/BookmarkedTopicsTrailsScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
 import { PasteTabScreen } from '../screens/PasteTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
@@ -93,10 +93,10 @@ const linking: LinkingOptions<RootStackParamList> = {
               Organization: 'org/:orgLogin',
             },
           },
-          Starred: {
-            path: 'starred',
+          Bookmarks: {
+            path: 'bookmarks',
             screens: {
-              StarredHome: '',
+              BookmarksHome: '',
               TopicDetail: 'topic/:topicId',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
@@ -127,7 +127,7 @@ const TrailsStack = createStackNavigator<TrailsStackParamList>();
 const RecentStack = createStackNavigator<RecentStackParamList>();
 const WatchStack = createStackNavigator<WatchStackParamList>();
 const PasteStack = createStackNavigator<PasteStackParamList>();
-const StarredStack = createStackNavigator<StarredStackParamList>();
+const BookmarksStack = createStackNavigator<BookmarksStackParamList>();
 const AboutStack = createStackNavigator<AboutStackParamList>();
 
 
@@ -386,12 +386,12 @@ function PasteStackNavigator() {
   );
 }
 
-// Starred Stack Navigator
-function StarredStackNavigator() {
+// Bookmarked Stack Navigator
+function BookmarksStackNavigator() {
   const { theme } = useTheme();
 
   return (
-    <StarredStack.Navigator
+    <BookmarksStack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.colors.surface,
@@ -402,47 +402,47 @@ function StarredStackNavigator() {
         },
       }}
     >
-      <StarredStack.Screen
-        name="StarredHome"
-        component={StarredTopicsTrailsScreen}
+      <BookmarksStack.Screen
+        name="BookmarksHome"
+        component={BookmarkedTopicsTrailsScreen}
         options={{ headerShown: false }}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="TrailDetail"
         component={TrailDetailScreen}
         options={{ title: 'Trail' }}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="TopicDetail"
         component={TopicDetailScreen}
         options={{ title: 'Topic' }}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
         options={{ headerShown: false }}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="RepoReadme"
         component={RepoReadmeScreen}
         options={{ headerShown: false }}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="TourFileCity"
         component={TourFileCityScreen}
         options={{ headerShown: false }}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="UserProfile"
         component={UserProfileScreenContainer}
         options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
       />
-      <StarredStack.Screen
+      <BookmarksStack.Screen
         name="CommitDetail"
         component={CommitDetailScreen}
         options={{ headerShown: false }}
       />
-    </StarredStack.Navigator>
+    </BookmarksStack.Navigator>
   );
 }
 
@@ -550,10 +550,10 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Starred"
-        component={StarredStackNavigator}
+        name="Bookmarks"
+        component={BookmarksStackNavigator}
         options={{
-          tabBarIcon: ({ color }) => <LucideIcon name="Star" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <LucideIcon name="Bookmark" size={24} color={color} />,
         }}
       />
       <Tab.Screen

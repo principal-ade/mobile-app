@@ -1,7 +1,7 @@
 /**
  * Topics API service — thin fetch wrappers over the web-ade topic routes.
  *
- * v1 scope is read + star (star/unstar already live in `StarsApiService`).
+ * v1 scope is read + bookmark (bookmark/removeBookmark already live in `BookmarksApiService`).
  * Owner mutations (PATCH title/description, add/remove trails, suggestions,
  * comments) are intentionally out of scope until the mobile detail screen
  * grows beyond a viewer.
@@ -54,7 +54,7 @@ function authHeaders(githubToken: string): HeadersInit {
 
 /**
  * Resolve `/topic/{id}` — public-by-link read. When called with a token,
- * the server also returns `starred` so the header toggle can render in
+ * the server also returns `bookmarked` so the header toggle can render in
  * its correct state without a second fetch.
  */
 export async function getTopicById(

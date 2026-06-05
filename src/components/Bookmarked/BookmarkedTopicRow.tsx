@@ -1,11 +1,10 @@
 /**
- * Starred trail row — a single entry in the Starred tab's Trails segment.
+ * Bookmarked topic row — a single entry in the Bookmarked tab's Topics segment.
  *
- * Visual cousin of `InboxRow`: title + meta + secondary line + relative
- * timestamp. No unread dot, no sender — instead the row shows
- * "{owner}/{repo}" and the trail's stored summary preview. Entries flagged
- * `gone: true` by the server render dimmed with a "no longer available"
- * suffix on the meta line.
+ * Same visual rhythm as `BookmarkedTrailRow`, with the snapshot's
+ * `descriptionPreview` and a "{trailCount} trails" meta hint instead of
+ * "{owner}/{repo}". Tapping pushes onto `TopicDetail` via the parent's
+ * `onPress`.
  */
 
 import React from 'react';
@@ -17,11 +16,11 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
-import type { StarredTrailEntry } from '../../types/Stars';
+import type { BookmarkedTopicEntry } from '../../types/Bookmarks';
 
-export interface StarredTrailRowProps {
-  entry: StarredTrailEntry;
-  onPress?: (entry: StarredTrailEntry) => void;
+export interface BookmarkedTopicRowProps {
+  entry: BookmarkedTopicEntry;
+  onPress?: (entry: BookmarkedTopicEntry) => void;
 }
 
 const formatRelative = (iso: string): string => {
@@ -44,7 +43,7 @@ const formatRelative = (iso: string): string => {
   return `${yr}y ago`;
 };
 
-export const StarredTrailRow: React.FC<StarredTrailRowProps> = ({
+export const BookmarkedTopicRow: React.FC<BookmarkedTopicRowProps> = ({
   entry,
   onPress,
 }) => {
@@ -55,8 +54,11 @@ export const StarredTrailRow: React.FC<StarredTrailRowProps> = ({
     theme.fontWeights.semibold,
   ) as TextStyle['fontWeight'];
 
-  const repoLabel = `${entry.owner}/${entry.repo}`;
-  const summary = entry.snapshot.summaryPreview;
+  const trailCountLabel =
+    entry.snapshot.trailCount === 1
+      ? '1 TRAIL'
+      : `${entry.snapshot.trailCount} TRAILS`;
+  const preview = entry.snapshot.descriptionPreview;
 
   return (
     <Pressable
@@ -96,7 +98,7 @@ export const StarredTrailRow: React.FC<StarredTrailRowProps> = ({
               },
             ]}
           >
-            {formatRelative(entry.starredAt)}
+            {formatRelative(entry.bookmarkedAt)}
           </Text>
         </View>
         <Text
@@ -109,10 +111,10 @@ export const StarredTrailRow: React.FC<StarredTrailRowProps> = ({
           ]}
           numberOfLines={1}
         >
-          {repoLabel}
+          {trailCountLabel}
           {isGone ? '   NO LONGER AVAILABLE' : ''}
         </Text>
-        {summary ? (
+        {preview ? (
           <Text
             style={[
               styles.summary,
@@ -123,7 +125,7 @@ export const StarredTrailRow: React.FC<StarredTrailRowProps> = ({
             ]}
             numberOfLines={2}
           >
-            {summary}
+            {preview}
           </Text>
         ) : null}
       </View>

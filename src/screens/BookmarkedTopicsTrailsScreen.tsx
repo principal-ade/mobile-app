@@ -1,5 +1,5 @@
 /**
- * Starred tab — two segments backed by per-user starred indexes on web-ade.
+ * Bookmarked tab — two segments backed by per-user bookmarked indexes on web-ade.
  *
  * Pattern mirrors `TrailsTabScreen`: lazy-load each segment on first
  * activation, error banner, pull-to-refresh, empty state when the list is
@@ -27,24 +27,24 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { LucideIcon } from '../components/LucideIcon';
-import { StarredTopicRow } from '../components/Starred/StarredTopicRow';
-import { StarredTrailRow } from '../components/Starred/StarredTrailRow';
+import { BookmarkedTopicRow } from '../components/Bookmarked/BookmarkedTopicRow';
+import { BookmarkedTrailRow } from '../components/Bookmarked/BookmarkedTrailRow';
 import { useAuth } from '../hooks/useAuth';
 import {
-  StarsApiError,
-  getStarredTopics,
-  getStarredTrails,
-} from '../services/StarsApiService';
+  BookmarksApiError,
+  getBookmarkedTopics,
+  getBookmarkedTrails,
+} from '../services/BookmarksApiService';
 import type {
-  StarredTopicEntry,
-  StarredTrailEntry,
-} from '../types/Stars';
-import type { StarredStackParamList } from '../navigation/types';
+  BookmarkedTopicEntry,
+  BookmarkedTrailEntry,
+} from '../types/Bookmarks';
+import type { BookmarksStackParamList } from '../navigation/types';
 
 type TabKey = 'topics' | 'trails';
-type NavProp = StackNavigationProp<StarredStackParamList, 'StarredHome'>;
+type NavProp = StackNavigationProp<BookmarksStackParamList, 'BookmarksHome'>;
 
-export function StarredTopicsTrailsScreen() {
+export function BookmarkedTopicsTrailsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -52,14 +52,14 @@ export function StarredTopicsTrailsScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('topics');
 
   // Topics segment state
-  const [topicsEntries, setTopicsEntries] = useState<StarredTopicEntry[]>([]);
+  const [topicsEntries, setTopicsEntries] = useState<BookmarkedTopicEntry[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(false);
   const [topicsRefreshing, setTopicsRefreshing] = useState(false);
   const [topicsError, setTopicsError] = useState<string | null>(null);
   const [topicsLoadedOnce, setTopicsLoadedOnce] = useState(false);
 
   // Trails segment state
-  const [trailsEntries, setTrailsEntries] = useState<StarredTrailEntry[]>([]);
+  const [trailsEntries, setTrailsEntries] = useState<BookmarkedTrailEntry[]>([]);
   const [trailsLoading, setTrailsLoading] = useState(false);
   const [trailsRefreshing, setTrailsRefreshing] = useState(false);
   const [trailsError, setTrailsError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export function StarredTopicsTrailsScreen() {
       else if (mode === 'refresh') setTopicsRefreshing(true);
       if (mode !== 'silent') setTopicsError(null);
       try {
-        const entries = await getStarredTopics(token);
+        const entries = await getBookmarkedTopics(token);
         setTopicsEntries(entries);
         if (mode === 'silent') setTopicsError(null);
       } catch (err) {
@@ -81,9 +81,9 @@ export function StarredTopicsTrailsScreen() {
         // were already looking at with a banner.
         if (mode !== 'silent') {
           setTopicsError(
-            err instanceof StarsApiError
+            err instanceof BookmarksApiError
               ? err.message
-              : 'Could not load your starred topics.',
+              : 'Could not load your bookmarked topics.',
           );
         }
       } finally {
@@ -102,15 +102,15 @@ export function StarredTopicsTrailsScreen() {
       else if (mode === 'refresh') setTrailsRefreshing(true);
       if (mode !== 'silent') setTrailsError(null);
       try {
-        const entries = await getStarredTrails(token);
+        const entries = await getBookmarkedTrails(token);
         setTrailsEntries(entries);
         if (mode === 'silent') setTrailsError(null);
       } catch (err) {
         if (mode !== 'silent') {
           setTrailsError(
-            err instanceof StarsApiError
+            err instanceof BookmarksApiError
               ? err.message
-              : 'Could not load your starred trails.',
+              : 'Could not load your bookmarked trails.',
           );
         }
       } finally {
@@ -142,7 +142,7 @@ export function StarredTopicsTrailsScreen() {
   ]);
 
   // Refresh-on-focus: the user is the source of new entries (they just
-  // tapped the star button on a trail detail), so coming back to this
+  // tapped the bookmark button on a trail detail), so coming back to this
   // screen with stale data is the common case. Silent mode — no spinner,
   // no banner on failure; the existing entries stay visible until the
   // new fetch lands.
@@ -162,14 +162,14 @@ export function StarredTopicsTrailsScreen() {
   );
 
   const handleTrailRowPress = useCallback(
-    (entry: StarredTrailEntry) => {
+    (entry: BookmarkedTrailEntry) => {
       navigation.navigate('TrailDetail', { trailId: entry.trailId });
     },
     [navigation],
   );
 
   const handleTopicRowPress = useCallback(
-    (entry: StarredTopicEntry) => {
+    (entry: BookmarkedTopicEntry) => {
       navigation.navigate('TopicDetail', { topicId: entry.topicId });
     },
     [navigation],
@@ -185,9 +185,9 @@ export function StarredTopicsTrailsScreen() {
         textColor={theme.colors.text}
         subtextColor={theme.colors.textSecondary}
         iconColor={theme.colors.textSecondary}
-        iconName="Star"
-        title="Sign in to see your stars"
-        subtitle="Once you're signed in, topics and trails you star will show up here."
+        iconName="Bookmark"
+        title="Sign in to see your bookmarks"
+        subtitle="Once you're signed in, topics and trails you bookmark will show up here."
       />
     );
   }
@@ -238,15 +238,15 @@ export function StarredTopicsTrailsScreen() {
             textColor={theme.colors.text}
             subtextColor={theme.colors.textSecondary}
             iconName="Hash"
-            title="No starred topics yet"
-            subtitle="Topics you star will show up here so you can jump back to them."
+            title="No bookmarked topics yet"
+            subtitle="Topics you bookmark will show up here so you can jump back to them."
           />
         ) : (
           <FlatList
             data={topicsEntries}
             keyExtractor={(item) => item.topicId}
             renderItem={({ item }) => (
-              <StarredTopicRow entry={item} onPress={handleTopicRowPress} />
+              <BookmarkedTopicRow entry={item} onPress={handleTopicRowPress} />
             )}
             refreshControl={
               <RefreshControl
@@ -263,15 +263,15 @@ export function StarredTopicsTrailsScreen() {
           textColor={theme.colors.text}
           subtextColor={theme.colors.textSecondary}
           iconName="Footprints"
-          title="No starred trails yet"
-          subtitle="Trails you star will show up here so you can come back to them later."
+          title="No bookmarked trails yet"
+          subtitle="Trails you bookmark will show up here so you can come back to them later."
         />
       ) : (
         <FlatList
           data={trailsEntries}
           keyExtractor={(item) => item.trailId}
           renderItem={({ item }) => (
-            <StarredTrailRow entry={item} onPress={handleTrailRowPress} />
+            <BookmarkedTrailRow entry={item} onPress={handleTrailRowPress} />
           )}
           refreshControl={
             <RefreshControl
@@ -358,7 +358,7 @@ interface EmptyContentProps {
   iconColor: string;
   textColor: string;
   subtextColor: string;
-  iconName: 'Hash' | 'Footprints' | 'Star';
+  iconName: 'Hash' | 'Footprints' | 'Bookmark';
   title: string;
   subtitle: string;
 }
@@ -386,7 +386,7 @@ interface EmptyStateProps {
   textColor: string;
   subtextColor: string;
   iconColor: string;
-  iconName: 'Hash' | 'Footprints' | 'Star';
+  iconName: 'Hash' | 'Footprints' | 'Bookmark';
   title: string;
   subtitle: string;
 }
@@ -469,4 +469,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StarredTopicsTrailsScreen;
+export default BookmarkedTopicsTrailsScreen;

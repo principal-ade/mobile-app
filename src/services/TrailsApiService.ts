@@ -38,11 +38,11 @@ export interface TrailFetchResponse {
   entry: SharedTrailIndexEntry;
   payload: TrailPayload;
   /**
-   * Whether the authenticated caller has this trail starred. Always `false`
-   * for anonymous callers. Drives the star toggle's initial state in the
+   * Whether the authenticated caller has this trail bookmarked. Always `false`
+   * for anonymous callers. Drives the bookmark toggle's initial state in the
    * trail-detail header without a second request.
    */
-  starred: boolean;
+  bookmarked: boolean;
 }
 
 export interface ListTrailsResponse {

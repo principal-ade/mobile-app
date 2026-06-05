@@ -7,7 +7,7 @@
  * a canned payload, so the screen renders standalone with no live API.
  *
  * `AuthProvider` is wrapped per-story with `initialTokens` set (or null)
- * to drive the anonymous variant where the star button is hidden.
+ * to drive the anonymous variant where the bookmark button is hidden.
  */
 
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
@@ -92,7 +92,7 @@ function makeTrail(opts: {
   return {
     owner: opts.owner,
     repo: opts.repo,
-    starred: false,
+    bookmarked: false,
     entry: {
       id: opts.id,
       title: opts.title,
@@ -280,18 +280,18 @@ export const Loaded: Story = {
   render: () => (
     <Frame
       responders={[
-        topicResponder({ topic: TOPIC, starred: false }),
+        topicResponder({ topic: TOPIC, bookmarked: false }),
         trailResponder(),
       ]}
     />
   ),
 };
 
-export const LoadedAndStarred: Story = {
+export const LoadedAndBookmarked: Story = {
   render: () => (
     <Frame
       responders={[
-        topicResponder({ topic: TOPIC, starred: true }),
+        topicResponder({ topic: TOPIC, bookmarked: true }),
         trailResponder(),
       ]}
     />
@@ -304,7 +304,7 @@ export const EmptyTrails: Story = {
       responders={[
         topicResponder({
           topic: { ...TOPIC, trailIds: [] },
-          starred: false,
+          bookmarked: false,
         }),
         trailResponder(),
       ]}
@@ -317,7 +317,7 @@ export const Anonymous: Story = {
     <Frame
       authed={false}
       responders={[
-        topicResponder({ topic: TOPIC, starred: false }),
+        topicResponder({ topic: TOPIC, bookmarked: false }),
         trailResponder(),
       ]}
     />
@@ -339,7 +339,7 @@ export const TrailLoadFailures: Story = {
   render: () => (
     <Frame
       responders={[
-        topicResponder({ topic: TOPIC, starred: false }),
+        topicResponder({ topic: TOPIC, bookmarked: false }),
         // Match the trails endpoint but always 500 — exercises each card's
         // error branch so all three rows render the "unavailable" state.
         (url) =>

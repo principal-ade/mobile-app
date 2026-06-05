@@ -296,15 +296,15 @@ export type PasteStackParamList = {
   };
 };
 
-// Stack params for Starred tab
-export type StarredStackParamList = {
-  StarredHome: undefined;
+// Stack params for Bookmarked tab
+export type BookmarksStackParamList = {
+  BookmarksHome: undefined;
   TrailDetail: {
-    /** UUID from the starred-trails list. */
+    /** UUID from the bookmarked-trails list. */
     trailId: string;
   };
   TopicDetail: {
-    /** UUID from the starred-topics list. */
+    /** UUID from the bookmarked-topics list. */
     topicId: string;
   };
   RepoFileCity: {
@@ -378,7 +378,7 @@ export type MainTabParamList = {
   Recent: NavigatorScreenParams<RecentStackParamList>;
   Watch: NavigatorScreenParams<WatchStackParamList>;
   Paste: NavigatorScreenParams<PasteStackParamList>;
-  Starred: NavigatorScreenParams<StarredStackParamList>;
+  Bookmarks: NavigatorScreenParams<BookmarksStackParamList>;
   About: NavigatorScreenParams<AboutStackParamList>;
 };
 

@@ -29,7 +29,7 @@ import {
   recordTrailVisit,
   TrailsApiError,
 } from '../services/TrailsApiService';
-import { starTrail, unstarTrail } from '../services/StarsApiService';
+import { bookmarkTrail, removeBookmarkTrail } from '../services/BookmarksApiService';
 import type { PasteStackParamList } from '../navigation/types';
 import type { TrailFetchResponse } from '../services/TrailsApiService';
 
@@ -44,9 +44,9 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     | { status: 'ok'; data: TrailFetchResponse }
     | { status: 'error'; message: string }
   >({ status: 'loading' });
-  // Tracks an in-flight star/unstar so the toggle can't double-fire while
+  // Tracks an in-flight bookmark/removeBookmark so the toggle can't double-fire while
   // the optimistic update is reconciling.
-  const [starInFlight, setStarInFlight] = React.useState(false);
+  const [bookmarkInFlight, setBookmarkInFlight] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -82,64 +82,64 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   }, [trailId, token]);
 
-  const isStarred = state.status === 'ok' ? state.data.starred : false;
-  const canStar = state.status === 'ok' && !!token;
+  const isBookmarked = state.status === 'ok' ? state.data.bookmarked : false;
+  const canBookmark = state.status === 'ok' && !!token;
 
-  const toggleStar = React.useCallback(async () => {
-    if (state.status !== 'ok' || !token || starInFlight) return;
-    const previous = state.data.starred;
+  const toggleBookmark = React.useCallback(async () => {
+    if (state.status !== 'ok' || !token || bookmarkInFlight) return;
+    const previous = state.data.bookmarked;
     // Optimistic flip — revert on failure. The toggle is idempotent on the
     // server side; a failed call leaves the index untouched.
-    setState({ status: 'ok', data: { ...state.data, starred: !previous } });
-    setStarInFlight(true);
+    setState({ status: 'ok', data: { ...state.data, bookmarked: !previous } });
+    setBookmarkInFlight(true);
     try {
       if (previous) {
-        await unstarTrail(trailId, token);
+        await removeBookmarkTrail(trailId, token);
       } else {
-        await starTrail(trailId, token);
+        await bookmarkTrail(trailId, token);
       }
     } catch {
       setState((s) =>
         s.status === 'ok'
-          ? { status: 'ok', data: { ...s.data, starred: previous } }
+          ? { status: 'ok', data: { ...s.data, bookmarked: previous } }
           : s,
       );
     } finally {
-      setStarInFlight(false);
+      setBookmarkInFlight(false);
     }
-  }, [state, token, trailId, starInFlight]);
+  }, [state, token, trailId, bookmarkInFlight]);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () =>
-        canStar ? (
+        canBookmark ? (
           <Pressable
-            onPress={() => void toggleStar()}
+            onPress={() => void toggleBookmark()}
             hitSlop={12}
-            disabled={starInFlight}
+            disabled={bookmarkInFlight}
             style={({ pressed }) => [
               styles.headerButton,
-              { opacity: pressed || starInFlight ? 0.5 : 1 },
+              { opacity: pressed || bookmarkInFlight ? 0.5 : 1 },
             ]}
-            accessibilityLabel={isStarred ? 'Unstar trail' : 'Star trail'}
+            accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark trail'}
             accessibilityRole="button"
           >
-            <StarIcon
+            <BookmarkIcon
               size={22}
               color={
-                isStarred ? theme.colors.accent : theme.colors.textSecondary
+                isBookmarked ? theme.colors.accent : theme.colors.textSecondary
               }
-              filled={isStarred}
+              filled={isBookmarked}
             />
           </Pressable>
         ) : undefined,
     });
   }, [
     navigation,
-    canStar,
-    isStarred,
-    starInFlight,
-    toggleStar,
+    canBookmark,
+    isBookmarked,
+    bookmarkInFlight,
+    toggleBookmark,
     theme.colors.accent,
     theme.colors.textSecondary,
   ]);
@@ -196,14 +196,14 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 /**
- * Header star icon — supports a filled state, which the shared `LucideIcon`
- * doesn't (it hardcodes `fill: 'none'`). Same path as the Lucide Star, just
+ * Header bookmark icon — supports a filled state, which the shared `LucideIcon`
+ * doesn't (it hardcodes `fill: 'none'`). Same path as the Lucide Bookmark, just
  * with a togglable fill so the active state reads at a glance.
  */
 const STAR_POINTS =
   '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
 
-const StarIcon: React.FC<{ size: number; color: string; filled: boolean }> = ({
+const BookmarkIcon: React.FC<{ size: number; color: string; filled: boolean }> = ({
   size,
   color,
   filled,
