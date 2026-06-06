@@ -2,6 +2,12 @@
 
 Guidance for working in this repo.
 
+## Git workflow
+
+**Commit directly to `main`.** This repo does not use feature branches or
+pull requests for normal work — make changes, commit them straight to
+`main`. Don't create a branch, and don't open a PR unless explicitly asked.
+
 ## Releasing to TestFlight / App Store
 
 **Always bump the _marketing version_ (`expo.version`), not just the build number, for each new TestFlight/App Store submission.**
