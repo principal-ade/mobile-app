@@ -4,7 +4,8 @@ import { View } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
 
 import { TrailBriefCard } from './TrailBriefCard';
-import type { TrailSignOff } from '../../types/Trail';
+import { trailPayloadToBriefProps } from './trailBriefAdapter';
+import type { TrailPayload, TrailSignOff } from '../../types/Trail';
 
 // ---------------------------------------------------------------------------
 // Harness — centers the card inside the viewport with the same muted
@@ -175,5 +176,114 @@ export const HideCohortStrips: Story = {
     signOffs: SIGN_OFFS,
     notedBy: ['Dani Reyes', 'Bob Chen'],
     hideCohortStrips: true,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Adapter-driven story. Unlike the stories above — which hand the card the
+// already-flattened prop shape — this one starts from a raw `TrailPayload`
+// (the exact envelope `getTrailById` returns) and runs it through
+// `trailPayloadToBriefProps`, exercising the real fetch → adapter → card
+// path including note-body extraction and snippet anchor captioning.
+//
+// Note bodies render in a stop's expandable region, so TAP A STOP (or the
+// 00 Overview row for the summary-scoped note) to reveal its notes — the
+// same interaction the description preview uses.
+// ---------------------------------------------------------------------------
+const RAW_PAYLOAD: TrailPayload = {
+  id: 'trail-notes-demo',
+  title: 'Login flow has a write-before-settle race',
+  purpose: 'investigation',
+  share: { id: 'share-1' },
+  request: 'Verify Direction',
+  author: 'Fernando',
+  summary: SUMMARY_BODY,
+  createdAt: '2026-06-03T09:00:00Z',
+  updatedAt: '2026-06-04T12:00:00Z',
+  markers: [
+    {
+      id: 'm-login',
+      label: 'login() entry point',
+      sourcePath: 'src/auth/login.ts',
+      description: STOPS[0].description,
+    },
+    {
+      id: 'm-create-session',
+      label: 'createSession() writes before API settles',
+      sourcePath: 'src/auth/session.ts',
+      kind: 'subject',
+      description: STOPS[1].description,
+    },
+    {
+      id: 'm-api-client',
+      label: 'API client retries swallow the failure',
+      sourcePath: 'src/api/client.ts',
+      description: STOPS[2].description,
+    },
+  ],
+  views: [{ kind: 'linear' }],
+  notes: [
+    // Summary-scoped markdown note — surfaces under the 00 Overview row.
+    {
+      id: 'note-summary',
+      kind: 'markdown',
+      scope: { kind: 'summary' },
+      anchor: { kind: 'text-quote', exact: 'write-before-settle race' },
+      body: 'Worth deciding whether this is a release blocker before we even touch the call order.',
+      author: 'Dani Reyes',
+      createdAt: '2026-06-03T10:15:00Z',
+      updatedAt: '2026-06-03T10:15:00Z',
+    },
+    // Markdown note scoped to a marker description — no location caption.
+    {
+      id: 'note-login-desc',
+      kind: 'markdown',
+      scope: { kind: 'description', markerId: 'm-login' },
+      anchor: { kind: 'text-quote', exact: 'delegates to `createSession`' },
+      body: 'This delegation is the whole problem — it commits before we know the call will succeed.',
+      author: 'Bob Chen',
+      createdAt: '2026-06-03T11:00:00Z',
+      updatedAt: '2026-06-03T11:00:00Z',
+    },
+    // Snippet slice note — caption renders as `src/auth/session.ts:12–18`.
+    {
+      id: 'note-session-slice',
+      kind: 'snippet',
+      scope: { markerId: 'm-create-session' },
+      anchor: {
+        kind: 'slice',
+        ranges: [
+          {
+            startLine: 12,
+            endLine: 18,
+            startLineText: 'await persistSession(row)',
+            endLineText: '}',
+          },
+        ],
+      },
+      body: 'Move this write **below** the awaited `/login` call so a network failure never leaves an orphan row.',
+      author: 'Dani Reyes',
+      createdAt: '2026-06-03T12:30:00Z',
+      updatedAt: '2026-06-03T12:30:00Z',
+    },
+    // Snippet diff note — caption renders as `src/api/client.ts:42`.
+    {
+      id: 'note-client-diff',
+      kind: 'snippet',
+      scope: { markerId: 'm-api-client' },
+      anchor: { kind: 'diff', side: 'additions', lineNumber: 42 },
+      body: 'Coercing 5xx into a resolved promise is what hides the failure from `login()`.',
+      author: 'Bob Chen',
+      createdAt: '2026-06-03T13:45:00Z',
+      updatedAt: '2026-06-03T13:45:00Z',
+    },
+  ],
+};
+
+export const AdapterDrivenWithNotes: Story = {
+  args: {
+    ...trailPayloadToBriefProps(RAW_PAYLOAD),
+    presentation: 'screen',
+    expandInline: true,
   },
 };

@@ -28,7 +28,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { useTheme, type Theme } from '@principal-ade/industry-theme';
 import { IndustryMarkdownInline } from '../IndustryMarkdown';
 import type {
@@ -47,6 +47,26 @@ import { mixColors, withAlpha } from './colorMix';
  */
 const STAMP_SLOT_DISABLED = true;
 
+/**
+ * A single reader note, flattened to just what the card renders. The
+ * richer `TrailNote` union (snippet vs markdown, anchors, scope) is
+ * collapsed by `trailBriefAdapter` — the card only needs author / body
+ * / time, plus an optional monospace location caption for snippet notes.
+ */
+export interface TrailBriefNote {
+  id: string;
+  author: string;
+  /** Markdown note text. */
+  body: string;
+  /** ISO 8601 — drives the relative "2d ago" stamp. */
+  createdAt?: string;
+  /**
+   * Location caption for snippet notes, e.g. `src/auth/session.ts:12–18`.
+   * Absent for markdown notes (their anchor isn't a code location).
+   */
+  anchorCaption?: string;
+}
+
 export interface TrailBriefCardStop {
   id?: string;
   label: string;
@@ -63,6 +83,12 @@ export interface TrailBriefCardStop {
    * existing `onBeginAtStop` navigation.
    */
   description?: string;
+  /**
+   * Reader notes anchored to this stop's marker — snippet notes plus
+   * any markdown notes scoped to the marker's description. Rendered in
+   * the row's expandable region, below the description.
+   */
+  notes?: TrailBriefNote[];
 }
 
 export interface TrailBriefCardProps {
@@ -90,6 +116,12 @@ export interface TrailBriefCardProps {
   signOffs?: TrailSignOff[];
   /** Whether the *current viewer* is one of the signers. */
   signedByCurrentUser?: boolean;
+  /**
+   * Summary-scoped markdown notes — anchored to the trail summary
+   * rather than any single marker. Rendered under the synthetic
+   * Overview row (row 00), which already shows the trail body.
+   */
+  summaryNotes?: TrailBriefNote[];
   /** Display names of distinct note-authors. */
   notedBy?: string[];
   /**
@@ -265,6 +297,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   stops,
   signOffs,
   signedByCurrentUser = false,
+  summaryNotes,
   notedBy,
   notesByAuthor,
   isShared = false,
@@ -559,9 +592,10 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                 isLast={!stops || stops.length === 0}
                 matchesFilter={false}
                 dimmed={filteredMarkerIds != null}
-                selected={selectionSet.has('overview')}
                 onPress={toggleOverviewSelection}
                 expandedDescription={expandInline ? body : undefined}
+                notes={expandInline ? summaryNotes : undefined}
+                noteCount={summaryNotes?.length ?? 0}
                 expanded={expandInline && selectionSet.has('overview')}
               />
               {stops && stops.length > 0
@@ -583,12 +617,13 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                         filteredMarkerIds != null &&
                         !(stop.id != null && filteredMarkerIds.has(stop.id))
                       }
-                      selected={selectionSet.has(i)}
                       onPress={() => toggleStopSelection(i)}
                       sourcePath={stop.sourcePath}
                       expandedDescription={
                         expandInline ? stop.description : undefined
                       }
+                      notes={expandInline ? stop.notes : undefined}
+                      noteCount={stop.notes?.length ?? 0}
                       expanded={expandInline && selectionSet.has(i)}
                     />
                   ))
@@ -613,6 +648,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
             theme={theme}
             eyebrowColor={eyebrow.color}
             description={body}
+            notes={summaryNotes}
           />
         </View>
       ) : null}
@@ -627,6 +663,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
             eyebrowColor={eyebrow.color}
             sourcePath={stops[singleSelection].sourcePath}
             description={stops[singleSelection].description}
+            notes={stops[singleSelection].notes}
           />
         </View>
       ) : null}
@@ -867,13 +904,20 @@ const RouteStopRow: React.FC<{
   isLast: boolean;
   matchesFilter: boolean;
   dimmed: boolean;
-  selected: boolean;
   onPress?: () => void;
   /** Path shown under the row label whenever provided (not gated on
    *  expansion) — gives the reader the location at a glance. */
   sourcePath?: string;
   /** Optional markdown shown under the row when `expanded`. */
   expandedDescription?: string;
+  /** Reader notes shown under the description when `expanded`. */
+  notes?: TrailBriefNote[];
+  /**
+   * Number of notes anchored to this row, shown as a badge next to the
+   * label. Independent of `notes` (which only populates when expanded)
+   * so the badge reads in every presentation, collapsed or not.
+   */
+  noteCount?: number;
   /** Drives the inline expand animation (height + opacity). */
   expanded?: boolean;
 }> = ({
@@ -885,17 +929,18 @@ const RouteStopRow: React.FC<{
   isLast,
   matchesFilter,
   dimmed,
-  selected,
   onPress,
   sourcePath,
   expandedDescription,
+  notes,
+  noteCount = 0,
   expanded = false,
 }) => {
   const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
   const numberColor =
     kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
 
-  const hasExpandable = !!expandedDescription;
+  const hasExpandable = !!expandedDescription || (notes?.length ?? 0) > 0;
   const [contentHeight, setContentHeight] = React.useState(0);
   // Manual RAF-driven animation. RN core Animated.timing on `height`
   // was completing on open but visibly snapping on close — the most
@@ -934,17 +979,14 @@ const RouteStopRow: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, contentHeight]);
 
-  // Hold the row highlight while the close animation is still in flight
-  // so the color band fades with the row instead of vanishing the
-  // instant the reader taps. Selection is the higher-signal state (the
-  // reader actively picked the row); the cohort-filter highlight only
-  // kicks in when nothing is selected.
-  const appearsActive = selected || renderedHeight > 0;
-  const rowBackground = appearsActive
-    ? withAlpha(eyebrowColor, 0.22)
-    : matchesFilter
-      ? withAlpha(theme.colors.accent, 0.18)
-      : 'transparent';
+  // Row tint is driven solely by the note-author filter match. The
+  // old eyebrow "selected row" tint + left border was dropped to match
+  // the web card: rows expand inline and several can be open at once,
+  // so a single "active" row no longer carries useful meaning — the
+  // inline expansion itself is the signal.
+  const rowBackground = matchesFilter
+    ? withAlpha(theme.colors.accent, 0.18)
+    : 'transparent';
 
   return (
     <View
@@ -963,11 +1005,7 @@ const RouteStopRow: React.FC<{
           borderRadius: theme.radii[1],
           backgroundColor: rowBackground,
           borderLeftWidth: 3,
-          borderLeftColor: appearsActive
-            ? eyebrowColor
-            : matchesFilter
-              ? theme.colors.accent
-              : 'transparent',
+          borderLeftColor: matchesFilter ? theme.colors.accent : 'transparent',
           paddingLeft: 8,
         }}
       >
@@ -1020,6 +1058,13 @@ const RouteStopRow: React.FC<{
               </Text>
             ) : null}
           </View>
+          {noteCount > 0 ? (
+            <NoteCountBadge
+              theme={theme}
+              eyebrowColor={eyebrowColor}
+              count={noteCount}
+            />
+          ) : null}
         </Pressable>
         {hasExpandable ? (
           // Animated wrapper: height interpolates 0 ↔ contentHeight so
@@ -1056,6 +1101,14 @@ const RouteStopRow: React.FC<{
                     </IndustryMarkdownInline>
                   </View>
                 ) : null}
+                {notes?.map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    theme={theme}
+                    eyebrowColor={eyebrowColor}
+                    note={note}
+                  />
+                ))}
               </View>
             </View>
           </View>
@@ -1077,6 +1130,7 @@ export interface SelectedStopPanelProps {
   eyebrowColor: string;
   sourcePath?: string;
   description?: string;
+  notes?: TrailBriefNote[];
 }
 
 export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
@@ -1084,8 +1138,10 @@ export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
   eyebrowColor,
   sourcePath,
   description,
+  notes,
 }) => {
   const hasDescription = !!description && description.trim().length > 0;
+  const hasNotes = (notes?.length ?? 0) > 0;
   return (
     <View
       style={{
@@ -1113,18 +1169,168 @@ export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
           {sourcePath}
         </Text>
       ) : null}
-      {hasDescription ? (
-        // Internal scroll for just the markdown body — sourcePath above
-        // stays pinned, only the prose scrolls when it overflows the
-        // panel's height.
+      {hasDescription || hasNotes ? (
+        // Internal scroll for the body + notes — sourcePath above stays
+        // pinned, only the prose scrolls when it overflows the panel's
+        // height.
         <ScrollView
           style={{ flex: 1, marginTop: sourcePath ? 8 : 0 }}
           showsVerticalScrollIndicator={false}
         >
-          <IndustryMarkdownInline>
-            {(description ?? '').trim()}
-          </IndustryMarkdownInline>
+          {hasDescription ? (
+            <IndustryMarkdownInline>
+              {(description ?? '').trim()}
+            </IndustryMarkdownInline>
+          ) : null}
+          {notes?.map((note) => (
+            <NoteCard
+              key={note.id}
+              theme={theme}
+              eyebrowColor={eyebrowColor}
+              note={note}
+            />
+          ))}
         </ScrollView>
+      ) : null}
+    </View>
+  );
+};
+
+/**
+ * Compact note-count pill shown to the right of a route row's label —
+ * a chat-bubble glyph plus the count, tinted with the trail's eyebrow
+ * color. Read-only signal that the stop carries notes; tapping the row
+ * (not the badge) is what reveals them. Ported from the web card.
+ */
+const NoteCountBadge: React.FC<{
+  theme: Theme;
+  eyebrowColor: string;
+  count: number;
+}> = ({ theme, eyebrowColor, count }) => (
+  <View
+    accessibilityLabel={`${count} ${count === 1 ? 'note' : 'notes'}`}
+    style={{
+      flexShrink: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 1,
+      paddingHorizontal: 6,
+      borderRadius: theme.radii[1],
+      borderWidth: 1,
+      borderColor: mixColors(eyebrowColor, 0.45, theme.colors.border),
+      backgroundColor: withAlpha(eyebrowColor, 0.14),
+    }}
+  >
+    <Svg
+      width={11}
+      height={11}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={eyebrowColor}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </Svg>
+    <Text
+      style={{
+        fontFamily: theme.fonts.monospace,
+        fontSize: theme.fontSizes[0],
+        color: eyebrowColor,
+        letterSpacing: 0.4,
+      }}
+    >
+      {count}
+    </Text>
+  </View>
+);
+
+/**
+ * A single reader note rendered inside an expanded route row or the
+ * SelectedStopPanel. Compact header (NOTE · author · relative time),
+ * markdown body, and an optional monospace location caption for snippet
+ * notes. Tinted with the trail's eyebrow color so it reads as attached
+ * to the surrounding row.
+ */
+const NoteCard: React.FC<{
+  theme: Theme;
+  eyebrowColor: string;
+  note: TrailBriefNote;
+}> = ({ theme, eyebrowColor, note }) => {
+  const when = formatRelative(note.createdAt);
+  const hasBody = note.body.trim().length > 0;
+  return (
+    <View
+      style={{
+        marginTop: 8,
+        borderLeftWidth: 2,
+        borderLeftColor: withAlpha(eyebrowColor, 0.5),
+        backgroundColor: withAlpha(eyebrowColor, 0.06),
+        borderRadius: theme.radii[1],
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: hasBody ? 4 : 0,
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0],
+            color: theme.colors.textTertiary,
+            letterSpacing: 0.5,
+          }}
+        >
+          NOTE
+        </Text>
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: theme.fontSizes[0],
+            fontWeight: String(
+              theme.fontWeights.medium,
+            ) as TextStyle['fontWeight'],
+            color: theme.colors.text,
+          }}
+        >
+          {note.author}
+        </Text>
+        {when ? (
+          <Text
+            style={{
+              fontFamily: theme.fonts.body,
+              fontSize: theme.fontSizes[0],
+              color: theme.colors.textTertiary,
+            }}
+          >
+            · {when}
+          </Text>
+        ) : null}
+      </View>
+      {hasBody ? (
+        <IndustryMarkdownInline>{note.body.trim()}</IndustryMarkdownInline>
+      ) : null}
+      {note.anchorCaption ? (
+        <Text
+          style={{
+            marginTop: hasBody ? 6 : 0,
+            fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0],
+            color: theme.colors.textTertiary,
+          }}
+          numberOfLines={1}
+          ellipsizeMode="middle"
+        >
+          ⌁ {note.anchorCaption}
+        </Text>
       ) : null}
     </View>
   );

@@ -6,21 +6,91 @@
  * `notes`.
  */
 
-import type { TrailPayload } from '../../types/Trail';
+import type { TrailNote, TrailPayload, TrailSnippetNote } from '../../types/Trail';
 import type {
   TrailBriefCardProps,
   TrailBriefCardStop,
+  TrailBriefNote,
 } from './TrailBriefCard';
+
+/** EN DASH — line-range separator in note location captions. */
+const RANGE_DASH = '–';
+
+/**
+ * Build the monospace location caption for a snippet note, e.g.
+ * `src/auth/session.ts:12–18`. Slice anchors span first-range start to
+ * last-range end; diff anchors point at a single line. Returns undefined
+ * when there's no path to anchor against.
+ */
+function snippetAnchorCaption(
+  note: TrailSnippetNote,
+  sourcePath: string | undefined,
+): string | undefined {
+  if (!sourcePath) return undefined;
+  if (note.anchor.kind === 'slice') {
+    const ranges = note.anchor.ranges;
+    if (ranges.length === 0) return sourcePath;
+    const start = ranges[0].startLine;
+    const end = ranges[ranges.length - 1].endLine;
+    return start === end
+      ? `${sourcePath}:${start}`
+      : `${sourcePath}:${start}${RANGE_DASH}${end}`;
+  }
+  return `${sourcePath}:${note.anchor.lineNumber}`;
+}
+
+/** Flatten a stored note onto the narrow shape the card renders. */
+function toBriefNote(
+  note: TrailNote,
+  sourcePath: string | undefined,
+): TrailBriefNote {
+  return {
+    id: note.id,
+    author: note.author,
+    body: note.body,
+    createdAt: note.createdAt,
+    anchorCaption:
+      note.kind === 'snippet'
+        ? snippetAnchorCaption(note, sourcePath)
+        : undefined,
+  };
+}
 
 export function trailPayloadToBriefProps(
   payload: TrailPayload,
 ): Omit<TrailBriefCardProps, 'presentation'> {
+  // markerId → sourcePath, used to caption snippet notes by location.
+  const sourcePathByMarker = new Map<string, string | undefined>();
+  payload.markers.forEach((m) => sourcePathByMarker.set(m.id, m.sourcePath));
+
+  // Group note bodies: marker-scoped notes attach to their stop;
+  // summary-scoped markdown notes surface under the Overview row.
+  const notesByMarker: Record<string, TrailBriefNote[]> = {};
+  const summaryNotes: TrailBriefNote[] = [];
+  payload.notes?.forEach((n) => {
+    // Marker-scoped notes attach to their stop; summary-scoped markdown
+    // notes surface under the Overview row instead.
+    let markerId: string;
+    if (n.kind === 'snippet') {
+      markerId = n.scope.markerId;
+    } else if (n.scope.kind === 'description') {
+      markerId = n.scope.markerId;
+    } else {
+      summaryNotes.push(toBriefNote(n, undefined));
+      return;
+    }
+    const list = notesByMarker[markerId] ?? [];
+    list.push(toBriefNote(n, sourcePathByMarker.get(markerId)));
+    notesByMarker[markerId] = list;
+  });
+
   const stops: TrailBriefCardStop[] = payload.markers.map((marker, i) => ({
     id: marker.id,
     label: marker.label ?? `Step ${i + 1}`,
     sourcePath: marker.sourcePath,
     kind: marker.kind,
     description: marker.description,
+    notes: notesByMarker[marker.id],
   }));
 
   // Distinct repo count — `repos` is the canonical registry; fall back
@@ -67,6 +137,7 @@ export function trailPayloadToBriefProps(
     fileCount,
     stops,
     signOffs: payload.signOffs,
+    summaryNotes: summaryNotes.length > 0 ? summaryNotes : undefined,
     notedBy: notedBy.length > 0 ? notedBy : undefined,
     notesByAuthor: notedBy.length > 0 ? notesByAuthor : undefined,
     isShared: !!payload.share,
