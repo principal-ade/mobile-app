@@ -91,6 +91,7 @@ export function trailPayloadToBriefProps(
     kind: marker.kind,
     description: marker.description,
     notes: notesByMarker[marker.id],
+    snippet: marker.snippet,
   }));
 
   // Distinct repo count — `repos` is the canonical registry; fall back

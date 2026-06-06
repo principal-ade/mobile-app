@@ -33,9 +33,12 @@ import { useTheme, type Theme } from '@principal-ade/industry-theme';
 import { IndustryMarkdownInline } from '../IndustryMarkdown';
 import type {
   TrailMarkerKind,
+  TrailMarkerSnippet,
   TrailPurpose,
   TrailSignOff,
 } from '../../types/Trail';
+import type { TrailFileReader } from '../../services/TrailFileContentService';
+import { TrailCodeSnippet } from './TrailCodeSnippet';
 import { mixColors, withAlpha } from './colorMix';
 
 /**
@@ -89,6 +92,12 @@ export interface TrailBriefCardStop {
    * the row's expandable region, below the description.
    */
   notes?: TrailBriefNote[];
+  /**
+   * Code snippet for this stop's marker (slice or diff). When present and
+   * the card has a `readFile`, it renders in the row's expandable region
+   * below the description/notes.
+   */
+  snippet?: TrailMarkerSnippet;
 }
 
 export interface TrailBriefCardProps {
@@ -167,6 +176,13 @@ export interface TrailBriefCardProps {
    * suppressed even without `hideSelectedPanel`.
    */
   expandInline?: boolean;
+  /**
+   * Host file reader used to resolve slice-snippet source on demand
+   * (GitHub at the trail's authored commit). When omitted, slice snippets
+   * render a "no source available" state; diff snippets — which carry
+   * their own contents — render regardless.
+   */
+  readFile?: TrailFileReader;
   /**
    * Layout preset.
    *
@@ -308,6 +324,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   maxWidth = 640,
   presentation = 'modal',
   expandInline = false,
+  readFile,
 }) => {
   const isScreen = presentation === 'screen';
   const { theme } = useTheme();
@@ -624,6 +641,8 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                       }
                       notes={expandInline ? stop.notes : undefined}
                       noteCount={stop.notes?.length ?? 0}
+                      snippet={expandInline ? stop.snippet : undefined}
+                      readFile={readFile}
                       expanded={expandInline && selectionSet.has(i)}
                     />
                   ))
@@ -664,6 +683,8 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
             sourcePath={stops[singleSelection].sourcePath}
             description={stops[singleSelection].description}
             notes={stops[singleSelection].notes}
+            snippet={stops[singleSelection].snippet}
+            readFile={readFile}
           />
         </View>
       ) : null}
@@ -918,6 +939,10 @@ const RouteStopRow: React.FC<{
    * so the badge reads in every presentation, collapsed or not.
    */
   noteCount?: number;
+  /** Code snippet shown under the notes when `expanded`. */
+  snippet?: TrailMarkerSnippet;
+  /** Host file reader for resolving slice-snippet source. */
+  readFile?: TrailFileReader;
   /** Drives the inline expand animation (height + opacity). */
   expanded?: boolean;
 }> = ({
@@ -934,13 +959,16 @@ const RouteStopRow: React.FC<{
   expandedDescription,
   notes,
   noteCount = 0,
+  snippet,
+  readFile,
   expanded = false,
 }) => {
   const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
   const numberColor =
     kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
 
-  const hasExpandable = !!expandedDescription || (notes?.length ?? 0) > 0;
+  const hasExpandable =
+    !!expandedDescription || (notes?.length ?? 0) > 0 || !!snippet;
   const [contentHeight, setContentHeight] = React.useState(0);
   // Manual RAF-driven animation. RN core Animated.timing on `height`
   // was completing on open but visibly snapping on close — the most
@@ -1109,6 +1137,14 @@ const RouteStopRow: React.FC<{
                     note={note}
                   />
                 ))}
+                {snippet ? (
+                  <TrailCodeSnippet
+                    filePath={sourcePath}
+                    snippet={snippet}
+                    readFile={readFile}
+                    eyebrowColor={eyebrowColor}
+                  />
+                ) : null}
               </View>
             </View>
           </View>
@@ -1131,6 +1167,8 @@ export interface SelectedStopPanelProps {
   sourcePath?: string;
   description?: string;
   notes?: TrailBriefNote[];
+  snippet?: TrailMarkerSnippet;
+  readFile?: TrailFileReader;
 }
 
 export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
@@ -1139,6 +1177,8 @@ export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
   sourcePath,
   description,
   notes,
+  snippet,
+  readFile,
 }) => {
   const hasDescription = !!description && description.trim().length > 0;
   const hasNotes = (notes?.length ?? 0) > 0;
@@ -1169,10 +1209,10 @@ export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
           {sourcePath}
         </Text>
       ) : null}
-      {hasDescription || hasNotes ? (
-        // Internal scroll for the body + notes — sourcePath above stays
-        // pinned, only the prose scrolls when it overflows the panel's
-        // height.
+      {hasDescription || hasNotes || snippet ? (
+        // Internal scroll for the body + notes + snippet — sourcePath
+        // above stays pinned, only the content scrolls when it overflows
+        // the panel's height.
         <ScrollView
           style={{ flex: 1, marginTop: sourcePath ? 8 : 0 }}
           showsVerticalScrollIndicator={false}
@@ -1190,6 +1230,14 @@ export const SelectedStopPanel: React.FC<SelectedStopPanelProps> = ({
               note={note}
             />
           ))}
+          {snippet ? (
+            <TrailCodeSnippet
+              filePath={sourcePath}
+              snippet={snippet}
+              readFile={readFile}
+              eyebrowColor={eyebrowColor}
+            />
+          ) : null}
         </ScrollView>
       ) : null}
     </View>

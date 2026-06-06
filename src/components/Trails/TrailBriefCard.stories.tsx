@@ -287,3 +287,72 @@ export const AdapterDrivenWithNotes: Story = {
     expandInline: true,
   },
 };
+
+// ---------------------------------------------------------------------------
+// Code-snippet story. Stops carry slice snippets; a mock `readFile` stands
+// in for the GitHub-backed reader the screen injects. TAP A STOP to expand
+// it — the snippet renders below the description, with `focusLine` tinted.
+// ---------------------------------------------------------------------------
+const SESSION_SOURCE = `export async function createSession(userId: string): Promise<Session> {
+  const id = crypto.randomUUID();
+  const token = await signToken(userId);
+  const row: Session = { id, userId, token };
+  await persistSession(row);
+  return row;
+}`;
+
+const LOGIN_SOURCE = `export async function login(email: string, password: string) {
+  const creds = validate(email, password);
+  const session = await createSession(creds.userId);
+  const res = await api.post('/login', creds);
+  return { session, res };
+}`;
+
+const MOCK_SOURCES: Record<string, string> = {
+  'src/auth/session.ts': SESSION_SOURCE,
+  'src/auth/login.ts': LOGIN_SOURCE,
+};
+
+const mockReadFile = (path: string) =>
+  new Promise<string>((resolve, reject) => {
+    setTimeout(() => {
+      const contents = MOCK_SOURCES[path];
+      if (contents) resolve(contents);
+      else reject(new Error(`No mock source for ${path}`));
+    }, 500);
+  });
+
+const SNIPPET_STOPS = [
+  {
+    ...STOPS[0],
+    snippet: {
+      kind: 'slice' as const,
+      startLine: 1,
+      endLine: 3,
+      focusLine: 3,
+      contextLines: 1,
+    },
+  },
+  {
+    ...STOPS[1],
+    snippet: {
+      kind: 'slice' as const,
+      startLine: 4,
+      endLine: 5,
+      focusLine: 5,
+      contextLines: 1,
+    },
+  },
+  STOPS[2],
+];
+
+export const WithCodeSnippets: Story = {
+  args: {
+    ...BASE_ARGS,
+    stops: SNIPPET_STOPS,
+    purpose: 'informative',
+    presentation: 'screen',
+    expandInline: true,
+    readFile: mockReadFile,
+  },
+};

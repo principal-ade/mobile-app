@@ -30,6 +30,7 @@ import {
   TrailsApiError,
 } from '../services/TrailsApiService';
 import { bookmarkTrail, removeBookmarkTrail } from '../services/BookmarksApiService';
+import { createTrailFileReader } from '../services/TrailFileContentService';
 import type { PasteStackParamList } from '../navigation/types';
 import type { TrailFetchResponse } from '../services/TrailsApiService';
 
@@ -144,6 +145,25 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     theme.colors.textSecondary,
   ]);
 
+  // Host file reader for slice-snippet source — fetches from GitHub at the
+  // commit the trail was authored against, gated by the viewer's token.
+  // Memoized on the stable provenance primitives (not `state.data`, which
+  // gets a new identity on every bookmark toggle) so the card's snippet
+  // effects don't refire on unrelated state changes.
+  const okOwner = state.status === 'ok' ? state.data.owner : null;
+  const okRepo = state.status === 'ok' ? state.data.repo : null;
+  const okRef =
+    state.status === 'ok' ? state.data.payload.authoredAt?.sha : undefined;
+  const readFile = React.useMemo(() => {
+    if (!okOwner || !okRepo) return undefined;
+    return createTrailFileReader({
+      owner: okOwner,
+      repo: okRepo,
+      ref: okRef,
+      token: token ?? undefined,
+    });
+  }, [okOwner, okRepo, okRef, token]);
+
   if (state.status === 'loading') {
     return (
       <View
@@ -190,6 +210,7 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {...briefProps}
         presentation="screen"
         expandInline
+        readFile={readFile}
       />
     </View>
   );

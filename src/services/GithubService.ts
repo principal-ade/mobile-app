@@ -121,6 +121,54 @@ export async function fetchMarkdownFileContent(
   return await response.text();
 }
 
+/**
+ * Fetch a file's raw text contents, optionally pinned to a specific
+ * commit/branch/tag via `ref`. Unlike `fetchMarkdownFileContent` this
+ * targets an exact revision — trail code snippets resolve their source at
+ * the commit the trail was authored against (`payload.authoredAt.sha`) so
+ * the lines line up with the snippet's `startLine`/`endLine`.
+ *
+ * Throws a `GitHubFileContentError` carrying the HTTP status so callers can
+ * distinguish "no access" (403) / "not found" (404) from transient failures.
+ */
+export class GitHubFileContentError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'GitHubFileContentError';
+  }
+}
+
+export async function fetchRawFileContent(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string,
+): Promise<string> {
+  const endpoint = buildContentsEndpoint(owner, repo, path);
+  const query = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+  const response = await fetch(`${BASE_URL}${endpoint}${query}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/vnd.github.v3.raw',
+      Authorization: `token ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new GitHubFileContentError(
+      errorText || `Failed to load file content (${response.status})`,
+      response.status,
+    );
+  }
+
+  return await response.text();
+}
+
 export async function fetchRepoReadme(
   token: string,
   owner: string,
