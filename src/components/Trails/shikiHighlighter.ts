@@ -121,17 +121,36 @@ const PLAIN_LANG = 'text';
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 const loadedLangs = new Set<string>();
 
+/** Which regex engine the active highlighter ended up on. Read for debug. */
+export type ShikiEngineKind = 'native' | 'javascript';
+let activeEngineKind: ShikiEngineKind = 'javascript';
+export function getActiveEngineKind(): ShikiEngineKind {
+  return activeEngineKind;
+}
+
 async function resolveEngine() {
   try {
     const mod = await import('react-native-shiki-engine');
     if (mod.isNativeEngineAvailable()) {
+      activeEngineKind = 'native';
+      if (__DEV__) console.log('[shiki] using native Oniguruma engine');
       return mod.createNativeEngine();
     }
-  } catch {
-    // Off-device (Storybook/web), Old Architecture, or the pod isn't built
-    // — fall through to the JS engine.
+    if (__DEV__) {
+      console.warn(
+        '[shiki] native engine not available (rebuild the dev client after ' +
+          'adding the pod). Falling back to the JS engine, which does NOT ' +
+          'run on Hermes — code will render uncolored on-device.',
+      );
+    }
+  } catch (err) {
+    if (__DEV__) console.warn('[shiki] native engine import failed:', err);
   }
-  return createJavaScriptRegexEngine();
+  // `forgiving` skips patterns the runtime can't compile instead of throwing,
+  // so the JS engine degrades to partial/no color rather than failing the
+  // whole snippet. It still can't fully tokenize on Hermes.
+  activeEngineKind = 'javascript';
+  return createJavaScriptRegexEngine({ forgiving: true });
 }
 
 /**
