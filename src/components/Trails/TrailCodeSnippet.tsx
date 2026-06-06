@@ -9,16 +9,17 @@
  * (shadow DOM, not portable to RN); here we render the slice as plain
  * monospace `<Text>` rows.
  *
- * PHASE 1 (this file): no syntax highlighting — every line is a single
- * monospace run. The renderer is deliberately split so PHASE 2 swaps only
- * `CodeLineText` for `react-native-shiki-engine`-tokenized spans (per the
- * `t3code` "Mobile renders code with Shiki" trail) without touching the
- * load / slice / layout code around it.
+ * Syntax highlighting runs through `shikiHighlighter` — a
+ * `react-native-shiki-engine` (native Oniguruma) core with a JavaScript
+ * fallback, per the `t3code` "Mobile renders code with Shiki" trail.
+ * Tokenizing is off the render path: rows render as plain monospace until
+ * the tokens resolve (and stay that way if highlighting fails or the
+ * grammar is plain `text`), so the snippet is always readable.
  *
  * Slice snippets resolve their contents through `readFile` (GitHub at the
  * authored commit). Diff snippets carry their own `oldContents` /
- * `newContents` and need no reader; phase 1 renders the post-change side
- * as a plain slice (inline +/- coloring is deferred to a later pass).
+ * `newContents` and need no reader; the post-change side renders as a plain
+ * slice (inline +/- coloring is deferred to a later pass).
  */
 
 import React from 'react';
@@ -27,6 +28,11 @@ import { useTheme, type Theme } from '@principal-ade/industry-theme';
 
 import type { TrailMarkerSnippet } from '../../types/Trail';
 import type { TrailFileReader } from '../../services/TrailFileContentService';
+import {
+  highlightToLines,
+  type ShikiThemeName,
+  type ThemedToken,
+} from './shikiHighlighter';
 import { withAlpha } from './colorMix';
 
 export interface TrailCodeSnippetProps {
@@ -173,6 +179,39 @@ export const TrailCodeSnippet: React.FC<TrailCodeSnippetProps> = ({
     // `attempt` is included so the retry button can force a re-fetch.
   }, [inlineSlice, snippet, filePath, readFile, attempt]);
 
+  // Syntax highlighting. Tokenize the resolved slice off the render path;
+  // until the tokens land (or if tokenizing fails) the rows render as plain
+  // monospace, so the snippet is always readable. Keyed on the slice's text
+  // so re-tokenizing only happens when the visible code actually changes.
+  const themeName = pickShikiTheme(theme.colors.background);
+  const sliceCode =
+    state.status === 'ready'
+      ? state.slice.lines.map((l) => l.text).join('\n')
+      : null;
+  const [tokensByLine, setTokensByLine] = React.useState<
+    ThemedToken[][] | null
+  >(null);
+
+  React.useEffect(() => {
+    if (sliceCode == null) {
+      setTokensByLine(null);
+      return;
+    }
+    let cancelled = false;
+    setTokensByLine(null);
+    highlightToLines(sliceCode, filePath, themeName)
+      .then((lines) => {
+        if (!cancelled) setTokensByLine(lines);
+      })
+      .catch(() => {
+        // Leave tokens null — rows fall back to plain monospace.
+        if (!cancelled) setTokensByLine(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sliceCode, filePath, themeName]);
+
   const rangeLabel = formatRange(snippet);
 
   return (
@@ -210,13 +249,14 @@ export const TrailCodeSnippet: React.FC<TrailCodeSnippetProps> = ({
           contentContainerStyle={{ paddingVertical: 6 }}
         >
           <View>
-            {state.slice.lines.map((line) => (
+            {state.slice.lines.map((line, idx) => (
               <CodeRow
                 key={line.num}
                 theme={theme}
                 eyebrowColor={eyebrowColor}
                 line={line}
                 gutterWidth={state.slice.gutterWidth}
+                tokens={tokensByLine?.[idx]}
               />
             ))}
           </View>
@@ -286,7 +326,9 @@ const CodeRow: React.FC<{
   eyebrowColor: string;
   line: SnippetLine;
   gutterWidth: number;
-}> = ({ theme, eyebrowColor, line, gutterWidth }) => {
+  /** Shiki tokens for this line; absent until highlighting resolves. */
+  tokens?: ThemedToken[];
+}> = ({ theme, eyebrowColor, line, gutterWidth, tokens }) => {
   const focusBg = withAlpha(eyebrowColor, 0.16);
   return (
     <View style={{ flexDirection: 'row' }}>
@@ -307,6 +349,7 @@ const CodeRow: React.FC<{
       <CodeLineText
         theme={theme}
         text={line.text}
+        tokens={tokens}
         focus={line.focus}
         focusBg={focusBg}
       />
@@ -314,31 +357,62 @@ const CodeRow: React.FC<{
   );
 };
 
+// Shiki `FontStyle` bitmask (Italic = 1, Bold = 2, Underline = 4).
+const FONT_STYLE_ITALIC = 1;
+const FONT_STYLE_BOLD = 2;
+const FONT_STYLE_UNDERLINE = 4;
+
 /**
- * Seam for PHASE 2. Today: one monospace run for the whole line. Later:
- * map shiki tokens to colored `<Text>` children here — nothing else in
- * this file changes.
+ * One rendered code line. When shiki `tokens` are present each is a colored
+ * `<Text>` run; otherwise the whole line renders as a single monospace run
+ * (the state before tokens resolve, or when highlighting failed / the
+ * grammar is plain `text`).
  */
 const CodeLineText: React.FC<{
   theme: Theme;
   text: string;
+  tokens?: ThemedToken[];
   focus: boolean;
   focusBg: string;
-}> = ({ theme, text, focus, focusBg }) => (
-  <Text
-    style={{
-      paddingRight: 14,
-      fontFamily: theme.fonts.monospace,
-      fontSize: theme.fontSizes[0],
-      lineHeight: theme.fontSizes[0] * 1.55,
-      color: theme.colors.text,
-      backgroundColor: focus ? focusBg : 'transparent',
-    }}
-  >
-    {/* Render a space for blank lines so the focus band still paints. */}
-    {text.length > 0 ? text : ' '}
-  </Text>
-);
+}> = ({ theme, text, tokens, focus, focusBg }) => {
+  const lineStyle: TextStyle = {
+    paddingRight: 14,
+    fontFamily: theme.fonts.monospace,
+    fontSize: theme.fontSizes[0],
+    lineHeight: theme.fontSizes[0] * 1.55,
+    color: theme.colors.text,
+    backgroundColor: focus ? focusBg : 'transparent',
+  };
+
+  if (tokens && tokens.length > 0) {
+    return (
+      <Text style={lineStyle}>
+        {tokens.map((token, i) => (
+          <Text key={i} style={tokenStyle(token)}>
+            {token.content}
+          </Text>
+        ))}
+      </Text>
+    );
+  }
+
+  return (
+    <Text style={lineStyle}>
+      {/* Render a space for blank lines so the focus band still paints. */}
+      {text.length > 0 ? text : ' '}
+    </Text>
+  );
+};
+
+function tokenStyle(token: ThemedToken): TextStyle {
+  const style: TextStyle = {};
+  if (token.color) style.color = token.color;
+  const fs = token.fontStyle ?? 0;
+  if (fs & FONT_STYLE_ITALIC) style.fontStyle = 'italic';
+  if (fs & FONT_STYLE_BOLD) style.fontWeight = 'bold';
+  if (fs & FONT_STYLE_UNDERLINE) style.textDecorationLine = 'underline';
+  return style;
+}
 
 const SnippetMessage: React.FC<{ theme: Theme; text: string }> = ({
   theme,
@@ -417,4 +491,28 @@ function formatRange(snippet: TrailMarkerSnippet): string | null {
   const { startLine, endLine } = snippet;
   if (startLine == null) return null;
   return startLine === endLine ? `${startLine}` : `${startLine}–${endLine}`;
+}
+
+/**
+ * Pick the shiki theme that matches the app theme by the luminance of its
+ * background — a dark surface gets `github-dark`, a light one `github-light`
+ * — so highlighted code reads on whatever surface the brief is painting.
+ */
+function pickShikiTheme(background: string): ShikiThemeName {
+  const hex = background.trim().replace('#', '');
+  const full =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : hex;
+  if (full.length < 6) return 'github-light';
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return 'github-light';
+  // Rec. 601 relative luminance.
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5 ? 'github-dark' : 'github-light';
 }
