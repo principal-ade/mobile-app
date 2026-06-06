@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.noetic-labs.principal-ai-mobile",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "infoPlist": {
         "CFBundleDisplayName": "Principal AI",
         "ITSAppUsesNonExemptEncryption": false
