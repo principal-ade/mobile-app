@@ -25,6 +25,7 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
+  TextInput,
   ViewStyle,
   TextStyle,
 } from 'react-native';
@@ -184,6 +185,30 @@ export interface TrailBriefCardProps {
    */
   readFile?: TrailFileReader;
   /**
+   * Viewer's GitHub login. Gates which notes show edit/delete affordances
+   * (`note.author === currentUserLogin`). When unset, all notes render
+   * read-only.
+   */
+  currentUserLogin?: string;
+  /**
+   * Persist a new marker note on a stop. When set (and `expandInline`),
+   * expanded stops show a "+ Add note" affordance that opens an inline
+   * composer in the row. Resolve to confirm + close the composer; reject
+   * to keep it open with an error.
+   */
+  onCreateNote?: (markerId: string, body: string) => Promise<void>;
+  /**
+   * Persist an edit to an existing note. Surfaced only on the viewer's
+   * own notes — tapping ✎ swaps the note for an inline editor. Same
+   * resolve/reject contract as `onCreateNote`.
+   */
+  onUpdateNote?: (noteId: string, body: string) => Promise<void>;
+  /**
+   * Delete a note. Surfaced only on the viewer's own notes; the host is
+   * expected to confirm before calling through.
+   */
+  onDeleteNote?: (noteId: string) => void;
+  /**
    * Layout preset.
    *
    * - `'modal'` (default): the historical floating card — bordered,
@@ -325,6 +350,10 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   presentation = 'modal',
   expandInline = false,
   readFile,
+  currentUserLogin,
+  onCreateNote,
+  onUpdateNote,
+  onDeleteNote,
 }) => {
   const isScreen = presentation === 'screen';
   const { theme } = useTheme();
@@ -343,6 +372,33 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   type SelectionKey = 'overview' | number;
   const [selectionSet, setSelectionSet] = React.useState<Set<SelectionKey>>(
     () => new Set(),
+  );
+
+  // Inline note composer — at most one open at a time across the whole
+  // card. `create` targets a stop's marker; `edit` targets a note id.
+  // The draft text + busy/error live inside the InlineNoteComposer; the
+  // card only tracks which composer is open.
+  type ComposerState =
+    | { mode: 'create'; markerId: string }
+    | { mode: 'edit'; noteId: string }
+    | null;
+  const [composer, setComposer] = React.useState<ComposerState>(null);
+  const cancelComposer = React.useCallback(() => setComposer(null), []);
+  // Close the composer immediately and let the host persist in the
+  // background. The host shows the note optimistically, so keeping the
+  // composer open (with a "Saving…" state) would briefly show the note and
+  // the composer at once. The host owns failure feedback (rollback + alert).
+  const handleComposerSubmit = React.useCallback(
+    (textValue: string) => {
+      if (!composer) return;
+      if (composer.mode === 'create') {
+        void onCreateNote?.(composer.markerId, textValue);
+      } else {
+        void onUpdateNote?.(composer.noteId, textValue);
+      }
+      setComposer(null);
+    },
+    [composer, onCreateNote, onUpdateNote],
   );
 
   const filteredMarkerIds = React.useMemo<Set<string> | null>(() => {
@@ -594,6 +650,10 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
             <ScrollView
               style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
+              // Inset for the keyboard so an inline note composer in a
+              // lower row stays reachable when the keyboard is up (iOS).
+              automaticallyAdjustKeyboardInsets
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{
                 paddingVertical: 15,
                 paddingLeft: 10,
@@ -613,6 +673,18 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                 expandedDescription={expandInline ? body : undefined}
                 notes={expandInline ? summaryNotes : undefined}
                 noteCount={summaryNotes?.length ?? 0}
+                currentUserLogin={currentUserLogin}
+                onStartEditNote={
+                  onUpdateNote
+                    ? (noteId) => setComposer({ mode: 'edit', noteId })
+                    : undefined
+                }
+                onDeleteNote={onDeleteNote}
+                editingNoteId={
+                  composer?.mode === 'edit' ? composer.noteId : undefined
+                }
+                onComposerSubmit={handleComposerSubmit}
+                onComposerCancel={cancelComposer}
                 expanded={expandInline && selectionSet.has('overview')}
               />
               {stops && stops.length > 0
@@ -643,6 +715,31 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                       noteCount={stop.notes?.length ?? 0}
                       snippet={expandInline ? stop.snippet : undefined}
                       readFile={readFile}
+                      currentUserLogin={currentUserLogin}
+                      onStartAddNote={
+                        expandInline && onCreateNote && stop.id
+                          ? () =>
+                              setComposer({
+                                mode: 'create',
+                                markerId: stop.id as string,
+                              })
+                          : undefined
+                      }
+                      onStartEditNote={
+                        onUpdateNote
+                          ? (noteId) => setComposer({ mode: 'edit', noteId })
+                          : undefined
+                      }
+                      onDeleteNote={onDeleteNote}
+                      creating={
+                        composer?.mode === 'create' &&
+                        composer.markerId === stop.id
+                      }
+                      editingNoteId={
+                        composer?.mode === 'edit' ? composer.noteId : undefined
+                      }
+                      onComposerSubmit={handleComposerSubmit}
+                      onComposerCancel={cancelComposer}
                       expanded={expandInline && selectionSet.has(i)}
                     />
                   ))
@@ -943,6 +1040,22 @@ const RouteStopRow: React.FC<{
   snippet?: TrailMarkerSnippet;
   /** Host file reader for resolving slice-snippet source. */
   readFile?: TrailFileReader;
+  /** Viewer login — notes authored by this login show edit/delete. */
+  currentUserLogin?: string;
+  /** Open the inline create composer in this row (renders "+ Add note"). */
+  onStartAddNote?: () => void;
+  /** Open the inline edit composer for one of this row's notes. */
+  onStartEditNote?: (noteId: string) => void;
+  /** Delete a note on this row (surfaced on the viewer's own notes). */
+  onDeleteNote?: (noteId: string) => void;
+  /** This row is the active create composer. */
+  creating?: boolean;
+  /** Id of the note currently being edited (may belong to another row). */
+  editingNoteId?: string;
+  /** Submit the open composer's draft. The card closes it immediately. */
+  onComposerSubmit?: (text: string) => void;
+  /** Dismiss the open composer. */
+  onComposerCancel?: () => void;
   /** Drives the inline expand animation (height + opacity). */
   expanded?: boolean;
 }> = ({
@@ -961,14 +1074,35 @@ const RouteStopRow: React.FC<{
   noteCount = 0,
   snippet,
   readFile,
+  currentUserLogin,
+  onStartAddNote,
+  onStartEditNote,
+  onDeleteNote,
+  creating = false,
+  editingNoteId,
+  onComposerSubmit,
+  onComposerCancel,
   expanded = false,
 }) => {
   const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
   const numberColor =
     kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
 
+  // Is one of this row's own notes being edited?
+  const editingHere =
+    editingNoteId != null &&
+    (notes?.some((n) => n.id === editingNoteId) ?? false);
+  // A composer (create or edit) is open in this row. While open we render
+  // the row's expanded content statically (no clip/animation) so the
+  // growing TextInput + keyboard never fight the height measurement.
+  const composerOpen = creating || editingHere;
+
   const hasExpandable =
-    !!expandedDescription || (notes?.length ?? 0) > 0 || !!snippet;
+    !!expandedDescription ||
+    (notes?.length ?? 0) > 0 ||
+    !!snippet ||
+    !!onStartAddNote ||
+    composerOpen;
   const [contentHeight, setContentHeight] = React.useState(0);
   // Manual RAF-driven animation. RN core Animated.timing on `height`
   // was completing on open but visibly snapping on close — the most
@@ -1015,6 +1149,89 @@ const RouteStopRow: React.FC<{
   const rowBackground = matchesFilter
     ? withAlpha(theme.colors.accent, 0.18)
     : 'transparent';
+
+  // The expanded content column (description → notes → snippet → add).
+  // Shared between the animated wrapper (idle) and a static wrapper (while
+  // a composer is open). A note being edited renders as an InlineNoteComposer
+  // in place of its NoteCard.
+  const expandedColumn = (
+    <View style={{ flex: 1 }}>
+      {expandedDescription && expandedDescription.trim().length > 0 ? (
+        <View>
+          <IndustryMarkdownInline>
+            {expandedDescription.trim()}
+          </IndustryMarkdownInline>
+        </View>
+      ) : null}
+      {notes?.map((note) => {
+        const isOwn =
+          !!currentUserLogin && note.author === currentUserLogin;
+        if (editingNoteId === note.id) {
+          return (
+            <InlineNoteComposer
+              key={note.id}
+              theme={theme}
+              eyebrowColor={eyebrowColor}
+              initialBody={note.body}
+              onSubmit={onComposerSubmit ?? (() => {})}
+              onCancel={onComposerCancel ?? (() => {})}
+            />
+          );
+        }
+        return (
+          <NoteCard
+            key={note.id}
+            theme={theme}
+            eyebrowColor={eyebrowColor}
+            note={note}
+            onEdit={
+              isOwn && onStartEditNote
+                ? () => onStartEditNote(note.id)
+                : undefined
+            }
+            onDelete={
+              isOwn && onDeleteNote ? () => onDeleteNote(note.id) : undefined
+            }
+          />
+        );
+      })}
+      {snippet ? (
+        <TrailCodeSnippet
+          filePath={sourcePath}
+          snippet={snippet}
+          readFile={readFile}
+          eyebrowColor={eyebrowColor}
+        />
+      ) : null}
+      {creating ? (
+        <InlineNoteComposer
+          theme={theme}
+          eyebrowColor={eyebrowColor}
+          onSubmit={onComposerSubmit ?? (() => {})}
+          onCancel={onComposerCancel ?? (() => {})}
+        />
+      ) : onStartAddNote ? (
+        <Pressable
+          onPress={onStartAddNote}
+          hitSlop={6}
+          style={{ marginTop: 10, alignSelf: 'flex-start' }}
+          accessibilityRole="button"
+          accessibilityLabel="Add note"
+        >
+          <Text
+            style={{
+              fontFamily: theme.fonts.monospace,
+              fontSize: theme.fontSizes[1],
+              color: eyebrowColor,
+              letterSpacing: 0.3,
+            }}
+          >
+            + Add note
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 
   return (
     <View
@@ -1095,21 +1312,24 @@ const RouteStopRow: React.FC<{
           ) : null}
         </Pressable>
         {hasExpandable ? (
-          // Animated wrapper: height interpolates 0 ↔ contentHeight so
-          // the row visibly grows. Inner content sits in normal flow
-          // with no height of its own — `overflow: hidden` on the
-          // wrapper clips it when the animated height is less than the
-          // content's natural height. `onLayout` reports that natural
-          // height because RN children don't shrink to fit a fixed-
-          // height parent.
-          <View
-            style={{ overflow: 'hidden', height: renderedHeight }}
-          >
+          // One wrapper for every state — idle, expanding, and composing.
+          // Height interpolates 0 ↔ contentHeight; `overflow: hidden` clips
+          // the absolutely-positioned content until the animation catches
+          // up. Opening/closing the inline composer just changes
+          // contentHeight, so it animates smoothly like any other content
+          // — no wrapper swap, no remount, no pop. (Keeping a single tree
+          // is why the composer's TextInput is a *fixed* height: a growing
+          // field would re-trigger this animation on every keystroke.)
+          <View style={{ overflow: 'hidden', height: renderedHeight }}>
             <View
               onLayout={(e) => {
                 const h = e.nativeEvent.layout.height;
                 if (h > 0 && h !== contentHeight) setContentHeight(h);
               }}
+              // `paddingTop` (not `marginTop`) for the 6px gap above the
+              // expanded content: the offset must live *inside* the box
+              // `onLayout` measures, or the animated wrapper comes up 6px
+              // short and clips the last element (e.g. "+ Add note").
               style={{
                 position: 'absolute',
                 left: 0,
@@ -1117,35 +1337,11 @@ const RouteStopRow: React.FC<{
                 top: 0,
                 flexDirection: 'row',
                 gap: 12,
-                marginTop: 6,
+                paddingTop: 6,
               }}
             >
               <View style={{ minWidth: 30 }} />
-              <View style={{ flex: 1 }}>
-                {expandedDescription && expandedDescription.trim().length > 0 ? (
-                  <View>
-                    <IndustryMarkdownInline>
-                      {expandedDescription.trim()}
-                    </IndustryMarkdownInline>
-                  </View>
-                ) : null}
-                {notes?.map((note) => (
-                  <NoteCard
-                    key={note.id}
-                    theme={theme}
-                    eyebrowColor={eyebrowColor}
-                    note={note}
-                  />
-                ))}
-                {snippet ? (
-                  <TrailCodeSnippet
-                    filePath={sourcePath}
-                    snippet={snippet}
-                    readFile={readFile}
-                    eyebrowColor={eyebrowColor}
-                  />
-                ) : null}
-              </View>
+              {expandedColumn}
             </View>
           </View>
         ) : null}
@@ -1306,7 +1502,11 @@ const NoteCard: React.FC<{
   theme: Theme;
   eyebrowColor: string;
   note: TrailBriefNote;
-}> = ({ theme, eyebrowColor, note }) => {
+  /** When set, an edit (✎) control appears in the header. */
+  onEdit?: () => void;
+  /** When set, a delete (✕) control appears in the header. */
+  onDelete?: () => void;
+}> = ({ theme, eyebrowColor, note, onEdit, onDelete }) => {
   const when = formatRelative(note.createdAt);
   const hasBody = note.body.trim().length > 0;
   return (
@@ -1362,6 +1562,52 @@ const NoteCard: React.FC<{
             · {when}
           </Text>
         ) : null}
+        {onEdit || onDelete ? (
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: 14,
+            }}
+          >
+            {onEdit ? (
+              <Pressable
+                onPress={onEdit}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Edit note"
+              >
+                <Text
+                  style={{
+                    color: theme.colors.textTertiary,
+                    fontSize: theme.fontSizes[1],
+                  }}
+                >
+                  ✎
+                </Text>
+              </Pressable>
+            ) : null}
+            {onDelete ? (
+              <Pressable
+                onPress={onDelete}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Delete note"
+              >
+                <Text
+                  style={{
+                    color: theme.colors.textTertiary,
+                    fontSize: theme.fontSizes[1],
+                  }}
+                >
+                  ✕
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
       {hasBody ? (
         <IndustryMarkdownInline>{note.body.trim()}</IndustryMarkdownInline>
@@ -1380,6 +1626,90 @@ const NoteCard: React.FC<{
           ⌁ {note.anchorCaption}
         </Text>
       ) : null}
+    </View>
+  );
+};
+
+/**
+ * Inline note composer rendered inside an expanded route row — used for
+ * both creating a new marker note and editing an existing note's body.
+ * Holds only the draft text; tapping Save hands it up and the parent
+ * closes the composer immediately (the host persists optimistically, so
+ * the note shows at once — no in-composer "saving" state to overlap it).
+ */
+const InlineNoteComposer: React.FC<{
+  theme: Theme;
+  eyebrowColor: string;
+  initialBody?: string;
+  onSubmit: (text: string) => void;
+  onCancel: () => void;
+}> = ({ theme, eyebrowColor, initialBody = '', onSubmit, onCancel }) => {
+  const [text, setText] = React.useState(initialBody);
+  const trimmed = text.trim();
+  const canSave = trimmed.length > 0;
+
+  return (
+    <View style={{ marginTop: 8 }}>
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        multiline
+        autoFocus
+        placeholder="Leave a note on this step…"
+        placeholderTextColor={theme.colors.textTertiary}
+        // Fixed height (not minHeight): the row's expand animation keys off
+        // measured content height, so a field that grew with each line would
+        // re-fire the animation on every keystroke. Overflow scrolls inside.
+        style={{
+          height: 96,
+          borderWidth: 1,
+          borderColor: withAlpha(eyebrowColor, 0.5),
+          borderRadius: theme.radii[1],
+          backgroundColor: theme.colors.background,
+          color: theme.colors.text,
+          fontFamily: theme.fonts.body,
+          fontSize: theme.fontSizes[1],
+          padding: 10,
+          textAlignVertical: 'top',
+        }}
+      />
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: 18,
+          marginTop: 8,
+        }}
+      >
+        <Pressable onPress={onCancel} hitSlop={8} accessibilityRole="button">
+          <Text
+            style={{
+              color: theme.colors.textSecondary,
+              fontSize: theme.fontSizes[1],
+            }}
+          >
+            Cancel
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => canSave && onSubmit(trimmed)}
+          hitSlop={8}
+          disabled={!canSave}
+          accessibilityRole="button"
+        >
+          <Text
+            style={{
+              color: theme.colors.accent,
+              fontSize: theme.fontSizes[1],
+              fontWeight: '600',
+              opacity: canSave ? 1 : 0.4,
+            }}
+          >
+            Save
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 };

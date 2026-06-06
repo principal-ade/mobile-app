@@ -8,8 +8,8 @@
  * 2. Per-user inbox — read/unread/delete the recipient-side index
  *    populated by `POST /api/trails/by-id/{id}/send`.
  *
- * Trail-level mutations (visits, sign-offs, notes) are deliberately not
- * in v1 of this service — they come in the trail-detail-screen slice.
+ * Trail-level reads, the send route, visits, and note CRUD live here.
+ * Sign-offs are still deferred.
  * See `mobile-app/docs/TRAILS_API.md` for the full surface map.
  */
 
@@ -24,7 +24,7 @@ import type {
   SharedTrailIndexEntry,
   UnreadCountResponse,
 } from '../types/Inbox';
-import type { TrailPayload } from '../types/Trail';
+import type { TrailNote, TrailNoteDraft, TrailPayload } from '../types/Trail';
 
 const API_BASE = `${apiConfig.baseUrl}/trails`;
 
@@ -339,6 +339,75 @@ export async function recordTrailVisit(
       response,
       `Failed to record visit: ${response.status}`,
     );
+  }
+}
+
+// ============================================================================
+// Notes — create / edit / delete
+// ============================================================================
+
+/**
+ * Create a note on a trail. The server stamps `author` from the
+ * authenticated user (ignoring any `author` in the draft) and fills
+ * id/createdAt/updatedAt, returning the persisted `TrailNote`.
+ */
+export async function createNote(
+  trailId: string,
+  githubToken: string,
+  draft: TrailNoteDraft,
+): Promise<TrailNote> {
+  const response = await fetch(
+    `${API_BASE}/by-id/${encodeURIComponent(trailId)}/notes`,
+    {
+      method: 'POST',
+      headers: jsonHeaders(githubToken),
+      body: JSON.stringify(draft),
+    },
+  );
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to create note: ${response.status}`);
+  }
+  const body = (await response.json()) as { note: TrailNote };
+  return body.note;
+}
+
+/** Edit a note's body. Author-only on the server. */
+export async function updateNote(
+  trailId: string,
+  noteId: string,
+  githubToken: string,
+  noteBody: string,
+): Promise<TrailNote> {
+  const response = await fetch(
+    `${API_BASE}/by-id/${encodeURIComponent(trailId)}/notes/${encodeURIComponent(noteId)}`,
+    {
+      method: 'PATCH',
+      headers: jsonHeaders(githubToken),
+      body: JSON.stringify({ body: noteBody }),
+    },
+  );
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to update note: ${response.status}`);
+  }
+  const body = (await response.json()) as { note: TrailNote };
+  return body.note;
+}
+
+/** Delete a note. Allowed for the note's author or the trail owner. */
+export async function deleteNote(
+  trailId: string,
+  noteId: string,
+  githubToken: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/by-id/${encodeURIComponent(trailId)}/notes/${encodeURIComponent(noteId)}`,
+    {
+      method: 'DELETE',
+      headers: authHeaders(githubToken),
+    },
+  );
+  if (!response.ok && response.status !== 204) {
+    await throwFromResponse(response, `Failed to delete note: ${response.status}`);
   }
 }
 

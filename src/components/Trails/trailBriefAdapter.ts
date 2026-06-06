@@ -68,10 +68,13 @@ export function trailPayloadToBriefProps(
   const notesByMarker: Record<string, TrailBriefNote[]> = {};
   const summaryNotes: TrailBriefNote[] = [];
   payload.notes?.forEach((n) => {
-    // Marker-scoped notes attach to their stop; summary-scoped markdown
-    // notes surface under the Overview row instead.
+    // Marker-scoped notes (snippet, free marker comment, or markdown
+    // pinned to a description) attach to their stop; summary-scoped
+    // markdown notes surface under the Overview row instead.
     let markerId: string;
     if (n.kind === 'snippet') {
+      markerId = n.scope.markerId;
+    } else if (n.kind === 'marker') {
       markerId = n.scope.markerId;
     } else if (n.scope.kind === 'description') {
       markerId = n.scope.markerId;
@@ -113,10 +116,12 @@ export function trailPayloadToBriefProps(
   // tap filter (notesByAuthor maps author → markerIds[]).
   const notesByAuthor: Record<string, string[]> = {};
   payload.notes?.forEach((n) => {
-    // Snippet notes always carry a markerId; markdown notes only when
-    // scoped to a description (summary-scoped notes are global).
+    // Snippet + marker notes always carry a markerId; markdown notes
+    // only when scoped to a description (summary-scoped notes are global).
     let markerId: string | null = null;
     if (n.kind === 'snippet') {
+      markerId = n.scope.markerId;
+    } else if (n.kind === 'marker') {
       markerId = n.scope.markerId;
     } else if (n.scope.kind === 'description') {
       markerId = n.scope.markerId;

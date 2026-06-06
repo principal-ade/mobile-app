@@ -12,6 +12,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -25,21 +26,26 @@ import { TrailBriefCard } from '../components/Trails/TrailBriefCard';
 import { trailPayloadToBriefProps } from '../components/Trails/trailBriefAdapter';
 import { useAuth } from '../hooks/useAuth';
 import {
+  createNote,
+  deleteNote,
   getTrailById,
   recordTrailVisit,
   TrailsApiError,
+  updateNote,
 } from '../services/TrailsApiService';
 import { bookmarkTrail, removeBookmarkTrail } from '../services/BookmarksApiService';
 import { createTrailFileReader } from '../services/TrailFileContentService';
 import type { PasteStackParamList } from '../navigation/types';
 import type { TrailFetchResponse } from '../services/TrailsApiService';
+import type { TrailNote } from '../types/Trail';
 
 type Props = StackScreenProps<PasteStackParamList, 'TrailDetail'>;
 
 export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { trailId } = route.params;
   const { theme } = useTheme();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const currentUserLogin = user?.login;
   const [state, setState] = React.useState<
     | { status: 'loading' }
     | { status: 'ok'; data: TrailFetchResponse }
@@ -48,6 +54,8 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Tracks an in-flight bookmark/removeBookmark so the toggle can't double-fire while
   // the optimistic update is reconciling.
   const [bookmarkInFlight, setBookmarkInFlight] = React.useState(false);
+  // Monotonic counter for optimistic note ids — unique without Math.random.
+  const tempIdRef = React.useRef(0);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -109,6 +117,29 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setBookmarkInFlight(false);
     }
   }, [state, token, trailId, bookmarkInFlight]);
+
+  // Apply an immutable update to the loaded payload's notes array. No-op
+  // unless the trail is loaded. The single funnel every optimistic note
+  // mutation goes through.
+  const patchNotes = React.useCallback(
+    (updater: (notes: TrailNote[]) => TrailNote[]) => {
+      setState((s) =>
+        s.status === 'ok'
+          ? {
+              ...s,
+              data: {
+                ...s.data,
+                payload: {
+                  ...s.data.payload,
+                  notes: updater(s.data.payload.notes ?? []),
+                },
+              },
+            }
+          : s,
+      );
+    },
+    [],
+  );
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -201,6 +232,102 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { payload } = state.data;
   const briefProps = trailPayloadToBriefProps(payload);
+  const canWriteNotes = !!token && !!currentUserLogin;
+
+  // Optimistic create: append a temp marker note, fire the write, then
+  // swap the temp for the server note (so its real id is available for a
+  // later edit/delete). The composer closes instantly, so on failure we
+  // roll the temp back and surface the error via an alert.
+  const doCreate = async (markerId: string, body: string) => {
+    if (!token || !currentUserLogin) return;
+    const tempId = `temp-note-${tempIdRef.current++}`;
+    const now = new Date().toISOString();
+    const optimistic: TrailNote = {
+      id: tempId,
+      kind: 'marker',
+      scope: { markerId },
+      body,
+      author: currentUserLogin,
+      createdAt: now,
+      updatedAt: now,
+    };
+    patchNotes((notes) => [...notes, optimistic]);
+    try {
+      const saved = await createNote(trailId, token, {
+        kind: 'marker',
+        scope: { markerId },
+        body,
+        author: currentUserLogin,
+      });
+      patchNotes((notes) => notes.map((n) => (n.id === tempId ? saved : n)));
+    } catch (e) {
+      patchNotes((notes) => notes.filter((n) => n.id !== tempId));
+      Alert.alert(
+        'Could not add note',
+        e instanceof Error ? e.message : 'Try again.',
+      );
+    }
+  };
+
+  // Optimistic edit: swap the body locally, persist, reconcile with the
+  // server note; restore the previous body and alert on failure.
+  const doEdit = async (noteId: string, body: string) => {
+    if (state.status !== 'ok' || !token) return;
+    const previous = state.data.payload.notes?.find((n) => n.id === noteId);
+    patchNotes((notes) =>
+      notes.map((n) => (n.id === noteId ? { ...n, body } : n)),
+    );
+    try {
+      const saved = await updateNote(trailId, noteId, token, body);
+      patchNotes((notes) => notes.map((n) => (n.id === noteId ? saved : n)));
+    } catch (e) {
+      if (previous) {
+        patchNotes((notes) =>
+          notes.map((n) => (n.id === noteId ? previous : n)),
+        );
+      }
+      Alert.alert(
+        'Could not save note',
+        e instanceof Error ? e.message : 'Try again.',
+      );
+    }
+  };
+
+  // Optimistic delete: drop the note locally, persist, re-insert at its
+  // original index on failure (and surface the error inline since there's
+  // no composer in the delete flow).
+  const doDelete = async (noteId: string) => {
+    if (state.status !== 'ok' || !token) return;
+    const notes = state.data.payload.notes ?? [];
+    const index = notes.findIndex((n) => n.id === noteId);
+    if (index < 0) return;
+    const removed = notes[index];
+    patchNotes((curr) => curr.filter((n) => n.id !== noteId));
+    try {
+      await deleteNote(trailId, noteId, token);
+    } catch (e) {
+      patchNotes((curr) => {
+        const next = [...curr];
+        next.splice(Math.min(index, next.length), 0, removed);
+        return next;
+      });
+      Alert.alert(
+        'Could not delete note',
+        e instanceof Error ? e.message : 'Try again.',
+      );
+    }
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    Alert.alert('Delete note?', 'This removes your note from the trail.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => void doDelete(noteId),
+      },
+    ]);
+  };
 
   return (
     <View
@@ -211,6 +338,10 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         presentation="screen"
         expandInline
         readFile={readFile}
+        currentUserLogin={currentUserLogin}
+        onCreateNote={canWriteNotes ? doCreate : undefined}
+        onUpdateNote={canWriteNotes ? doEdit : undefined}
+        onDeleteNote={canWriteNotes ? handleDeleteNote : undefined}
       />
     </View>
   );

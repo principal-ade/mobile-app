@@ -21,7 +21,8 @@
  * - `TrailSliceSnippet` and `TrailDiffSnippet`
  * - `TrailView` discriminated union (only `kind:'sequence'` has a registered
  *   renderer in v1; other kinds are declared so the schema is committed)
- * - Notes anchored to marker ids (snippet anchors and markdown anchors)
+ * - Notes anchored to marker ids (snippet anchors, markdown anchors, and
+ *   anchor-free marker comments)
  *
  * v1 explicitly does NOT ship (all non-breaking future additions):
  * - Per-marker time pin (`marker.at`)
@@ -263,11 +264,27 @@ export interface TrailMarkdownNote {
   updatedAt: string;
 }
 
-export type TrailNote = TrailSnippetNote | TrailMarkdownNote;
+/**
+ * A free-text comment pinned to a marker — no code/text anchor. The
+ * simplest note kind, and the only one authored on mobile (snippet and
+ * markdown notes need a selection UI). Mirrors the web `TrailMarkerNote`.
+ */
+export interface TrailMarkerNote {
+  id: string;
+  kind: 'marker';
+  scope: { markerId: string };
+  body: string;
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TrailNote = TrailSnippetNote | TrailMarkdownNote | TrailMarkerNote;
 
 export type TrailNoteDraft =
   | Omit<TrailSnippetNote, 'id' | 'createdAt' | 'updatedAt'>
-  | Omit<TrailMarkdownNote, 'id' | 'createdAt' | 'updatedAt'>;
+  | Omit<TrailMarkdownNote, 'id' | 'createdAt' | 'updatedAt'>
+  | Omit<TrailMarkerNote, 'id' | 'createdAt' | 'updatedAt'>;
 
 // ============================================================================
 // Sign-offs — multi-reviewer LGTM stamps

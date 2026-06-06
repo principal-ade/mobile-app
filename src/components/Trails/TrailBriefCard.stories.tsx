@@ -277,6 +277,17 @@ const RAW_PAYLOAD: TrailPayload = {
       createdAt: '2026-06-03T13:45:00Z',
       updatedAt: '2026-06-03T13:45:00Z',
     },
+    // Free marker comment — no anchor, the kind mobile authors. Renders
+    // body-only (no location caption).
+    {
+      id: 'note-login-marker',
+      kind: 'marker',
+      scope: { markerId: 'm-login' },
+      body: 'Should we add a regression test for the orphan-session path before merging?',
+      author: 'Bob Chen',
+      createdAt: '2026-06-03T14:30:00Z',
+      updatedAt: '2026-06-03T14:30:00Z',
+    },
   ],
 };
 
@@ -354,5 +365,27 @@ export const WithCodeSnippets: Story = {
     presentation: 'screen',
     expandInline: true,
     readFile: mockReadFile,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Writable story. `currentUserLogin` matches one author ('Bob Chen'), so
+// that author's notes show edit (✎) / delete (✕), and the persist callbacks
+// make every expanded stop show "+ Add note" with an inline composer. The
+// stubbed create/update resolve after a beat so you can see the busy state;
+// TAP A STOP, then "+ Add note" or ✎ to open the inline composer in place.
+// ---------------------------------------------------------------------------
+const resolveAfter = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+export const AdapterDrivenWritable: Story = {
+  args: {
+    ...trailPayloadToBriefProps(RAW_PAYLOAD),
+    presentation: 'screen',
+    expandInline: true,
+    currentUserLogin: 'Bob Chen',
+    onCreateNote: () => resolveAfter(600),
+    onUpdateNote: () => resolveAfter(600),
+    onDeleteNote: () => {},
   },
 };
