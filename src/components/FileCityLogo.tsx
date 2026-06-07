@@ -88,6 +88,12 @@ export interface FileCityLogoProps {
   /** Round the panel corners. Default true. */
   rounded?: boolean;
   /**
+   * Corner radius of each building square, as a fraction of the square's
+   * side. `0` (default) gives sharp-cornered squares; raise it (e.g.
+   * `0.12`) for softly rounded tiles.
+   */
+  squareRadius?: number;
+  /**
    * Empty ring of city cells around the mark glyph, in cells. `1`
    * (default) gives the mark breathing room; `0` packs the glyph
    * edge-to-edge so each square is larger — e.g. a 3×5 "P" fills a 5×5
@@ -244,6 +250,7 @@ export function computeFileCityLayout({
   trail = false,
   gradient = 'diagonal',
   rounded = true,
+  squareRadius = 0,
   margin = 1,
   aiCard = false,
   opacity = 0.9,
@@ -251,7 +258,13 @@ export function computeFileCityLayout({
   const primaryColor = primary ?? theme?.colors.primary ?? '#22d3ee';
   const accentColor = accent ?? theme?.colors.accent ?? primaryColor;
   const baseColor = color ?? theme?.colors.text ?? '#f8fafc';
-  const bgColor = background ?? theme?.colors.background ?? '#0a0f14';
+  // Icon sits on the panel/surface color: prefer `backgroundSecondary`,
+  // falling back to `background` (then a dark default).
+  const bgColor =
+    background ??
+    theme?.colors.backgroundSecondary ??
+    theme?.colors.background ??
+    '#0a0f14';
 
   // Same palette weighting as TrailCityDiagram so the two read as a set.
   const palette = [
@@ -491,7 +504,7 @@ export function computeFileCityLayout({
         x,
         y,
         sq,
-        rx: Math.max(1, sq * 0.12),
+        rx: squareRadius > 0 ? Math.max(1, sq * squareRadius) : 0,
         fill: isLetter
           ? letterFill
           : palette[Math.floor(colorRoll * palette.length)],
