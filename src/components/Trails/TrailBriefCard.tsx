@@ -255,6 +255,19 @@ export function getTrailEyebrowColor(
   return resolveEyebrow(theme, purpose, signOffsCount).color;
 }
 
+/**
+ * Purpose-derived eyebrow label + tint, for surfaces (e.g. `TrailFeedCard`)
+ * that show the trail's state-of-being chip without rendering the full brief.
+ */
+export function getTrailEyebrow(
+  theme: Theme,
+  purpose: TrailPurpose | undefined,
+  signOffsCount: number,
+): { label: string; color: string } {
+  const { label, color } = resolveEyebrow(theme, purpose, signOffsCount);
+  return { label, color };
+}
+
 const resolveEyebrow = (
   theme: Theme,
   purpose: TrailPurpose | undefined,

@@ -3,7 +3,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
-import { MobileRepoCard } from './MobileRepoCard';
+import { RepoFeedCard } from './RepoFeedCard';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 
 // Mock commit data generator
@@ -78,9 +78,9 @@ const MobileFrame: React.FC<{ children: React.ReactNode; height?: number }> = ({
   </SafeAreaProvider>
 );
 
-const meta: Meta<typeof MobileRepoCard> = {
-  title: 'ActivityFeed/MobileRepoCard',
-  component: MobileRepoCard,
+const meta: Meta<typeof RepoFeedCard> = {
+  title: 'ActivityFeed/RepoFeedCard',
+  component: RepoFeedCard,
   decorators: [
     (Story) => (
       <NavigationContainer>
@@ -94,12 +94,12 @@ const meta: Meta<typeof MobileRepoCard> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof MobileRepoCard>;
+type Story = StoryObj<typeof RepoFeedCard>;
 
 export const SingleCommit: Story = {
   render: () => (
     <MobileFrame>
-      <MobileRepoCard summary={createMockSummary('octocat', 'hello-world', 1)} containerHeight={DEFAULT_HEIGHT} />
+      <RepoFeedCard summary={createMockSummary('octocat', 'hello-world', 1)} containerHeight={DEFAULT_HEIGHT} />
     </MobileFrame>
   ),
 };
@@ -107,7 +107,7 @@ export const SingleCommit: Story = {
 export const MultipleCommits: Story = {
   render: () => (
     <MobileFrame>
-      <MobileRepoCard summary={createMockSummary('octocat', 'hello-world', 5)} containerHeight={DEFAULT_HEIGHT} />
+      <RepoFeedCard summary={createMockSummary('octocat', 'hello-world', 5)} containerHeight={DEFAULT_HEIGHT} />
     </MobileFrame>
   ),
 };
@@ -115,7 +115,7 @@ export const MultipleCommits: Story = {
 export const ManyCommits: Story = {
   render: () => (
     <MobileFrame>
-      <MobileRepoCard summary={createMockSummary('facebook', 'react', 10)} containerHeight={DEFAULT_HEIGHT} />
+      <RepoFeedCard summary={createMockSummary('facebook', 'react', 10)} containerHeight={DEFAULT_HEIGHT} />
     </MobileFrame>
   ),
 };
@@ -123,7 +123,7 @@ export const ManyCommits: Story = {
 export const LongRepoName: Story = {
   render: () => (
     <MobileFrame>
-      <MobileRepoCard
+      <RepoFeedCard
         summary={createMockSummary(
           'organization-with-long-name',
           'super-long-repository-name-that-might-overflow',
@@ -144,7 +144,7 @@ export const LongCommitMessages: Story = {
     }));
     return (
       <MobileFrame>
-        <MobileRepoCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
+        <RepoFeedCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
       </MobileFrame>
     );
   },
@@ -160,7 +160,7 @@ export const HighAdditions: Story = {
     }));
     return (
       <MobileFrame>
-        <MobileRepoCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
+        <RepoFeedCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
       </MobileFrame>
     );
   },
@@ -176,7 +176,7 @@ export const HighDeletions: Story = {
     }));
     return (
       <MobileFrame>
-        <MobileRepoCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
+        <RepoFeedCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
       </MobileFrame>
     );
   },
@@ -185,7 +185,7 @@ export const HighDeletions: Story = {
 export const TallerContainer: Story = {
   render: () => (
     <MobileFrame height={900}>
-      <MobileRepoCard summary={createMockSummary('github', 'linguist', 5)} containerHeight={900} />
+      <RepoFeedCard summary={createMockSummary('github', 'linguist', 5)} containerHeight={900} />
     </MobileFrame>
   ),
 };
@@ -206,7 +206,7 @@ export const MultipleAuthors: Story = {
     }));
     return (
       <MobileFrame>
-        <MobileRepoCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
+        <RepoFeedCard summary={summary} containerHeight={DEFAULT_HEIGHT} />
       </MobileFrame>
     );
   },
@@ -215,7 +215,7 @@ export const MultipleAuthors: Story = {
 export const RealRepo: Story = {
   render: () => (
     <MobileFrame>
-      <MobileRepoCard
+      <RepoFeedCard
         summary={{
           owner: 'anthropics',
           repo: 'claude-code',

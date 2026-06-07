@@ -23,7 +23,7 @@ import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
 import { getFileCityData } from '../../services/FileCityService';
 import type { FileTypeIconConfig } from '@principal-ai/file-city-builder';
 
-interface MobileRepoCardProps {
+interface RepoFeedCardProps {
   summary: RepoActivitySummary;
   /** Hour label to display (e.g., "Good Morning", "2 PM") */
   hourLabel?: string;
@@ -69,7 +69,7 @@ const TIMELINE_HEIGHT = 52; // paddingTop 12 + avatar 28 + paddingBottom 12 (saf
 const TIMELINE_AVATAR_SIZE = 28;
 const TIMELINE_LINE_HEIGHT = 2;
 
-export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopInset = false }: MobileRepoCardProps) {
+export function RepoFeedCard({ summary, hourLabel, containerHeight, skipTopInset = false }: RepoFeedCardProps) {
   const { theme } = useTheme();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<NavigationProp<any>>();
@@ -131,7 +131,7 @@ export function MobileRepoCard({ summary, hourLabel, containerHeight, skipTopIns
           setIconMap(fileIconMap);
         }
       } catch (err) {
-        console.error('[MobileRepoCard] Failed to load city data:', err);
+        console.error('[RepoFeedCard] Failed to load city data:', err);
         if (!cancelled) {
           setFileCityError(true);
         }
@@ -669,4 +669,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MobileRepoCard;
+export default RepoFeedCard;

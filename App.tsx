@@ -5,6 +5,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { FeedPreferencesProvider } from './src/context/FeedPreferencesContext';
 import { CollectionsProvider } from './src/context/CollectionsContext';
+import { RecentTrailsViewProvider } from './src/context/RecentTrailsViewContext';
 import { MultiAccountProvider, useMultiAccount } from './src/context/MultiAccountContext';
 import { saveAccountFeedUsers, saveAccountFeedRepos } from './src/utils/accountStorage';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -160,7 +161,9 @@ function MultiAccountAwareProviders({ children }: PropsWithChildren) {
         }}
       >
         <CollectionsProvider>
-          {children}
+          <RecentTrailsViewProvider>
+            {children}
+          </RecentTrailsViewProvider>
         </CollectionsProvider>
       </FeedPreferencesProvider>
     </AuthProvider>

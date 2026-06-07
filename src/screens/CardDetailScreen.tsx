@@ -11,7 +11,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
-import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
+import { RepoFeedCard } from '../components/ActivityFeed/RepoFeedCard';
 import type { FeedStackParamList } from '../navigation/types';
 import type { RepoActivitySummary } from '../types/activity';
 
@@ -39,8 +39,8 @@ export function CardDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* MobileRepoCard fills the screen above the button */}
-      <MobileRepoCard
+      {/* RepoFeedCard fills the screen above the button */}
+      <RepoFeedCard
         summary={summary}
         containerHeight={cardHeight}
         skipTopInset

@@ -12,11 +12,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { RecentlyVisitedRow } from '../components/Trails/RecentlyVisitedRow';
+import { RecentTrailsCardFeed } from '../components/Trails/RecentTrailsCardFeed';
 import {
   EmptyContent,
   EmptyState,
   ScreenHeader,
 } from '../components/Trails/TrailListChrome';
+import { useRecentTrailsView } from '../context/RecentTrailsViewContext';
 import { useAuth } from '../hooks/useAuth';
 import {
   getRecentlyVisited,
@@ -38,6 +40,7 @@ export default function RecentTabScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { token, user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { viewMode } = useRecentTrailsView();
 
   const [recentEntries, setRecentEntries] = useState<
     TrailRecentlyVisitedEntry[]
@@ -139,6 +142,11 @@ export default function RecentTabScreen() {
           subtextColor={theme.colors.textSecondary}
           title="Nothing here yet"
           subtitle="Trails you open from a shared link or your inbox will show up here so you can find them again."
+        />
+      ) : viewMode === 'cards' ? (
+        <RecentTrailsCardFeed
+          entries={recentEntries}
+          token={token ?? undefined}
         />
       ) : (
         <FlatList

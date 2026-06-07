@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { WatchStackParamList } from '../../navigation/types';
 
-export interface ActivityRepoCardProps {
+export interface RepoActivityRowProps {
   repoId: string;
   owner: string;
   name: string;
@@ -18,7 +18,7 @@ export interface ActivityRepoCardProps {
   latestCommitMessage?: string;
 }
 
-export function ActivityRepoCard({
+export function RepoActivityRow({
   repoId: _repoId,
   owner,
   name,
@@ -26,7 +26,7 @@ export function ActivityRepoCard({
   latestCommitTime,
   latestCommitAuthor,
   latestCommitMessage,
-}: ActivityRepoCardProps) {
+}: RepoActivityRowProps) {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp<WatchStackParamList>>();
 

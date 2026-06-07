@@ -21,7 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { useFeedPreferences } from '../context/FeedPreferencesContext';
-import { ActivityRepoCard } from '../components/ActivityFeed/ActivityRepoCard';
+import { RepoActivityRow } from '../components/ActivityFeed/RepoActivityRow';
 import { UserCard } from '../components/ActivityFeed/UserCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
@@ -350,7 +350,7 @@ export function WatchTabScreen() {
     <FlatList
       data={repoActivityData}
       keyExtractor={(item) => item.repoId}
-      renderItem={({ item }) => <ActivityRepoCard {...item} />}
+      renderItem={({ item }) => <RepoActivityRow {...item} />}
       contentContainerStyle={[
         styles.listContent,
         { paddingBottom: insets.bottom + 24 },

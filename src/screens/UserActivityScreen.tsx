@@ -2,7 +2,7 @@
  * User Activity Screen
  *
  * Shows a user's commit activity across watched repositories in a feed-like view.
- * Displays activity from the last 24 hours in MobileRepoCard format for testing FileCityCanvas.
+ * Displays activity from the last 24 hours in RepoFeedCard format for testing FileCityCanvas.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -22,7 +22,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
-import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
+import { RepoFeedCard } from '../components/ActivityFeed/RepoFeedCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LucideIcon } from '../components/LucideIcon';
 import type { WatchStackParamList } from '../navigation/types';
@@ -181,7 +181,7 @@ export function UserActivityScreen() {
   const renderCard = useCallback(
     ({ item }: { item: RepoActivitySummary; index: number }) => (
       <View style={{ height: containerHeight, width: screenWidth }}>
-        <MobileRepoCard
+        <RepoFeedCard
           summary={item}
           containerHeight={containerHeight}
           skipTopInset={true}

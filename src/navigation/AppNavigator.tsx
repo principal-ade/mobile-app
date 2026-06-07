@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -43,6 +43,7 @@ import { useMultiAccount } from '../context/MultiAccountContext';
 import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { readClipboardTarget, alertClipboardPasteResult } from '../utils/clipboardPaste';
+import { RecentViewChooser } from '../components/Trails/RecentViewChooser';
 
 const prefix = Linking.createURL('/');
 
@@ -520,8 +521,10 @@ function MainTabs() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, user } = useAuth();
+  const [recentViewChooserVisible, setRecentViewChooserVisible] = useState(false);
 
   return (
+    <>
     <Tab.Navigator
       initialRouteName="Trails"
       screenOptions={{
@@ -627,6 +630,10 @@ function MainTabs() {
           tabBarLabel: 'Recent',
           tabBarIcon: ({ color }) => <LucideIcon name="Clock" size={24} color={color} />,
         }}
+        listeners={{
+          // Long-press the Recent tab to switch between list and card views.
+          tabLongPress: () => setRecentViewChooserVisible(true),
+        }}
       />
       <Tab.Screen
         name="About"
@@ -666,6 +673,11 @@ function MainTabs() {
         })}
       />
     </Tab.Navigator>
+    <RecentViewChooser
+      visible={recentViewChooserVisible}
+      onClose={() => setRecentViewChooserVisible(false)}
+    />
+    </>
   );
 }
 

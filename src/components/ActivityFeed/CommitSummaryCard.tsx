@@ -20,7 +20,7 @@ import { apiConfig } from '../../utils/config';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
-interface SwipeCardProps {
+interface CommitSummaryCardProps {
   summary: RepoActivitySummary;
   /** Hour label to display (e.g., "Good Morning", "2 PM") */
   hourLabel?: string;
@@ -76,7 +76,7 @@ function getUniqueAuthors(commits: RepoActivitySummary['commits']) {
 
 const SWIPE_DOWN_THRESHOLD = 80;
 
-export function SwipeCard({
+export function CommitSummaryCard({
   summary,
   hourLabel,
   containerHeight: _containerHeight,
@@ -86,7 +86,7 @@ export function SwipeCard({
   onSwipeDown,
   swipeDisabled = false,
   skipRemoteContent = false,
-}: SwipeCardProps) {
+}: CommitSummaryCardProps) {
   const { theme } = useTheme();
   const [avatarError, setAvatarError] = useState(false);
   const [fileCityLoaded, setFileCityLoaded] = useState(false);
@@ -131,7 +131,7 @@ export function SwipeCard({
         setAiSummary(text);
       })
       .catch(err => {
-        console.warn('[SwipeCard] Failed to get AI summary:', err);
+        console.warn('[CommitSummaryCard] Failed to get AI summary:', err);
       })
       .finally(() => {
         setSummaryLoading(false);
@@ -723,4 +723,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SwipeCard;
+export default CommitSummaryCard;

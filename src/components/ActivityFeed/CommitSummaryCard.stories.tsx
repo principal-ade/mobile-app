@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SwipeCard } from './SwipeCard';
+import { CommitSummaryCard } from './CommitSummaryCard';
 import type { RepoActivitySummary, ActivityCommit } from '../../types/activity';
 
 // Mock commit data generator
@@ -87,7 +87,7 @@ const SwipeDemo: React.FC<{ summary: RepoActivitySummary; swipeDisabled?: boolea
   return (
     <View style={styles.demoContainer}>
       <MobileFrame>
-        <SwipeCard
+        <CommitSummaryCard
           summary={summary}
           containerHeight={DEFAULT_HEIGHT}
           onPress={() => setLastAction('Tapped!')}
@@ -123,16 +123,16 @@ const styles = StyleSheet.create({
   },
 });
 
-const meta: Meta<typeof SwipeCard> = {
-  title: 'ActivityFeed/SwipeCard',
-  component: SwipeCard,
+const meta: Meta<typeof CommitSummaryCard> = {
+  title: 'ActivityFeed/CommitSummaryCard',
+  component: CommitSummaryCard,
   parameters: {
     layout: 'centered',
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof SwipeCard>;
+type Story = StoryObj<typeof CommitSummaryCard>;
 
 export const SingleCommit: Story = {
   render: () => <SwipeDemo summary={createMockSummary('octocat', 'hello-world', 1)} />,
@@ -243,7 +243,7 @@ export const StaticNoSwipe: Story = {
   name: 'Static (No Swipe)',
   render: () => (
     <MobileFrame>
-      <SwipeCard
+      <CommitSummaryCard
         summary={createMockSummary('octocat', 'hello-world', 3)}
         containerHeight={DEFAULT_HEIGHT}
         swipeDisabled
@@ -319,7 +319,7 @@ const TransitionTest: React.FC = () => {
       </View>
 
       <MobileFrame>
-        <SwipeCard
+        <CommitSummaryCard
           key={key}
           summary={summary}
           containerHeight={DEFAULT_HEIGHT}
@@ -403,7 +403,7 @@ const CardStackTest: React.FC = () => {
                   zIndex: visibleCards.length - index,
                 }}
               >
-                <SwipeCard
+                <CommitSummaryCard
                   summary={card}
                   containerHeight={DEFAULT_HEIGHT}
                   swipeDisabled={!isCurrentCard}

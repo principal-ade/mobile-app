@@ -16,7 +16,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@principal-ade/industry-theme';
-import { MobileRepoCard } from '../components/ActivityFeed/MobileRepoCard';
+import { RepoFeedCard } from '../components/ActivityFeed/RepoFeedCard';
 import {
   getCommitQueue,
   passCard,
@@ -44,7 +44,7 @@ interface SwipeFeedScreenProps {
   onRefresh?: () => Promise<void>;
 }
 
-// Convert API card to RepoActivitySummary format for SwipeCard
+// Convert API card to RepoActivitySummary format for RepoFeedCard
 function cardToSummary(
   card: CommitActivityCard,
   filesMap: Map<string, CommitFile[]>,
@@ -452,7 +452,7 @@ export function SwipeFeedScreen({ initialCards, isGuest = false, onRefresh }: Sw
         }}
       >
         <View style={[styles.cardWrapper, { height: availableHeight }]}>
-          <MobileRepoCard
+          <RepoFeedCard
             summary={summary}
             containerHeight={availableHeight}
             skipTopInset={false}
