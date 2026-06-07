@@ -1,7 +1,6 @@
 import type { Preview } from '@storybook/react-native-web-vite';
 import React from 'react';
-import { ThemeProvider } from '@principal-ade/industry-theme';
-import { iceTangerineDarkTheme } from '../src/themes/iceTangerineDark';
+import { ThemeProvider, iceTangerineDarkTheme } from '@principal-ade/industry-theme';
 
 const preview: Preview = {
   parameters: {

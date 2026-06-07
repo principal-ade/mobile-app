@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { ThemeProvider, useTheme } from '@principal-ade/industry-theme';
+import { ThemeProvider, useTheme, iceTangerineDarkTheme } from '@principal-ade/industry-theme';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContributionCalendar, type DailyContribution } from './ContributionCalendar';
-import { iceTangerineDarkTheme } from '../themes/iceTangerineDark';
 
 // Generate mock contribution data
 const generateMockContributions = (days: number = 150): DailyContribution[] => {
