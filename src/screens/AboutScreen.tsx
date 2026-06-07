@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
-import { Logo } from '../components/Logo';
+import { FileCityLogo } from '../components/FileCityLogo';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { DiscordIcon } from '../components/DiscordIcon';
 import { useAuth } from '../hooks/useAuth';
@@ -110,7 +110,7 @@ export function AboutScreen() {
         >
           <DiscordIcon size={28} color="#5865F2" />
         </TouchableOpacity>
-        <Logo width={100} height={100} color={theme.colors.primary} />
+        <FileCityLogo width={100} height={100} primary={theme.colors.primary} />
         <Text style={[styles.appName, { color: theme.colors.text }]}>
           Principal <Text style={{ color: theme.colors.primary }}>AI</Text>
         </Text>
@@ -400,6 +400,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 24,
     fontWeight: '700',
+    marginTop: 16,
     marginBottom: 4,
   },
   version: {
