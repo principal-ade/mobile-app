@@ -2,19 +2,19 @@
   "expo": {
     "name": "PrincipalAI",
     "slug": "principal-ade-mobile",
-    "version": "1.15.0",
+    "version": "1.16.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#0d274d"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.noetic-labs.principal-ai-mobile",
-      "buildNumber": "20",
+      "buildNumber": "21",
       "infoPlist": {
         "CFBundleDisplayName": "Principal AI",
         "ITSAppUsesNonExemptEncryption": false
@@ -23,7 +23,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#0d274d"
       },
       "predictiveBackGestureEnabled": false
     },
