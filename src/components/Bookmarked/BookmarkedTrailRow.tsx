@@ -1,11 +1,10 @@
 /**
  * Bookmarked trail row — a single entry in the Bookmarked tab's Trails segment.
  *
- * Visual cousin of `InboxRow`: title + meta + secondary line + relative
- * timestamp. No unread dot, no sender — instead the row shows
- * "{owner}/{repo}" and the trail's stored summary preview. Entries flagged
- * `gone: true` by the server render dimmed with a "no longer available"
- * suffix on the meta line.
+ * Visual cousin of `InboxRow`: wrapping title, a "BY {author}" line, the
+ * "{owner}/{repo}" on its own line, and a relative timestamp. No unread dot,
+ * no summary preview. Entries flagged `gone: true` by the server render
+ * dimmed with a "no longer available" suffix on the repo line.
  */
 
 import React from 'react';
@@ -56,7 +55,7 @@ export const BookmarkedTrailRow: React.FC<BookmarkedTrailRowProps> = ({
   ) as TextStyle['fontWeight'];
 
   const repoLabel = `${entry.owner}/${entry.repo}`;
-  const summary = entry.snapshot.summaryPreview;
+  const author = entry.snapshot.createdBy.githubLogin;
 
   return (
     <Pressable
@@ -83,7 +82,6 @@ export const BookmarkedTrailRow: React.FC<BookmarkedTrailRowProps> = ({
                 fontWeight: titleWeight,
               },
             ]}
-            numberOfLines={1}
           >
             {entry.snapshot.title}
           </Text>
@@ -109,23 +107,22 @@ export const BookmarkedTrailRow: React.FC<BookmarkedTrailRowProps> = ({
           ]}
           numberOfLines={1}
         >
+          BY{' '}
+          <Text style={{ color: theme.colors.textSecondary }}>{author}</Text>
+        </Text>
+        <Text
+          style={[
+            styles.meta,
+            {
+              color: theme.colors.textTertiary,
+              fontFamily: theme.fonts.monospace,
+            },
+          ]}
+          numberOfLines={1}
+        >
           {repoLabel}
           {isGone ? '   NO LONGER AVAILABLE' : ''}
         </Text>
-        {summary ? (
-          <Text
-            style={[
-              styles.summary,
-              {
-                color: theme.colors.textTertiary,
-                fontFamily: theme.fonts.body,
-              },
-            ]}
-            numberOfLines={2}
-          >
-            {summary}
-          </Text>
-        ) : null}
       </View>
     </Pressable>
   );
@@ -157,11 +154,6 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 11,
     letterSpacing: 0.4,
-    marginTop: 4,
-  },
-  summary: {
-    fontSize: 12,
-    lineHeight: 16,
     marginTop: 4,
   },
 });

@@ -151,7 +151,7 @@ function TrailsStackNavigator() {
     <TrailsStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
         },
         headerTintColor: theme.colors.text,
         headerBackTitle: 'Back',
@@ -168,7 +168,7 @@ function TrailsStackNavigator() {
       <TrailsStack.Screen
         name="TrailDetail"
         component={TrailDetailScreen}
-        options={{ title: 'Trail', headerBackTitle: 'Back' }}
+        options={{ title: 'Trail' }}
       />
       <TrailsStack.Screen
         name="RepoFileCity"
@@ -212,7 +212,7 @@ function RecentStackNavigator() {
     <RecentStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
         },
         headerTintColor: theme.colors.text,
         headerBackTitle: 'Back',
@@ -274,7 +274,7 @@ function WatchStackNavigator() {
     <WatchStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
         },
         headerTintColor: theme.colors.text,
         headerBackTitle: 'Back',
@@ -335,7 +335,7 @@ function PasteStackNavigator() {
     <PasteStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
         },
         headerTintColor: theme.colors.text,
         headerBackTitle: 'Back',
@@ -401,7 +401,7 @@ function BookmarksStackNavigator() {
     <BookmarksStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
         },
         headerTintColor: theme.colors.text,
         headerBackTitle: 'Back',
@@ -463,7 +463,7 @@ function AboutStackNavigator() {
     <AboutStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
         },
         headerTintColor: theme.colors.text,
         headerBackTitle: 'Back',
@@ -538,7 +538,7 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.border,
           paddingBottom: insets.bottom > 0 ? insets.bottom - 8 : 8,
           paddingTop: 8,
@@ -710,9 +710,10 @@ export default function AppNavigator() {
       <RootStack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.colors.background,
           },
           headerTintColor: theme.colors.text,
+          headerBackTitle: 'Back',
           headerTitleStyle: {
             fontWeight: 'bold',
           },
