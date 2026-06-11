@@ -154,6 +154,7 @@ function TrailsStackNavigator() {
           backgroundColor: theme.colors.surface,
         },
         headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -167,7 +168,7 @@ function TrailsStackNavigator() {
       <TrailsStack.Screen
         name="TrailDetail"
         component={TrailDetailScreen}
-        options={{ title: 'Trail' }}
+        options={{ title: 'Trail', headerBackTitle: 'Back' }}
       />
       <TrailsStack.Screen
         name="RepoFileCity"
@@ -214,6 +215,7 @@ function RecentStackNavigator() {
           backgroundColor: theme.colors.surface,
         },
         headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -275,6 +277,7 @@ function WatchStackNavigator() {
           backgroundColor: theme.colors.surface,
         },
         headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -335,6 +338,7 @@ function PasteStackNavigator() {
           backgroundColor: theme.colors.surface,
         },
         headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -400,6 +404,7 @@ function BookmarksStackNavigator() {
           backgroundColor: theme.colors.surface,
         },
         headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -461,6 +466,7 @@ function AboutStackNavigator() {
           backgroundColor: theme.colors.surface,
         },
         headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
         headerTitleStyle: {
           fontWeight: 'bold',
         },

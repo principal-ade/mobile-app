@@ -6,7 +6,12 @@
  * `notes`.
  */
 
-import type { TrailNote, TrailPayload, TrailSnippetNote } from '../../types/Trail';
+import type {
+  TrailNote,
+  TrailPayload,
+  TrailSnippetNote,
+  TrailView,
+} from '../../types/Trail';
 import type {
   TrailBriefCardProps,
   TrailBriefCardStop,
@@ -87,10 +92,32 @@ export function trailPayloadToBriefProps(
     notesByMarker[markerId] = list;
   });
 
+  // Each marker's "area" — the sequence lane it belongs to. An explicit
+  // `participant` wins; otherwise the segment of the dotted event `name`
+  // before the first dot (e.g. `auth.validation.started` → `auth`).
+  // Mirrors the web explorer's `markerAreaById`, so the card's Area toggle
+  // pins the same lane label the sequence diagram heads. Absent when the
+  // trail carries no sequence view.
+  const areaByMarker = new Map<string, string>();
+  const sequenceView = payload.views?.find(
+    (v): v is Extract<TrailView, { kind: 'sequence' }> => v.kind === 'sequence',
+  );
+  sequenceView?.markers.forEach((ref) => {
+    const dot = ref.name.indexOf('.');
+    const lane =
+      ref.participant && ref.participant.length > 0
+        ? ref.participant
+        : dot === -1
+          ? ref.name
+          : ref.name.slice(0, dot);
+    if (lane.length > 0) areaByMarker.set(ref.markerId, lane);
+  });
+
   const stops: TrailBriefCardStop[] = payload.markers.map((marker, i) => ({
     id: marker.id,
     label: marker.label ?? `Step ${i + 1}`,
     sourcePath: marker.sourcePath,
+    area: areaByMarker.get(marker.id),
     kind: marker.kind,
     description: marker.description,
     notes: notesByMarker[marker.id],

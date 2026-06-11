@@ -18,7 +18,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, { Polygon } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 
@@ -398,8 +398,7 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
  * doesn't (it hardcodes `fill: 'none'`). Same path as the Lucide Bookmark, just
  * with a togglable fill so the active state reads at a glance.
  */
-const STAR_POINTS =
-  '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2';
+const BOOKMARK_PATH = 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z';
 
 const BookmarkIcon: React.FC<{ size: number; color: string; filled: boolean }> = ({
   size,
@@ -407,8 +406,8 @@ const BookmarkIcon: React.FC<{ size: number; color: string; filled: boolean }> =
   filled,
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
-    <Polygon
-      points={STAR_POINTS}
+    <Path
+      d={BOOKMARK_PATH}
       stroke={color}
       strokeWidth={2}
       strokeLinecap="round"

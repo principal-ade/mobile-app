@@ -76,6 +76,12 @@ export interface TrailBriefCardStop {
   label: string;
   sourcePath?: string;
   /**
+   * Sequence lane this stop belongs to — the dotted-name prefix /
+   * participant from the trail's sequence view. Pinned under the label
+   * when the reader turns on the `Area` toggle.
+   */
+  area?: string;
+  /**
    * Marker role from `TrailMarker.kind`. `'subject'` rows underline
    * their label with the eyebrow color to direct the reader's focus.
    */
@@ -277,7 +283,10 @@ const resolveEyebrow = (
     case 'investigation':
       return {
         label: 'Investigation',
-        color: '#a855f7',
+        // Trails are no longer tinted by purpose — every type takes the
+        // theme accent. The label still names the type; only the color is
+        // unified. (Was purple/orange/green per purpose.)
+        color: theme.colors.accent,
         explanation: [
           { text: 'An ' },
           { text: 'Investigation Trail', bold: true },
@@ -287,7 +296,7 @@ const resolveEyebrow = (
     case 'changelog':
       return {
         label: 'Changelog',
-        color: '#f97316',
+        color: theme.colors.accent,
         explanation: [
           { text: 'A ' },
           { text: 'Changelog Trail', bold: true },
@@ -299,7 +308,7 @@ const resolveEyebrow = (
       return verified
         ? {
             label: 'Informative: Verified',
-            color: theme.colors.success ?? '#10b981',
+            color: theme.colors.accent,
             explanation: [
               { text: 'An ' },
               { text: 'Informative Trail', bold: true },
@@ -308,7 +317,7 @@ const resolveEyebrow = (
           }
         : {
             label: 'Informative: Unverified',
-            color: theme.colors.textTertiary,
+            color: theme.colors.accent,
             explanation: [
               { text: 'An ' },
               { text: 'Informative Trail', bold: true },
@@ -345,9 +354,6 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   request,
   title,
   author,
-  createdAt,
-  repoCount,
-  fileCount,
   stops,
   signOffs,
   signedByCurrentUser = false,
@@ -376,7 +382,11 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
   const headingLine = isInformative ? title : (request as string);
   const stampText = isInformative ? 'ACK' : 'LGTM';
 
-  const [showExplanation, setShowExplanation] = React.useState(false);
+  // Pin each stop's filename / sequence-lane under its label. Both default
+  // off so the route reads as clean labels; the reader reveals file/area
+  // context on demand via the header toggles. Mirrors the web explorer.
+  const [showStepFilenames, setShowStepFilenames] = React.useState(false);
+  const [showStepAreas, setShowStepAreas] = React.useState(false);
   const [noteAuthorFilter, setNoteAuthorFilter] = React.useState<string | null>(null);
   // Row selection set. Each entry is either `'overview'` (row 00) or a
   // numeric stop index. Stored as a Set so `expandInline` can keep
@@ -478,15 +488,10 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
     }
   }, [singleSelection, onSelectionChange]);
 
-  const dateStamp = React.useMemo(() => formatRelative(createdAt), [createdAt]);
-
-  const routeParts: string[] = [];
-  if (fileCount && fileCount > 0) {
-    routeParts.push(`${fileCount} ${fileCount === 1 ? 'file' : 'files'}`);
-  }
-  if (repoCount && repoCount > 1) {
-    routeParts.push(`${repoCount} repos`);
-  }
+  // Gate the Files / Area toggles on whether any stop actually carries the
+  // data they reveal — no point offering "Area" on a trail with no lanes.
+  const anyStopHasPath = (stops ?? []).some((s) => !!s.sourcePath);
+  const anyStopHasArea = (stops ?? []).some((s) => !!s.area);
 
   const borderStyle = isShared ? 'solid' : 'dashed';
   const borderColor = mixColors(eyebrow.color, 0.55, theme.colors.border);
@@ -499,21 +504,10 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
     ? { width: '100%', flex: 1 }
     : { width: '100%', maxWidth, alignSelf: 'center' };
 
-  const headerHasRouteRow = routeParts.length > 0 || !!dateStamp;
   const headerHasFromRow = !!(author && author.trim().length > 0);
 
   return (
     <View style={containerStyle}>
-      {showExplanation ? (
-        <ExplanationPanel
-          theme={theme}
-          isShared={isShared}
-          eyebrowColor={eyebrow.color}
-          segments={eyebrow.explanation}
-          onClose={() => setShowExplanation(false)}
-        />
-      ) : null}
-
       <View
         style={
           isScreen
@@ -544,47 +538,46 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
           }}
         >
           <View style={{ flex: 1, minWidth: 0 }}>
-            <EyebrowPill
-              theme={theme}
-              label={eyebrow.label}
-              color={eyebrow.color}
-              active={showExplanation}
-              onPress={() => setShowExplanation((prev) => !prev)}
-            />
             <Text
               style={{
                 fontFamily: theme.fonts.body,
                 fontSize: theme.fontSizes[3],
                 fontWeight: String(theme.fontWeights.medium) as TextStyle['fontWeight'],
                 color: theme.colors.text,
-                marginTop: 4,
               }}
               numberOfLines={2}
             >
               {headingLine}
             </Text>
-            {headerHasRouteRow ? (
-              <View style={styles.metaRow}>
-                {dateStamp ? (
-                  <MetaPair
-                    theme={theme}
-                    label="CREATED"
-                    value={dateStamp}
-                  />
-                ) : null}
-                {routeParts.length > 0 ? (
-                  <MetaPair
-                    theme={theme}
-                    label="SCOPE"
-                    value={routeParts.join(' · ')}
-                  />
-                ) : null}
-              </View>
-            ) : null}
             {headerHasFromRow ? (
               <View style={styles.metaRow}>
                 {author && author.trim().length > 0 ? (
                   <MetaPair theme={theme} label="FROM" value={author} />
+                ) : null}
+              </View>
+            ) : null}
+            {/* Files / Area toggles — pin each stop's filename or sequence
+                lane under its label. Only rendered when the trail carries
+                the data they reveal. */}
+            {anyStopHasPath || anyStopHasArea ? (
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
+                {anyStopHasPath ? (
+                  <StepToggle
+                    theme={theme}
+                    label="Files"
+                    eyebrowColor={eyebrow.color}
+                    active={showStepFilenames}
+                    onPress={() => setShowStepFilenames((v) => !v)}
+                  />
+                ) : null}
+                {anyStopHasArea ? (
+                  <StepToggle
+                    theme={theme}
+                    label="Area"
+                    eyebrowColor={eyebrow.color}
+                    active={showStepAreas}
+                    onPress={() => setShowStepAreas((v) => !v)}
+                  />
                 ) : null}
               </View>
             ) : null}
@@ -721,6 +714,9 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                       }
                       onPress={() => toggleStopSelection(i)}
                       sourcePath={stop.sourcePath}
+                      area={stop.area}
+                      showArea={showStepAreas}
+                      showFilename={showStepFilenames}
                       expandedDescription={
                         expandInline ? stop.description : undefined
                       }
@@ -850,89 +846,43 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
 // Sub-components
 // ===========================================================================
 
-const ExplanationPanel: React.FC<{
-  theme: Theme;
-  isShared: boolean;
-  eyebrowColor: string;
-  segments: ExplanationSegment[];
-  onClose: () => void;
-}> = ({ theme, isShared, eyebrowColor, segments, onClose }) => (
-  <View
-    style={{
-      marginBottom: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      backgroundColor: theme.colors.backgroundSecondary,
-      borderWidth: 1,
-      borderStyle: isShared ? 'solid' : 'dashed',
-      borderColor: mixColors(eyebrowColor, 0.55, theme.colors.border),
-    }}
-  >
-    <Pressable
-      onPress={onClose}
-      hitSlop={8}
-      accessibilityLabel="Close explanation"
-      style={{ position: 'absolute', top: 4, right: 8, padding: 4 }}
-    >
-      <Text style={{ color: theme.colors.textTertiary, fontSize: theme.fontSizes[3] }}>×</Text>
-    </Pressable>
-    <Text
-      style={{
-        fontFamily: theme.fonts.body,
-        fontSize: theme.fontSizes[1],
-        lineHeight: theme.fontSizes[1] * 1.5,
-        color: theme.colors.textSecondary,
-        paddingRight: 24,
-      }}
-    >
-      {segments.map((seg, i) =>
-        seg.bold ? (
-          <Text
-            key={i}
-            style={{
-              color: eyebrowColor,
-              fontWeight: String(theme.fontWeights.semibold) as TextStyle['fontWeight'],
-            }}
-          >
-            {seg.text}
-          </Text>
-        ) : (
-          <Text key={i}>{seg.text}</Text>
-        ),
-      )}
-    </Text>
-  </View>
-);
-
-const EyebrowPill: React.FC<{
+/**
+ * Header toggle chip (Files / Area) — pins per-stop context under each
+ * route label. Off by default; tinted with the trail's eyebrow color when
+ * active. Ported from the web explorer's step-context toggles.
+ */
+const StepToggle: React.FC<{
   theme: Theme;
   label: string;
-  color: string;
+  eyebrowColor: string;
   active: boolean;
   onPress: () => void;
-}> = ({ theme, label, color, active, onPress }) => (
+}> = ({ theme, label, eyebrowColor, active, onPress }) => (
   <Pressable
     onPress={onPress}
     accessibilityRole="button"
     accessibilityState={{ selected: active }}
     style={{
-      alignSelf: 'flex-start',
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
       paddingVertical: 2,
-      paddingHorizontal: 5,
+      paddingHorizontal: 6,
       borderRadius: theme.radii[1],
       borderWidth: 1,
-      borderColor: active ? withAlpha(color, 0.6) : 'transparent',
-      backgroundColor: withAlpha(color, active ? 0.22 : 0.12),
+      borderColor: active
+        ? mixColors(eyebrowColor, 0.55, theme.colors.border)
+        : theme.colors.border,
+      backgroundColor: active ? withAlpha(eyebrowColor, 0.14) : 'transparent',
     }}
   >
     <Text
       style={{
         fontFamily: theme.fonts.monospace,
         fontSize: theme.fontSizes[0],
-        color,
+        color: active ? eyebrowColor : theme.colors.textTertiary,
         textTransform: 'uppercase',
-        letterSpacing: 1,
-        fontWeight: String(theme.fontWeights.semibold) as TextStyle['fontWeight'],
+        letterSpacing: 0.5,
       }}
     >
       {label}
@@ -1036,9 +986,15 @@ const RouteStopRow: React.FC<{
   matchesFilter: boolean;
   dimmed: boolean;
   onPress?: () => void;
-  /** Path shown under the row label whenever provided (not gated on
-   *  expansion) — gives the reader the location at a glance. */
+  /** Marker path — used both to derive the toggled filename display and
+   *  as the file reader key for the expanded snippet. */
   sourcePath?: string;
+  /** Sequence lane for this stop, shown above the label when `showArea`. */
+  area?: string;
+  /** Pin the sequence lane (`area`) above the label. */
+  showArea?: boolean;
+  /** Pin the filename (basename + dir) under the label. */
+  showFilename?: boolean;
   /** Optional markdown shown under the row when `expanded`. */
   expandedDescription?: string;
   /** Reader notes shown under the description when `expanded`. */
@@ -1082,6 +1038,9 @@ const RouteStopRow: React.FC<{
   dimmed,
   onPress,
   sourcePath,
+  area,
+  showArea = false,
+  showFilename = false,
   expandedDescription,
   notes,
   noteCount = 0,
@@ -1100,6 +1059,17 @@ const RouteStopRow: React.FC<{
   const labelColor = kind === 'subject' ? eyebrowColor : theme.colors.text;
   const numberColor =
     kind === 'subject' ? eyebrowColor : theme.colors.textTertiary;
+
+  // Basename + directory split for the Files toggle, so two same-named
+  // files in different folders stay distinguishable (dir shown dimmer
+  // below the basename). Mirrors the web card.
+  const fileName = sourcePath
+    ? sourcePath.split('/').pop() || sourcePath
+    : null;
+  const dirPath =
+    sourcePath && fileName
+      ? sourcePath.slice(0, sourcePath.length - fileName.length)
+      : '';
 
   // Is one of this row's own notes being edited?
   const editingHere =
@@ -1287,7 +1257,21 @@ const RouteStopRow: React.FC<{
           >
             {numberLabel}
           </Text>
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            {showArea && area ? (
+              <Text
+                style={{
+                  fontFamily: theme.fonts.monospace,
+                  fontSize: theme.fontSizes[0],
+                  color: theme.colors.textSecondary,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  lineHeight: theme.fontSizes[0] * 1.4,
+                }}
+              >
+                {area}
+              </Text>
+            ) : null}
             <Text
               style={{
                 color: labelColor,
@@ -1300,20 +1284,36 @@ const RouteStopRow: React.FC<{
             >
               {label}
             </Text>
-            {sourcePath ? (
-              <Text
-                style={{
-                  marginTop: 2,
-                  fontFamily: theme.fonts.monospace,
-                  fontSize: theme.fontSizes[0],
-                  color: theme.colors.textTertiary,
-                  lineHeight: theme.fontSizes[0] * 1.4,
-                }}
-                numberOfLines={1}
-                ellipsizeMode="middle"
-              >
-                {sourcePath}
-              </Text>
+            {showFilename && fileName ? (
+              <View>
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.monospace,
+                    fontSize: theme.fontSizes[0],
+                    color: theme.colors.primary,
+                    lineHeight: theme.fontSizes[0] * 1.4,
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
+                  {fileName}
+                </Text>
+                {dirPath ? (
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.monospace,
+                      fontSize: theme.fontSizes[0],
+                      color: theme.colors.textTertiary,
+                      opacity: 0.85,
+                      lineHeight: theme.fontSizes[0] * 1.4,
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="middle"
+                  >
+                    {dirPath}
+                  </Text>
+                ) : null}
+              </View>
             ) : null}
           </View>
           {noteCount > 0 ? (

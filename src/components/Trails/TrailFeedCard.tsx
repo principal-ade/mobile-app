@@ -272,16 +272,6 @@ export function TrailFeedCard({
 
       {/* Header */}
       <View style={[styles.header, !hourLabel && { paddingTop: topInset + 16 }]}>
-        <View
-          style={[
-            styles.eyebrowPill,
-            { borderColor: eyebrow.color, backgroundColor: theme.colors.surface },
-          ]}
-        >
-          <Text style={[styles.eyebrowText, { color: eyebrow.color }]}>
-            {eyebrow.label.toUpperCase()}
-          </Text>
-        </View>
         <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={3}>
           {trail.title}
         </Text>
@@ -368,18 +358,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 10,
-  },
-  eyebrowPill: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  eyebrowText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
   },
   title: {
     fontSize: 22,

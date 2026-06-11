@@ -52,7 +52,6 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
   ) as TextStyle['fontWeight'];
 
   const repoLabel = `${entry.owner}/${entry.repo}`;
-  const summary = entry.snapshot.summaryPreview;
 
   return (
     <Pressable
@@ -90,7 +89,6 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
                 fontWeight: titleWeight,
               },
             ]}
-            numberOfLines={1}
           >
             {entry.snapshot.title}
           </Text>
@@ -117,7 +115,14 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
           <Text style={{ color: theme.colors.textSecondary }}>
             {entry.sender.githubLogin}
           </Text>
-          {'   '}
+        </Text>
+        <Text
+          style={[
+            styles.meta,
+            { color: theme.colors.textTertiary, fontFamily: theme.fonts.monospace },
+          ]}
+          numberOfLines={1}
+        >
           {repoLabel}
         </Text>
         {entry.comment ? (
@@ -129,17 +134,6 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
             numberOfLines={2}
           >
             “{entry.comment}”
-          </Text>
-        ) : null}
-        {summary ? (
-          <Text
-            style={[
-              styles.summary,
-              { color: theme.colors.textTertiary, fontFamily: theme.fonts.body },
-            ]}
-            numberOfLines={2}
-          >
-            {summary}
           </Text>
         ) : null}
       </View>
@@ -156,9 +150,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   leading: {
-    width: 16,
+    width: 12,
     paddingTop: 6,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   unreadDot: {
     width: 8,
@@ -192,10 +186,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 6,
     fontStyle: 'italic',
-  },
-  summary: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 4,
   },
 });
