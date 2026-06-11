@@ -1,6 +1,6 @@
 {
   "name": "principal-ai-mobile",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "type": "module",
   "main": "index.ts",
   "scripts": {
