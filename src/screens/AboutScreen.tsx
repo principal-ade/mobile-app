@@ -8,12 +8,15 @@ import {
   Linking,
   Image,
   TextInput,
+  Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
+import QRCode from 'react-native-qrcode-svg';
 import { FileCityLogo } from '../components/FileCityLogo';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { DiscordIcon } from '../components/DiscordIcon';
@@ -29,7 +32,51 @@ const LINKS = {
   termsOfService: 'https://principal-ade.com/terms',
   discord: 'https://discord.gg/G3qdcC2DXq',
   website: 'https://principal-ade.com',
+  appStore: 'https://apps.apple.com/app/principal-ai/id6761268899',
 };
+
+/**
+ * Mix a hex color toward black by `amount` (0 = unchanged, 1 = black).
+ * Used to darken the theme primary into a high-contrast QR module color —
+ * the bright brand primary on white scans poorly, the darkened tint reads
+ * on-brand while keeping ~10:1 contrast. Falls back to near-black for any
+ * non-hex input.
+ */
+function darken(color: string, amount: number): string {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+  if (!m) return '#0a0f14';
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+  const t = Math.max(0, Math.min(1, amount));
+  const ch = (i: number) =>
+    Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - t))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${ch(0)}${ch(2)}${ch(4)}`;
+}
+
+/** Perceived luminance (0 = black, 1 = white) of a hex color; defaults to
+ *  dark for non-hex input so callers treat unknowns as a dark surface. */
+function isLightColor(color: string): boolean {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+  if (!m) return false;
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  // Rec. 601 luma — cheap and good enough for a light/dark decision.
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55;
+}
+
+/**
+ * QR module color for a given background: on a light surface use the
+ * darkened brand primary (normal dark-on-light QR); on a dark surface use
+ * the bright primary so the code stays on-brand as a high-contrast
+ * inverted QR. Keeps the code on the app's own background color in either
+ * theme while preserving the contrast a scanner needs.
+ */
+function qrModuleColor(primary: string, background: string): string {
+  return isLightColor(background) ? darken(primary, 0.65) : primary;
+}
 
 interface LinkRowProps {
   title: string;
@@ -65,11 +112,13 @@ function LinkRow({ title, subtitle, url, theme }: LinkRowProps) {
 export function AboutScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<AboutStackParamList>>();
   const { isAuthenticated, user, signIn, demoSignIn, signOut } = useAuth();
   const { accounts } = useMultiAccount();
   const [showDemoLogin, setShowDemoLogin] = useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -110,7 +159,23 @@ export function AboutScreen() {
         >
           <DiscordIcon size={28} color="#5865F2" />
         </TouchableOpacity>
-        <FileCityLogo width={100} height={100} primary={theme.colors.primary} />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setShowQr(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Show App Store download QR code"
+        >
+          <View style={styles.logoSlot}>
+            <FileCityLogo
+              width={100}
+              height={100}
+              primary={theme.colors.primary}
+            />
+          </View>
+        </TouchableOpacity>
+        <Text style={[styles.logoHint, { color: theme.colors.textSecondary }]}>
+          Tap to share
+        </Text>
         <Text style={[styles.appName, { color: theme.colors.text }]}>
           Principal <Text style={{ color: theme.colors.primary }}>AI</Text>
         </Text>
@@ -370,6 +435,44 @@ export function AboutScreen() {
         </View>
       </ScrollView>
 
+      {/* Full-screen download QR */}
+      <Modal
+        visible={showQr}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQr(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={styles.qrOverlay}
+          activeOpacity={1}
+          onPress={() => setShowQr(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close QR code"
+        >
+          <View
+            style={[
+              styles.qrCard,
+              {
+                backgroundColor: theme.colors.background,
+                borderColor: theme.colors.primary,
+              },
+            ]}
+          >
+            <QRCode
+              value={LINKS.appStore}
+              size={Math.min(screenWidth, screenHeight) * 0.66}
+              color={qrModuleColor(theme.colors.primary, theme.colors.background)}
+              backgroundColor={theme.colors.background}
+              ecl="M"
+            />
+          </View>
+          <Text style={styles.qrTitle}>Scan to download</Text>
+          <Text style={styles.qrSubtitle}>Principal AI on the App Store</Text>
+          <Text style={styles.qrDismiss}>Tap anywhere to close</Text>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Account Switcher Modal */}
       <AccountSwitcherSheet
         visible={showAccountSwitcher}
@@ -396,6 +499,47 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  logoSlot: {
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  qrCard: {
+    padding: 24,
+    borderRadius: 28,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrTitle: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 32,
+  },
+  qrSubtitle: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 15,
+    marginTop: 6,
+  },
+  qrDismiss: {
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: 13,
+    marginTop: 24,
+  },
+  logoHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 8,
   },
   appName: {
     fontSize: 24,
