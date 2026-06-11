@@ -26,7 +26,7 @@ import { TrailBriefCard } from '../components/Trails/TrailBriefCard';
 import { trailPayloadToBriefProps } from '../components/Trails/trailBriefAdapter';
 import { TrailShareModal } from '../components/Trails/TrailShareModal';
 import { LucideIcon } from '../components/LucideIcon';
-import { apiConfig } from '../utils/config';
+import { WEB_ORIGIN } from '../utils/config';
 import { useAuth } from '../hooks/useAuth';
 import {
   createNote,
@@ -43,11 +43,6 @@ import type { TrailFetchResponse } from '../services/TrailsApiService';
 import type { TrailNote } from '../types/Trail';
 
 type Props = StackScreenProps<PasteStackParamList, 'TrailDetail'>;
-
-// Web copy of the URL keeps the share link consistent across surfaces.
-// `apiConfig.baseUrl` ends in `/api`; strip it to get the user-facing origin
-// to prefix `/trail/<id>` with. Mirrors TopicDetailScreen's WEB_ORIGIN.
-const WEB_ORIGIN = apiConfig.baseUrl.replace(/\/api\/?$/, '');
 
 export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { trailId } = route.params;

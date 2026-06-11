@@ -40,17 +40,13 @@ import {
   TrailsApiError,
 } from '../services/TrailsApiService';
 import { bookmarkTopic, removeBookmarkTopic } from '../services/BookmarksApiService';
-import { apiConfig } from '../utils/config';
+import { WEB_ORIGIN } from '../utils/config';
 import type { BookmarksStackParamList } from '../navigation/types';
 import type { GetTopicResponse } from '../types/Topic';
 import type { SharedTrailIndexEntry } from '../types/Inbox';
 
 type Props = StackScreenProps<BookmarksStackParamList, 'TopicDetail'>;
 
-// Web copy of the URL keeps the share link consistent across surfaces.
-// `apiConfig.baseUrl` ends in `/api`; strip it so we get the user-facing
-// origin to prefix `/topic/<id>` with.
-const WEB_ORIGIN = apiConfig.baseUrl.replace(/\/api\/?$/, '');
 const COPY_FEEDBACK_MS = 1500;
 
 interface TrailFetchResult {
