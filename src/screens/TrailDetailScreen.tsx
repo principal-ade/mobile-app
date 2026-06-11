@@ -24,6 +24,9 @@ import { useTheme } from '@principal-ade/industry-theme';
 
 import { TrailBriefCard } from '../components/Trails/TrailBriefCard';
 import { trailPayloadToBriefProps } from '../components/Trails/trailBriefAdapter';
+import { TrailShareModal } from '../components/Trails/TrailShareModal';
+import { LucideIcon } from '../components/LucideIcon';
+import { apiConfig } from '../utils/config';
 import { useAuth } from '../hooks/useAuth';
 import {
   createNote,
@@ -41,11 +44,17 @@ import type { TrailNote } from '../types/Trail';
 
 type Props = StackScreenProps<PasteStackParamList, 'TrailDetail'>;
 
+// Web copy of the URL keeps the share link consistent across surfaces.
+// `apiConfig.baseUrl` ends in `/api`; strip it to get the user-facing origin
+// to prefix `/trail/<id>` with. Mirrors TopicDetailScreen's WEB_ORIGIN.
+const WEB_ORIGIN = apiConfig.baseUrl.replace(/\/api\/?$/, '');
+
 export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { trailId } = route.params;
   const { theme } = useTheme();
   const { token, user } = useAuth();
   const currentUserLogin = user?.login;
+  const [shareVisible, setShareVisible] = React.useState(false);
   const [state, setState] = React.useState<
     | { status: 'loading' }
     | { status: 'ok'; data: TrailFetchResponse }
@@ -93,6 +102,10 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isBookmarked = state.status === 'ok' ? state.data.bookmarked : false;
   const canBookmark = state.status === 'ok' && !!token;
+  // Sharing is available as soon as the trail resolves — the link is just the
+  // id, no auth needed (public trails resolve for anyone; private ones gate on
+  // the web side, same as the existing topic share link).
+  const canShare = state.status === 'ok';
 
   const toggleBookmark = React.useCallback(async () => {
     if (state.status !== 'ok' || !token || bookmarkInFlight) return;
@@ -144,30 +157,57 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () =>
-        canBookmark ? (
-          <Pressable
-            onPress={() => void toggleBookmark()}
-            hitSlop={12}
-            disabled={bookmarkInFlight}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { opacity: pressed || bookmarkInFlight ? 0.5 : 1 },
-            ]}
-            accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark trail'}
-            accessibilityRole="button"
-          >
-            <BookmarkIcon
-              size={22}
-              color={
-                isBookmarked ? theme.colors.accent : theme.colors.textSecondary
-              }
-              filled={isBookmarked}
-            />
-          </Pressable>
+        canShare || canBookmark ? (
+          <View style={styles.headerRight}>
+            {canShare ? (
+              <Pressable
+                onPress={() => setShareVisible(true)}
+                hitSlop={12}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+                accessibilityLabel="Share trail"
+                accessibilityRole="button"
+              >
+                <LucideIcon
+                  name="QrCode"
+                  size={21}
+                  color={theme.colors.textSecondary}
+                />
+              </Pressable>
+            ) : null}
+            {canBookmark ? (
+              <Pressable
+                onPress={() => void toggleBookmark()}
+                hitSlop={12}
+                disabled={bookmarkInFlight}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  { opacity: pressed || bookmarkInFlight ? 0.5 : 1 },
+                ]}
+                accessibilityLabel={
+                  isBookmarked ? 'Remove bookmark' : 'Bookmark trail'
+                }
+                accessibilityRole="button"
+              >
+                <BookmarkIcon
+                  size={22}
+                  color={
+                    isBookmarked
+                      ? theme.colors.accent
+                      : theme.colors.textSecondary
+                  }
+                  filled={isBookmarked}
+                />
+              </Pressable>
+            ) : null}
+          </View>
         ) : undefined,
     });
   }, [
     navigation,
+    canShare,
     canBookmark,
     isBookmarked,
     bookmarkInFlight,
@@ -343,6 +383,12 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onUpdateNote={canWriteNotes ? doEdit : undefined}
         onDeleteNote={canWriteNotes ? handleDeleteNote : undefined}
       />
+      <TrailShareModal
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+        url={`${WEB_ORIGIN}/trail/${trailId}`}
+        title={payload.title}
+      />
     </View>
   );
 };
@@ -379,6 +425,10 @@ const styles = StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   headerButton: {

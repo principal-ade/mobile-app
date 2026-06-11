@@ -86,6 +86,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             path: 'paste',
             screens: {
               PasteHome: '',
+              TrailDetail: 'trail/:trailId',
               TopicDetail: 'topic/:topicId',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
@@ -98,6 +99,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             path: 'bookmarks',
             screens: {
               BookmarksHome: '',
+              TrailDetail: 'trail/:trailId',
               TopicDetail: 'topic/:topicId',
               RepoFileCity: 'repo/:owner/:name',
               RepoReadme: 'repo/:owner/:name/readme',
