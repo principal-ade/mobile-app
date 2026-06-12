@@ -164,6 +164,13 @@ export default function TrailsTabScreen() {
           renderItem={({ item }) => (
             <InboxRow entry={item} onPress={handleInboxRowPress} />
           )}
+          // Top hairline lives on the content (not the fixed list frame) so
+          // it travels with the rows on pull-to-refresh — otherwise the first
+          // row's borderless top is exposed once the content leaves the header.
+          contentContainerStyle={{
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: theme.colors.border,
+          }}
           refreshControl={
             <RefreshControl
               refreshing={inboxRefreshing}
