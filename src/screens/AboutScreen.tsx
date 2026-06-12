@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Linking,
   Image,
-  TextInput,
   Modal,
   useWindowDimensions,
 } from 'react-native';
@@ -18,7 +17,6 @@ import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import QRCode from 'react-native-qrcode-svg';
 import { FileCityLogo } from '../components/FileCityLogo';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { DiscordIcon } from '../components/DiscordIcon';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
@@ -114,35 +112,14 @@ export function AboutScreen() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<AboutStackParamList>>();
-  const { isAuthenticated, user, signIn, demoSignIn, signOut } = useAuth();
+  const { user, signIn, signOut } = useAuth();
   const { accounts } = useMultiAccount();
-  const [showDemoLogin, setShowDemoLogin] = useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSignIn = async () => {
-    await signIn();
-  };
 
   const handleAddAccount = async () => {
     // Force fresh login to ensure user can sign into a different account
     await signIn(true);
-  };
-
-  const handleDemoSignIn = async () => {
-    if (!email.trim() || !password.trim()) return;
-    setIsLoading(true);
-    try {
-      await demoSignIn(email.trim(), password);
-      setEmail('');
-      setPassword('');
-      setShowDemoLogin(false);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSignOut = async () => {
@@ -197,7 +174,7 @@ export function AboutScreen() {
           </Text>
         </View>
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-          {isAuthenticated && user ? (
+          {user && (
             <>
               <TouchableOpacity
                 style={styles.accountRow}
@@ -290,97 +267,6 @@ export function AboutScreen() {
               <TouchableOpacity style={styles.linkRow} onPress={handleSignOut}>
                 <Text style={[styles.signOutText, { color: theme.colors.error || '#ef4444' }]}>
                   Sign out
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : showDemoLogin ? (
-            <View style={styles.demoLoginSection}>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.colors.background,
-                    color: theme.colors.text,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                placeholder="Email"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.colors.background,
-                    color: theme.colors.text,
-                    borderColor: theme.colors.border,
-                    marginTop: 12,
-                  },
-                ]}
-                placeholder="Password"
-                placeholderTextColor={theme.colors.textSecondary}
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-              <View style={styles.demoLoginButtons}>
-                <TouchableOpacity
-                  style={[styles.demoLoginButton, { opacity: isLoading ? 0.5 : 1 }]}
-                  onPress={handleDemoSignIn}
-                  disabled={isLoading || !email.trim() || !password.trim()}
-                >
-                  {isLoading ? (
-                    <LoadingSpinner size="small" color={theme.colors.primary} />
-                  ) : (
-                    <Text style={[styles.signInText, { color: theme.colors.primary }]}>
-                      Sign In
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.demoLoginButton}
-                  onPress={() => {
-                    setShowDemoLogin(false);
-                    setEmail('');
-                    setPassword('');
-                  }}
-                  disabled={isLoading}
-                >
-                  <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              <TouchableOpacity style={styles.signInRow} onPress={handleSignIn}>
-                <Text style={[styles.signInText, { color: theme.colors.primary }]}>
-                  Sign in with GitHub
-                </Text>
-                <Text style={[styles.linkArrow, { color: theme.colors.primary }]}>
-                  ›
-                </Text>
-              </TouchableOpacity>
-              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
-              <TouchableOpacity
-                style={styles.signInRow}
-                onPress={() => setShowDemoLogin(true)}
-              >
-                <Text style={[styles.altSignInText, { color: theme.colors.textSecondary }]}>
-                  Sign in with Email
-                </Text>
-                <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
-                  ›
                 </Text>
               </TouchableOpacity>
             </>
@@ -619,43 +505,6 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     fontSize: 16,
-  },
-  signInRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  signInText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  altSignInText: {
-    fontSize: 16,
-  },
-  cancelText: {
-    fontSize: 16,
-  },
-  demoLoginSection: {
-    padding: 16,
-  },
-  textInput: {
-    height: 44,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-  },
-  demoLoginButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 16,
-    gap: 16,
-  },
-  demoLoginButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   footer: {
     alignItems: 'center',

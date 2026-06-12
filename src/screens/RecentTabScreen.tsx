@@ -15,7 +15,6 @@ import { RecentlyVisitedRow } from '../components/Trails/RecentlyVisitedRow';
 import { RecentTrailsCardFeed } from '../components/Trails/RecentTrailsCardFeed';
 import {
   EmptyContent,
-  EmptyState,
   ScreenHeader,
 } from '../components/Trails/TrailListChrome';
 import { useRecentTrailsView } from '../context/RecentTrailsViewContext';
@@ -88,22 +87,6 @@ export default function RecentTabScreen() {
     },
     [navigation],
   );
-
-  // Unauthenticated state — mirrors the Inbox tab; the app's auth gate handles
-  // the actual sign-in flow elsewhere.
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <EmptyState
-        insetsTop={insets.top}
-        backgroundColor={theme.colors.background}
-        textColor={theme.colors.text}
-        subtextColor={theme.colors.textSecondary}
-        iconColor={theme.colors.textSecondary}
-        title="Sign in to see your trails"
-        subtitle="Trails you open will show up here so you can find them again once you're signed in."
-      />
-    );
-  }
 
   return (
     <View

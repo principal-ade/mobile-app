@@ -16,7 +16,6 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { InboxRow } from '../components/Trails/InboxRow';
 import {
   EmptyContent,
-  EmptyState,
   ScreenHeader,
 } from '../components/Trails/TrailListChrome';
 import { useAuth } from '../hooks/useAuth';
@@ -166,23 +165,6 @@ export default function TrailsTabScreen() {
     },
     [skipDeleteConfirm, performDelete],
   );
-
-  // Unauthenticated state — keep the original landing copy. We don't surface a
-  // "sign in" CTA from here because the app's auth gate handles that flow
-  // elsewhere.
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <EmptyState
-        insetsTop={insets.top}
-        backgroundColor={theme.colors.background}
-        textColor={theme.colors.text}
-        subtextColor={theme.colors.textSecondary}
-        iconColor={theme.colors.textSecondary}
-        title="Sign in to see your trails"
-        subtitle="Trails are authored walkthroughs of a codebase. Once you're signed in, anything someone shares with you lands here."
-      />
-    );
-  }
 
   return (
     <GestureHandlerRootView

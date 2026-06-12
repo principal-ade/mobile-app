@@ -175,23 +175,6 @@ export function BookmarkedTopicsTrailsScreen() {
     [navigation],
   );
 
-  // Unauthenticated state — match the empty-state language to the rest of
-  // the app's "sign in to see" treatment.
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <EmptyState
-        insetsTop={insets.top}
-        backgroundColor={theme.colors.background}
-        textColor={theme.colors.text}
-        subtextColor={theme.colors.textSecondary}
-        iconColor={theme.colors.textSecondary}
-        iconName="Bookmark"
-        title="Sign in to see your bookmarks"
-        subtitle="Once you're signed in, topics and trails you bookmark will show up here."
-      />
-    );
-  }
-
   const isTopics = activeTab === 'topics';
   const tabLoading = isTopics ? topicsLoading : trailsLoading;
   const tabLoadedOnce = isTopics ? topicsLoadedOnce : trailsLoadedOnce;
@@ -377,39 +360,6 @@ const EmptyContent: React.FC<EmptyContentProps> = ({
     </View>
     <Text style={[styles.title, { color: textColor }]}>{title}</Text>
     <Text style={[styles.subtitle, { color: subtextColor }]}>{subtitle}</Text>
-  </View>
-);
-
-interface EmptyStateProps {
-  insetsTop: number;
-  backgroundColor: string;
-  textColor: string;
-  subtextColor: string;
-  iconColor: string;
-  iconName: 'Hash' | 'Footprints' | 'Bookmark';
-  title: string;
-  subtitle: string;
-}
-
-const EmptyState: React.FC<EmptyStateProps> = ({
-  insetsTop,
-  backgroundColor,
-  textColor,
-  subtextColor,
-  iconColor,
-  iconName,
-  title,
-  subtitle,
-}) => (
-  <View style={[styles.container, { backgroundColor, paddingTop: insetsTop }]}>
-    <EmptyContent
-      iconColor={iconColor}
-      textColor={textColor}
-      subtextColor={subtextColor}
-      iconName={iconName}
-      title={title}
-      subtitle={subtitle}
-    />
   </View>
 );
 
