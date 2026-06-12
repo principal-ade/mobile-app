@@ -40,6 +40,7 @@ import {
   TrailsApiError,
 } from '../services/TrailsApiService';
 import { bookmarkTopic, removeBookmarkTopic } from '../services/BookmarksApiService';
+import { TopicSendSheet } from '../components/Topics/TopicSendSheet';
 import { WEB_ORIGIN } from '../utils/config';
 import type { BookmarksStackParamList } from '../navigation/types';
 import type { GetTopicResponse } from '../types/Topic';
@@ -60,7 +61,7 @@ interface TrailFetchResult {
 export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { topicId } = route.params;
   const { theme } = useTheme();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [state, setState] = React.useState<
     | { status: 'loading' }
@@ -79,6 +80,7 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // the optimistic update is reconciling.
   const [bookmarkInFlight, setBookmarkInFlight] = React.useState(false);
   const [shareCopied, setShareCopied] = React.useState(false);
+  const [sendSheetOpen, setSendSheetOpen] = React.useState(false);
 
   // ---- Load topic ---------------------------------------------------------
   React.useEffect(() => {
@@ -160,6 +162,15 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const isBookmarked = state.status === 'ok' ? state.data.bookmarked : false;
   const canBookmark = state.status === 'ok' && !!token;
 
+  // Send is creator-only server-side (recipients can view but not widen the
+  // audience), so only the owner sees the Send affordance. Gate on the
+  // signed-in user's GitHub id matching the topic creator.
+  const canSend =
+    state.status === 'ok' &&
+    !!token &&
+    !!user &&
+    user.id === state.data.topic.createdBy.githubId;
+
   const toggleBookmark = React.useCallback(async () => {
     if (state.status !== 'ok' || !token || bookmarkInFlight) return;
     const previous = state.data.bookmarked;
@@ -201,6 +212,24 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.setOptions({
       headerRight: () => (
         <View style={styles.headerRight}>
+          {canSend ? (
+            <Pressable
+              onPress={() => setSendSheetOpen(true)}
+              hitSlop={12}
+              style={({ pressed }) => [
+                styles.headerButton,
+                { opacity: pressed ? 0.5 : 1 },
+              ]}
+              accessibilityLabel="Send topic"
+              accessibilityRole="button"
+            >
+              <LucideIcon
+                name="Send"
+                size={20}
+                color={theme.colors.textSecondary}
+              />
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => void handleShare()}
             hitSlop={12}
@@ -248,6 +277,7 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [
     navigation,
     canBookmark,
+    canSend,
     isBookmarked,
     bookmarkInFlight,
     shareCopied,
@@ -296,6 +326,7 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     trailCount === 1 ? '1 TRAIL' : `${trailCount} TRAILS`;
 
   return (
+    <>
     <ScrollView
       style={{ backgroundColor: theme.colors.background }}
       contentContainerStyle={styles.scrollContent}
@@ -383,6 +414,16 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ))
       )}
     </ScrollView>
+    {canSend && token ? (
+      <TopicSendSheet
+        visible={sendSheetOpen}
+        onClose={() => setSendSheetOpen(false)}
+        topicId={topicId}
+        title={topic.title}
+        token={token}
+      />
+    ) : null}
+    </>
   );
 };
 

@@ -12,6 +12,7 @@
 
 import { apiConfig } from '../utils/config';
 import type { GetTopicResponse } from '../types/Topic';
+import type { SendTrailRequest, SendTrailResponse } from '../types/Inbox';
 
 const API_BASE = `${apiConfig.baseUrl}/topics`;
 
@@ -52,6 +53,13 @@ function authHeaders(githubToken: string): HeadersInit {
   return { Authorization: `Bearer ${githubToken}` };
 }
 
+function jsonHeaders(githubToken: string): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${githubToken}`,
+  };
+}
+
 /**
  * Resolve `/topic/{id}` — public-by-link read. When called with a token,
  * the server also returns `bookmarked` so the header toggle can render in
@@ -72,4 +80,35 @@ export async function getTopicById(
     );
   }
   return (await response.json()) as GetTopicResponse;
+}
+
+/**
+ * Send a topic to one or more GitHub-login recipients. It lands in each
+ * recipient's topic inbox on the desktop app.
+ *
+ * Mirrors `TrailsApiService.sendTrail` and reuses its request/response shape —
+ * the server's topic send contract (`{recipients[], comment?}` → `{delivered,
+ * failed}`) is identical to the trail one. Send is creator-only server-side;
+ * partial delivery is non-fatal (unknown/invalid logins come back in `failed`).
+ */
+export async function sendTopic(
+  topicId: string,
+  githubToken: string,
+  body: SendTrailRequest,
+): Promise<SendTrailResponse> {
+  const response = await fetch(
+    `${API_BASE}/by-id/${encodeURIComponent(topicId)}/send`,
+    {
+      method: 'POST',
+      headers: jsonHeaders(githubToken),
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    await throwFromResponse(
+      response,
+      `Failed to send topic: ${response.status}`,
+    );
+  }
+  return (await response.json()) as SendTrailResponse;
 }
