@@ -388,4 +388,10 @@ export type RootStackParamList = {
     state: string;
     email: string;
   };
+  // Logged-out stack — shown by AppNavigator when there's no authenticated
+  // account. The app is built around the signed-in experience; these are
+  // the only screens an unauthenticated user can reach.
+  Welcome: undefined;
+  LearnTrails: undefined;
+  SampleTrail: undefined;
 };

@@ -37,6 +37,9 @@ import RepoReadmeScreen from '../screens/RepoReadmeScreen';
 import TourFileCityScreen from '../screens/TourFileCityScreen';
 import { UserProfileScreenContainer } from '../screens/UserProfileScreenContainer';
 import { OrganizationScreenContainer } from '../screens/OrganizationScreenContainer';
+import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
+import { LearnTrailsScreen } from '../screens/auth/LearnTrailsScreen';
+import { SampleTrailScreen } from '../screens/auth/SampleTrailScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
@@ -691,7 +694,7 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { theme } = useTheme();
-  const { isLoading, pendingVerification } = useAuth();
+  const { isLoading, pendingVerification, isAuthenticated } = useAuth();
   const { activeAccountId } = useMultiAccount();
 
   if (isLoading) {
@@ -702,10 +705,20 @@ export default function AppNavigator() {
     );
   }
 
+  // A logged-out user can only reach the Welcome stack; deep links into the
+  // tab screens don't apply until they sign in, so linking is disabled here.
+  const loggedOut = !pendingVerification && !isAuthenticated;
+
   return (
     <NavigationContainer
-      key={pendingVerification ? 'verification' : `main-${activeAccountId}`}
-      linking={pendingVerification ? undefined : linking}
+      key={
+        pendingVerification
+          ? 'verification'
+          : loggedOut
+            ? 'welcome'
+            : `main-${activeAccountId}`
+      }
+      linking={pendingVerification || loggedOut ? undefined : linking}
     >
       <RootStack.Navigator
         screenOptions={{
@@ -729,6 +742,24 @@ export default function AppNavigator() {
             }}
             options={{ headerShown: false }}
           />
+        ) : loggedOut ? (
+          <>
+            <RootStack.Screen
+              name="Welcome"
+              component={WelcomeScreen}
+              options={{ headerShown: false }}
+            />
+            <RootStack.Screen
+              name="LearnTrails"
+              component={LearnTrailsScreen}
+              options={{ title: 'Learn about trails', headerBackTitle: 'Back' }}
+            />
+            <RootStack.Screen
+              name="SampleTrail"
+              component={SampleTrailScreen}
+              options={{ title: 'Sample trail' }}
+            />
+          </>
         ) : (
           <>
             <RootStack.Screen
