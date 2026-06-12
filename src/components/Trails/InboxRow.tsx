@@ -13,20 +13,30 @@
  * `readAt` fallback for pre-feature responses.
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
+  useWindowDimensions,
   type TextStyle,
 } from 'react-native';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTheme } from '@principal-ade/industry-theme';
 import type { InboxIndexEntry } from '../../types/Inbox';
 
 export interface InboxRowProps {
   entry: InboxIndexEntry;
   onPress?: (entry: InboxIndexEntry) => void;
+  /**
+   * Swipe-to-delete handler. Fires when the row is swiped far enough to open
+   * (a full left-swipe). `close` snaps the row back — call it if the deletion
+   * is cancelled so the row doesn't stay stuck open.
+   */
+  onRequestDelete?: (entry: InboxIndexEntry, close: () => void) => void;
 }
 
 const formatRelative = (iso: string): string => {
@@ -49,8 +59,14 @@ const formatRelative = (iso: string): string => {
   return `${yr}y ago`;
 };
 
-export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
+export const InboxRow: React.FC<InboxRowProps> = ({
+  entry,
+  onPress,
+  onRequestDelete,
+}) => {
   const { theme } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const swipeRef = useRef<SwipeableMethods | null>(null);
 
   // Prefer the server-derived notification state; fall back to the bare read
   // flag for pre-feature responses that don't carry it. Mirrors web-ade's
@@ -79,16 +95,18 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
 
   const repoLabel = `${entry.owner}/${entry.repo}`;
 
-  return (
+  const rowContent = (
     <Pressable
       onPress={onPress ? () => onPress(entry) : undefined}
       style={({ pressed }) => [
         styles.row,
         {
-          borderBottomColor: theme.colors.border,
+          // Opaque while swiping so the red action panel only shows in the
+          // gap the row uncovers, not bleeding through the row itself.
           backgroundColor: pressed
             ? theme.colors.backgroundSecondary
-            : 'transparent',
+            : theme.colors.background,
+          borderBottomColor: theme.colors.border,
         },
       ]}
     >
@@ -186,6 +204,44 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
       </View>
     </Pressable>
   );
+
+  // No delete handler → plain row (e.g. Storybook, or read-only surfaces).
+  if (!onRequestDelete) return rowContent;
+
+  return (
+    <ReanimatedSwipeable
+      ref={swipeRef}
+      friction={2}
+      // Commit once dragged ~40% across — a deliberate swipe, hard to trip by
+      // accident. The action panel spans the full width so the row slides off
+      // (full-swipe-to-delete) and `onSwipeableOpen` reliably fires; a flex
+      // panel can measure to 0 width and never open.
+      rightThreshold={windowWidth * 0.4}
+      overshootRight={false}
+      renderRightActions={() => (
+        <View
+          style={[
+            styles.deleteAction,
+            {
+              width: windowWidth,
+              backgroundColor: theme.colors.error ?? '#ef4444',
+            },
+          ]}
+        >
+          <Text style={styles.deleteLabel}>Delete</Text>
+        </View>
+      )}
+      // Fire on open regardless of reported direction: the row only has a
+      // right-actions (delete) panel, and ReanimatedSwipeable reports a
+      // left-swipe-to-open-right-actions as `SwipeDirection.LEFT`, so guarding
+      // on a specific direction silently never fires.
+      onSwipeableOpen={() => {
+        onRequestDelete(entry, () => swipeRef.current?.close());
+      }}
+    >
+      {rowContent}
+    </ReanimatedSwipeable>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -195,6 +251,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  deleteAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 24,
+  },
+  deleteLabel: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   leading: {
     width: 12,

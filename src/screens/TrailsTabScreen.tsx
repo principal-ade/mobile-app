@@ -6,7 +6,9 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -21,8 +23,13 @@ import { useAuth } from '../hooks/useAuth';
 import {
   getInbox,
   markInboxRead,
+  deleteInboxEntry,
   TrailsApiError,
 } from '../services/TrailsApiService';
+import {
+  getSkipInboxDeleteConfirm,
+  setSkipInboxDeleteConfirm,
+} from '../utils/inboxPrefs';
 import type { InboxIndexEntry } from '../types/Inbox';
 import type { TrailsStackParamList } from '../navigation/types';
 
@@ -46,6 +53,12 @@ export default function TrailsTabScreen() {
   const [inboxRefreshing, setInboxRefreshing] = useState(false);
   const [inboxError, setInboxError] = useState<string | null>(null);
   const [inboxLoadedOnce, setInboxLoadedOnce] = useState(false);
+  const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
+
+  // Load the "don't ask again" preference once on mount.
+  useEffect(() => {
+    void getSkipInboxDeleteConfirm().then(setSkipDeleteConfirm);
+  }, []);
 
   const loadInbox = useCallback(
     async (mode: 'initial' | 'refresh') => {
@@ -102,6 +115,58 @@ export default function TrailsTabScreen() {
     [navigation, token],
   );
 
+  // Optimistically drop the row, then fire the server delete; restore on
+  // failure so the inbox never silently loses an entry.
+  const performDelete = useCallback(
+    (entry: InboxIndexEntry) => {
+      if (!token) return;
+      setInboxError(null);
+      let restore: InboxIndexEntry[] = [];
+      setInboxEntries((prev) => {
+        restore = prev;
+        return prev.filter((e) => e.trailId !== entry.trailId);
+      });
+      deleteInboxEntry(entry.trailId, token).catch(() => {
+        setInboxEntries(restore);
+        setInboxError('Could not remove that trail. Pull to refresh and try again.');
+      });
+    },
+    [token],
+  );
+
+  const handleRequestDelete = useCallback(
+    (entry: InboxIndexEntry, close: () => void) => {
+      if (skipDeleteConfirm) {
+        performDelete(entry);
+        return;
+      }
+      Alert.alert(
+        'Remove from inbox?',
+        `"${entry.snapshot.title}" will be removed from your inbox.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: close },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: () => performDelete(entry),
+          },
+          {
+            text: "Remove, don't ask again",
+            style: 'destructive',
+            onPress: () => {
+              setSkipDeleteConfirm(true);
+              void setSkipInboxDeleteConfirm(true);
+              performDelete(entry);
+            },
+          },
+        ],
+        // Treat an outside-tap / back dismissal as a cancel so the row resets.
+        { cancelable: true, onDismiss: close },
+      );
+    },
+    [skipDeleteConfirm, performDelete],
+  );
+
   // Unauthenticated state — keep the original landing copy. We don't surface a
   // "sign in" CTA from here because the app's auth gate handles that flow
   // elsewhere.
@@ -120,7 +185,7 @@ export default function TrailsTabScreen() {
   }
 
   return (
-    <View
+    <GestureHandlerRootView
       style={[
         styles.container,
         { backgroundColor: theme.colors.background, paddingTop: insets.top },
@@ -162,7 +227,11 @@ export default function TrailsTabScreen() {
           data={inboxEntries}
           keyExtractor={(item) => item.trailId}
           renderItem={({ item }) => (
-            <InboxRow entry={item} onPress={handleInboxRowPress} />
+            <InboxRow
+              entry={item}
+              onPress={handleInboxRowPress}
+              onRequestDelete={handleRequestDelete}
+            />
           )}
           // Top hairline lives on the content (not the fixed list frame) so
           // it travels with the rows on pull-to-refresh — otherwise the first
@@ -180,7 +249,7 @@ export default function TrailsTabScreen() {
           }
         />
       )}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
