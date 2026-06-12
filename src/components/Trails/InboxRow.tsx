@@ -2,9 +2,15 @@
  * Inbox row — a single received-trail summary in the Trails tab list.
  *
  * Compact list cell tuned to answer "what is this and who sent it" at a
- * glance, without pulling in `TrailBriefCard`'s full detail-screen
- * surface. Unread rows surface a small dot in the leading slot; read
- * rows drop to a muted state.
+ * glance, without pulling in `TrailBriefCard`'s full detail-screen surface.
+ *
+ * Renders the four server-derived notification states (see web-ade's
+ * `deriveInboxNotification`): never-opened shows a dot by the title with the
+ * whole "N notes" accented; opened/all-seen is fully muted with no dot;
+ * opened-with-new-notes drops the dot to the notes line and accents only the
+ * "(N new)" suffix while the title stays muted. Clients render, they don't
+ * re-derive — the `entry.notification` block is the source of truth, with a
+ * `readAt` fallback for pre-feature responses.
  */
 
 import React from 'react';
@@ -45,10 +51,30 @@ const formatRelative = (iso: string): string => {
 
 export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
   const { theme } = useTheme();
-  const isUnread = entry.readAt === null;
-  const titleColor = isUnread ? theme.colors.text : theme.colors.textSecondary;
+
+  // Prefer the server-derived notification state; fall back to the bare read
+  // flag for pre-feature responses that don't carry it. Mirrors web-ade's
+  // deriveInboxNotification fallbacks (electron's InboxLeftPanel does the same).
+  const notif = entry.notification;
+  const dot = notif?.dot ?? entry.readAt === null;
+  const noteCount = notif?.noteCount ?? entry.snapshot.noteCount ?? 0;
+  const newNoteCount = notif?.newNoteCount ?? 0;
+  // Unopened ⇒ the whole "N notes" is accented (all unread); opened-with-new
+  // ⇒ only the "(N new)" suffix is, while the total stays muted.
+  const allNotesNew = notif?.unread ?? entry.readAt === null;
+  // When the dot is only about new notes (the trail itself was already
+  // opened), drop it to the notes line so it reads as "the notes are new, not
+  // the trail" — matching electron.
+  const notesOnlyDot = dot && !allNotesNew;
+
+  // The title reflects whether the trail itself was opened, not the dot: an
+  // opened trail with new notes (state 4) reads muted with the accent moved to
+  // the "(N new)" badge on the notes line.
+  const titleColor = allNotesNew
+    ? theme.colors.text
+    : theme.colors.textSecondary;
   const titleWeight = String(
-    isUnread ? theme.fontWeights.semibold : theme.fontWeights.medium,
+    allNotesNew ? theme.fontWeights.semibold : theme.fontWeights.medium,
   ) as TextStyle['fontWeight'];
 
   const repoLabel = `${entry.owner}/${entry.repo}`;
@@ -71,9 +97,10 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
           style={[
             styles.unreadDot,
             {
-              backgroundColor: isUnread
-                ? theme.colors.accent
-                : 'transparent',
+              // Sits by the title for a new/unread trail, or drops to the
+              // notes line when only the notes are new.
+              marginTop: notesOnlyDot ? 26 : 6,
+              backgroundColor: dot ? theme.colors.accent : 'transparent',
             },
           ]}
         />
@@ -115,6 +142,26 @@ export const InboxRow: React.FC<InboxRowProps> = ({ entry, onPress }) => {
           <Text style={{ color: theme.colors.textSecondary }}>
             {entry.sender.githubLogin}
           </Text>
+          {noteCount > 0 ? (
+            <Text>
+              {'   '}
+              <Text
+                style={{
+                  color: allNotesNew
+                    ? theme.colors.accent
+                    : theme.colors.textSecondary,
+                }}
+              >
+                {noteCount} {noteCount === 1 ? 'note' : 'notes'}
+              </Text>
+              {!allNotesNew && newNoteCount > 0 ? (
+                <Text style={{ color: theme.colors.accent }}>
+                  {' '}
+                  ({newNoteCount} new)
+                </Text>
+              ) : null}
+            </Text>
+          ) : null}
         </Text>
         <Text
           style={[
@@ -151,7 +198,6 @@ const styles = StyleSheet.create({
   },
   leading: {
     width: 12,
-    paddingTop: 6,
     alignItems: 'flex-start',
   },
   unreadDot: {

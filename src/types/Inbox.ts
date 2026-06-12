@@ -24,6 +24,23 @@ export interface SharedTrailIndexEntry extends BaseTrailIndexEntry {
   githubRepoId: number;
 }
 
+/**
+ * Server-derived notification state for an inbox row. Computed by web-ade
+ * (`deriveInboxNotification` in `src/lib/trails/notifications.ts`) so the dot
+ * and "(N new)" badge stay consistent across clients — render this, don't
+ * re-derive. Absent on pre-feature responses. Mirrors web-ade.
+ */
+export interface InboxNotification {
+  /** Whether to show the attention dot. */
+  dot: boolean;
+  /** Trail itself never opened (drives "whole row accented" vs just "(N new)"). */
+  unread: boolean;
+  /** Total notes on the trail. */
+  noteCount: number;
+  /** Notes added since the recipient last looked — the "(N new)" count. */
+  newNoteCount: number;
+}
+
 export interface InboxIndexEntry {
   /** Trail id — foreign key into `/api/trails/by-id/{id}`. */
   trailId: string;
@@ -36,11 +53,20 @@ export interface InboxIndexEntry {
   /** ISO 8601 — server-stamped when the recipient marks the entry read. */
   readAt: string | null;
   /**
+   * Count of notes the recipient had seen the last time they opened the
+   * trail (mark-read). Watermark for the "(N new)" badge: new notes are
+   * `max(0, snapshot.noteCount - notesSeenCount)`. Absent on entries created
+   * before notification states shipped — treat as 0.
+   */
+  notesSeenCount?: number;
+  /**
    * Snapshot of the live trail entry at send-time. Lets the list render
    * without per-row fan-out; refreshed lazily by the server when the
    * recipient lists their inbox after the live trail has advanced.
    */
   snapshot: SharedTrailIndexEntry;
+  /** Server-derived dot / new-note state; absent on pre-feature responses. */
+  notification?: InboxNotification;
   owner: string;
   repo: string;
 }

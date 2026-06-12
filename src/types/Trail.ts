@@ -362,4 +362,12 @@ export interface BaseTrailIndexEntry {
   createdAt: string;
   updatedAt: string;
   sizeBytes: number;
+  /**
+   * Total notes on the trail (authored + anonymous) at snapshot time, kept
+   * fresh by web-ade's `syncTrailNoteSummary` on every note mutation. Feeds
+   * the inbox "N notes" label and the "(N new)" watermark math. Absent on
+   * index entries written before notification states shipped — treat as 0.
+   * Mirrors web-ade `SharedTrailIndexEntry.noteCount`.
+   */
+  noteCount?: number;
 }
