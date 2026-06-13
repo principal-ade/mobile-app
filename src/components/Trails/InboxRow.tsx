@@ -26,6 +26,7 @@ import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTheme } from '@principal-ade/industry-theme';
+import { useDisplayName } from '../../hooks/useDisplayName';
 import type { InboxIndexEntry } from '../../types/Inbox';
 
 export interface InboxRowProps {
@@ -67,6 +68,7 @@ export const InboxRow: React.FC<InboxRowProps> = ({
   const { theme } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const swipeRef = useRef<SwipeableMethods | null>(null);
+  const senderName = useDisplayName(entry.sender.githubLogin);
 
   // Prefer the server-derived notification state; fall back to the bare read
   // flag for pre-feature responses that don't carry it. Mirrors web-ade's
@@ -158,7 +160,7 @@ export const InboxRow: React.FC<InboxRowProps> = ({
         >
           FROM{' '}
           <Text style={{ color: theme.colors.textSecondary }}>
-            {entry.sender.githubLogin}
+            {senderName}
           </Text>
           {noteCount > 0 ? (
             <Text>

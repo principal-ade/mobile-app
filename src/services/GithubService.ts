@@ -1,4 +1,4 @@
-import { GitHubContentItem, GitHubRepository, GitHubOrganization } from '../types/github';
+import { GitHubContentItem, GitHubRepository, GitHubOrganization, GitHubUser } from '../types/github';
 
 const BASE_URL = 'https://api.github.com';
 
@@ -76,6 +76,13 @@ export async function fetchUserRepositories(
 
 export async function fetchUserOrganizations(token: string): Promise<GitHubOrganization[]> {
   return request<GitHubOrganization[]>('/user/orgs?per_page=100', token);
+}
+
+export async function fetchUserProfile(
+  token: string,
+  username: string,
+): Promise<GitHubUser> {
+  return request<GitHubUser>(`/users/${encodeRepositorySegment(username)}`, token);
 }
 
 export async function fetchOrganizationsForUser(

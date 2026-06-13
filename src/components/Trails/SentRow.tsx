@@ -17,6 +17,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
+import { useDisplayNames } from '../../hooks/useDisplayName';
 import type { OutboxIndexEntry } from '../../types/Inbox';
 
 export interface SentRowProps {
@@ -44,20 +45,29 @@ const formatRelative = (iso: string): string => {
   return `${yr}y ago`;
 };
 
-// "TO alice", "TO alice, bob", "TO alice, bob +3" — keep the line to a couple
-// of names so it stays single-line next to the timestamp.
-const formatRecipients = (recipients: OutboxIndexEntry['recipients']): string => {
+// "TO Alice", "TO Alice, Bob", "TO Alice, Bob +3" — keep the line to a couple
+// of names so it stays single-line next to the timestamp. `getName` resolves
+// each login to a display name, falling back to the login itself.
+const formatRecipients = (
+  recipients: OutboxIndexEntry['recipients'],
+  getName: (login: string) => string,
+): string => {
   if (recipients.length === 0) return '';
-  const shown = recipients.slice(0, 2).map((r) => r.githubLogin);
+  const shown = recipients.slice(0, 2).map((r) => getName(r.githubLogin));
   const overflow = recipients.length - shown.length;
   return overflow > 0 ? `${shown.join(', ')} +${overflow}` : shown.join(', ');
 };
 
 export const SentRow: React.FC<SentRowProps> = ({ entry, onPress }) => {
   const { theme } = useTheme();
+  // Only the first couple of recipients are shown, so only resolve those —
+  // no need to fetch names for a long tail that renders as "+N".
+  const getName = useDisplayNames(
+    entry.recipients.slice(0, 2).map((r) => r.githubLogin),
+  );
 
   const repoLabel = `${entry.owner}/${entry.repo}`;
-  const recipientLabel = formatRecipients(entry.recipients);
+  const recipientLabel = formatRecipients(entry.recipients, getName);
 
   return (
     <Pressable

@@ -31,6 +31,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useTheme, type Theme } from '@principal-ade/industry-theme';
+import { useDisplayName, useDisplayNames } from '../../hooks/useDisplayName';
 import { IndustryMarkdownInline } from '../IndustryMarkdown';
 import type {
   TrailMarkerKind,
@@ -376,6 +377,14 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
 }) => {
   const isScreen = presentation === 'screen';
   const { theme } = useTheme();
+
+  // Resolve sign-off + note authors (logins) to display names for the cohort
+  // strips. Keys and the note-author filter stay keyed on the login; only the
+  // shown label/initials use the resolved name.
+  const getAuthorName = useDisplayNames([
+    ...(signOffs?.map((s) => s.author) ?? []),
+    ...(notedBy ?? []),
+  ]);
 
   const isInformative = !isShared || !request || request.trim().length === 0;
   const eyebrow = resolveEyebrow(theme, purpose, signOffs?.length ?? 0);
@@ -810,7 +819,7 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
                   (notesByAuthor?.[s.author]?.length ?? 0) > 0;
                 return {
                   key: s.id,
-                  name: s.author,
+                  name: getAuthorName(s.author),
                   onPress: hasNotes
                     ? () => handleAvatarPress(s.author)
                     : undefined,
@@ -823,15 +832,15 @@ export const TrailBriefCard: React.FC<TrailBriefCardProps> = ({
             <AvatarStrip
               theme={theme}
               label="NOTES BY"
-              entries={notedBy.map((name) => {
-                const hasNotes = (notesByAuthor?.[name]?.length ?? 0) > 0;
+              entries={notedBy.map((login) => {
+                const hasNotes = (notesByAuthor?.[login]?.length ?? 0) > 0;
                 return {
-                  key: name,
-                  name,
+                  key: login,
+                  name: getAuthorName(login),
                   onPress: hasNotes
-                    ? () => handleAvatarPress(name)
+                    ? () => handleAvatarPress(login)
                     : undefined,
-                  active: noteAuthorFilter === name,
+                  active: noteAuthorFilter === login,
                 };
               })}
             />
@@ -1522,6 +1531,7 @@ const NoteCard: React.FC<{
 }> = ({ theme, eyebrowColor, note, onEdit, onDelete }) => {
   const when = formatRelative(note.createdAt);
   const hasBody = note.body.trim().length > 0;
+  const authorName = useDisplayName(note.author);
   return (
     <View
       style={{
@@ -1562,7 +1572,7 @@ const NoteCard: React.FC<{
             color: theme.colors.text,
           }}
         >
-          {note.author}
+          {authorName}
         </Text>
         {when ? (
           <Text

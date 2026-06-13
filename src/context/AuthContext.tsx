@@ -203,3 +203,12 @@ export function useAuthContext(): AuthContextValue {
 
   return context;
 }
+
+/**
+ * Like {@link useAuthContext} but returns `null` instead of throwing when
+ * there's no provider. For leaf components (e.g. list rows) that want auth if
+ * it's there but must still render in provider-less contexts like Storybook.
+ */
+export function useOptionalAuthContext(): AuthContextValue | null {
+  return useContext(AuthContext) ?? null;
+}

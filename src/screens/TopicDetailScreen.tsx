@@ -31,6 +31,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { IndustryMarkdownInline } from '../components/IndustryMarkdown';
 import { LucideIcon } from '../components/LucideIcon';
 import { useAuth } from '../hooks/useAuth';
+import { useDisplayName } from '../hooks/useDisplayName';
 import {
   getTopicById,
   TopicsApiError,
@@ -68,6 +69,13 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     | { status: 'ok'; data: GetTopicResponse }
     | { status: 'error'; message: string }
   >({ status: 'loading' });
+
+  // Resolve the topic creator's display name (falls back to their login).
+  // Called up here, unconditionally, so it sits above the loading/error
+  // early-returns and never trips the rules of hooks.
+  const creatorName = useDisplayName(
+    state.status === 'ok' ? state.data.topic.createdBy.githubLogin : undefined,
+  );
 
   // Per-trail summary fetches keyed by trail id. The web page does the
   // same fan-out; topics are curated lists (small N) so a parallel set of
@@ -358,7 +366,7 @@ export const TopicDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           by{' '}
           <Text style={{ color: theme.colors.text }}>
-            @{topic.createdBy.githubLogin}
+            {creatorName}
           </Text>
         </Text>
       </View>

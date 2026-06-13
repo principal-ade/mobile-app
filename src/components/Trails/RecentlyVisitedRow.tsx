@@ -15,6 +15,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
+import { useDisplayName } from '../../hooks/useDisplayName';
 import type { TrailRecentlyVisitedEntry } from '../../services/TrailsApiService';
 
 export interface RecentlyVisitedRowProps {
@@ -47,6 +48,7 @@ export const RecentlyVisitedRow: React.FC<RecentlyVisitedRowProps> = ({
   onPress,
 }) => {
   const { theme } = useTheme();
+  const creatorName = useDisplayName(entry.createdByLogin);
   const repoLabel = `${entry.owner}/${entry.repo}`;
   const visitsLabel =
     entry.visitCount === 1 ? '1 visit' : `${entry.visitCount} visits`;
@@ -108,7 +110,7 @@ export const RecentlyVisitedRow: React.FC<RecentlyVisitedRowProps> = ({
             <>
               FROM{' '}
               <Text style={{ color: theme.colors.textSecondary }}>
-                {entry.createdByLogin}
+                {creatorName}
               </Text>
               {'   '}
             </>

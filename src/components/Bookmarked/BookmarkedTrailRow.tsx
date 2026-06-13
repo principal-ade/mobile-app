@@ -16,6 +16,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '@principal-ade/industry-theme';
+import { useDisplayName } from '../../hooks/useDisplayName';
 import type { BookmarkedTrailEntry } from '../../types/Bookmarks';
 
 export interface BookmarkedTrailRowProps {
@@ -55,7 +56,7 @@ export const BookmarkedTrailRow: React.FC<BookmarkedTrailRowProps> = ({
   ) as TextStyle['fontWeight'];
 
   const repoLabel = `${entry.owner}/${entry.repo}`;
-  const author = entry.snapshot.createdBy.githubLogin;
+  const author = useDisplayName(entry.snapshot.createdBy.githubLogin);
 
   return (
     <Pressable
