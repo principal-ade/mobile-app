@@ -257,6 +257,36 @@ as long as the recipient has repo access.
 
 **Response (204):** no body.
 
+#### `GET /api/trails/sent`
+
+Sender-side mirror of `GET /api/trails/inbox` — lists trails the
+authenticated user has sent. Backed by an outbox index
+(`trails/_outbox/{githubId}/index.json`) the send route writes alongside
+each recipient inbox. One row per trail: resends merge new recipients into
+the same row and refresh `sentAt`.
+
+**Auth:** GitHub token required. The caller's `githubId` is the lookup key.
+
+**Query params:**
+- `limit` — `1..100`, default `50`.
+- `cursor` — opaque continuation token from previous response.
+
+There is **no** read-state here (it's the sender's own list), so no
+`unreadOnly` / `since` filters and no `unreadCount`.
+
+**Response (200):**
+```ts
+{
+  entries: OutboxIndexEntry[];  // sorted by sentAt desc
+  cursor?: string;              // present when more pages remain
+}
+```
+
+`OutboxIndexEntry` mirrors `InboxIndexEntry` but swaps the single `sender`
+for a merged `recipients: { githubId; githubLogin }[]` and drops
+`readAt` / `notesSeenCount` / `notification`. Snapshot freshness is lazily
+refreshed on read exactly as the inbox does (advance → patch, deleted → drop).
+
 ### 4c. Error codes added
 
 Extends `ShareErrorCodes`:

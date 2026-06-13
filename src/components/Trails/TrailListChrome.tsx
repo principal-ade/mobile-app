@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
 import { LucideIcon } from '../LucideIcon';
 
 /**
@@ -13,12 +19,25 @@ interface ScreenHeaderProps {
   title: string;
   textColor: string;
   borderColor: string;
+  /**
+   * Optional refresh action rendered as an icon button on the trailing edge.
+   * Absolutely positioned so it doesn't nudge the centered title. Omit it
+   * (e.g. on the Recent tab) and the header stays title-only.
+   */
+  onRefresh?: () => void;
+  /** Swap the icon for a spinner while a refresh is in flight. */
+  refreshing?: boolean;
+  /** Tint for the refresh icon — usually the theme accent. */
+  actionColor?: string;
 }
 
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   textColor,
   borderColor,
+  onRefresh,
+  refreshing = false,
+  actionColor,
 }) => (
   <View
     style={[
@@ -27,6 +46,29 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     ]}
   >
     <Text style={[styles.headerTitle, { color: textColor }]}>{title}</Text>
+    {onRefresh ? (
+      <Pressable
+        onPress={onRefresh}
+        disabled={refreshing}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Refresh"
+        style={({ pressed }) => [
+          styles.headerAction,
+          { opacity: pressed || refreshing ? 0.4 : 1 },
+        ]}
+      >
+        {refreshing ? (
+          <ActivityIndicator size="small" color={actionColor ?? textColor} />
+        ) : (
+          <LucideIcon
+            name="RefreshCw"
+            size={18}
+            color={actionColor ?? textColor}
+          />
+        )}
+      </Pressable>
+    ) : null}
   </View>
 );
 
@@ -92,11 +134,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  headerAction: {
+    position: 'absolute',
+    right: 12,
+    // Match the header's vertical padding so the button stays centered on the
+    // title row regardless of icon vs spinner height.
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   content: {
     flex: 1,

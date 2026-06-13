@@ -16,8 +16,10 @@
 import { apiConfig } from '../utils/config';
 import type {
   GetInboxResponse,
+  GetSentResponse,
   InboxIndexEntry,
   MarkReadResponse,
+  OutboxIndexEntry,
   ReadAllResponse,
   SendTrailRequest,
   SendTrailResponse,
@@ -266,6 +268,40 @@ export async function deleteInboxEntry(
 }
 
 // ============================================================================
+// Sent (outbox)
+// ============================================================================
+
+export interface GetSentOptions {
+  /** 1..100, default 50. */
+  limit?: number;
+  /** Opaque continuation token from a previous response. */
+  cursor?: string;
+}
+
+/**
+ * List trails the signed-in user has sent — the sender-side mirror of
+ * {@link getInbox}. Sorted newest-first by `sentAt`; one row per trail with the
+ * merged recipient set. No unread/notification state (it's the sender's own
+ * list).
+ */
+export async function getSent(
+  githubToken: string,
+  opts: GetSentOptions = {},
+): Promise<GetSentResponse> {
+  const params = new URLSearchParams();
+  if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+  if (opts.cursor) params.set('cursor', opts.cursor);
+  const query = params.toString();
+  const url = `${API_BASE}/sent${query ? `?${query}` : ''}`;
+
+  const response = await fetch(url, { headers: authHeaders(githubToken) });
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to fetch sent trails: ${response.status}`);
+  }
+  return (await response.json()) as GetSentResponse;
+}
+
+// ============================================================================
 // Recently visited
 // ============================================================================
 
@@ -411,7 +447,7 @@ export async function deleteNote(
   }
 }
 
-// Re-export the entry type so callers can `import type { InboxIndexEntry }`
+// Re-export the entry types so callers can `import type { InboxIndexEntry }`
 // from this module without reaching into /types — matches the
 // CollectionsService pattern.
-export type { InboxIndexEntry };
+export type { InboxIndexEntry, OutboxIndexEntry };

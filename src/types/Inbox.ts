@@ -71,6 +71,34 @@ export interface InboxIndexEntry {
   repo: string;
 }
 
+/** A recipient on a sent (outbox) entry, captured at send-time. */
+export interface OutboxRecipient {
+  githubId: number;
+  githubLogin: string;
+}
+
+/**
+ * Sender-side mirror of {@link InboxIndexEntry}. One row per trail the user
+ * has sent; resends merge new recipients into the same row and refresh
+ * `sentAt`. There is no read-state here — it's the sender's own list — so no
+ * `readAt` / `notesSeenCount` / `notification`. Mirrors web-ade's
+ * `OutboxIndexEntry`. See `mobile-app/docs/TRAILS_API.md`.
+ */
+export interface OutboxIndexEntry {
+  /** Trail id — foreign key into `/api/trails/by-id/{id}`. */
+  trailId: string;
+  /** Everyone this trail has been sent to, deduped + merged across resends. */
+  recipients: OutboxRecipient[];
+  /** Sender note from the most recent send. */
+  comment?: string;
+  /** ISO 8601 — most recent send/resend time. */
+  sentAt: string;
+  /** Snapshot of the live trail entry, patched lazily by the server on read. */
+  snapshot: SharedTrailIndexEntry;
+  owner: string;
+  repo: string;
+}
+
 // ============================================================================
 // API envelopes — match the web-ade route returns exactly
 // ============================================================================
@@ -79,6 +107,12 @@ export interface GetInboxResponse {
   entries: InboxIndexEntry[];
   /** Total unread across the whole inbox — ignores filters/pagination. */
   unreadCount: number;
+  /** Opaque continuation token; present only when more pages remain. */
+  cursor?: string;
+}
+
+export interface GetSentResponse {
+  entries: OutboxIndexEntry[];
   /** Opaque continuation token; present only when more pages remain. */
   cursor?: string;
 }

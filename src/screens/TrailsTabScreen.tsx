@@ -14,6 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import { InboxRow } from '../components/Trails/InboxRow';
+import { SentRow } from '../components/Trails/SentRow';
+import { SegmentedControl } from '../components/SegmentedControl';
 import {
   EmptyContent,
   ScreenHeader,
@@ -21,7 +23,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import {
   getInbox,
-  markInboxRead,
+  getSent,
   deleteInboxEntry,
   TrailsApiError,
 } from '../services/TrailsApiService';
@@ -29,7 +31,7 @@ import {
   getSkipInboxDeleteConfirm,
   setSkipInboxDeleteConfirm,
 } from '../utils/inboxPrefs';
-import type { InboxIndexEntry } from '../types/Inbox';
+import type { InboxIndexEntry, OutboxIndexEntry } from '../types/Inbox';
 import type { TrailsStackParamList } from '../navigation/types';
 
 /**
@@ -47,12 +49,21 @@ export default function TrailsTabScreen() {
   const navigation = useNavigation<NavProp>();
   const { token, isAuthenticated, isLoading: authLoading } = useAuth();
 
+  // 0 = Received (inbox), 1 = Sent (outbox).
+  const [view, setView] = useState<0 | 1>(0);
+
   const [inboxEntries, setInboxEntries] = useState<InboxIndexEntry[]>([]);
   const [inboxLoading, setInboxLoading] = useState(false);
   const [inboxRefreshing, setInboxRefreshing] = useState(false);
   const [inboxError, setInboxError] = useState<string | null>(null);
   const [inboxLoadedOnce, setInboxLoadedOnce] = useState(false);
   const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
+
+  const [sentEntries, setSentEntries] = useState<OutboxIndexEntry[]>([]);
+  const [sentLoading, setSentLoading] = useState(false);
+  const [sentRefreshing, setSentRefreshing] = useState(false);
+  const [sentError, setSentError] = useState<string | null>(null);
+  const [sentLoadedOnce, setSentLoadedOnce] = useState(false);
 
   // Load the "don't ask again" preference once on mount.
   useEffect(() => {
@@ -90,28 +101,78 @@ export default function TrailsTabScreen() {
     }
   }, [isAuthenticated, token, inboxLoadedOnce, loadInbox]);
 
+  const loadSent = useCallback(
+    async (mode: 'initial' | 'refresh') => {
+      if (!token) return;
+      if (mode === 'initial') setSentLoading(true);
+      else setSentRefreshing(true);
+      setSentError(null);
+      try {
+        const response = await getSent(token);
+        setSentEntries(response.entries);
+      } catch (err) {
+        setSentError(
+          err instanceof TrailsApiError
+            ? err.message
+            : 'Could not load your sent trails.',
+        );
+      } finally {
+        if (mode === 'initial') setSentLoading(false);
+        else setSentRefreshing(false);
+        setSentLoadedOnce(true);
+      }
+    },
+    [token],
+  );
+
+  // Load the Sent list lazily the first time the user switches to it.
+  useEffect(() => {
+    if (view !== 1 || !isAuthenticated || !token) return;
+    if (!sentLoadedOnce) {
+      void loadSent('initial');
+    }
+  }, [view, isAuthenticated, token, sentLoadedOnce, loadSent]);
+
+  const handleSentRowPress = useCallback(
+    (entry: OutboxIndexEntry) => {
+      navigation.navigate('TrailDetail', { trailId: entry.trailId });
+    },
+    [navigation],
+  );
+
   const handleInboxRowPress = useCallback(
     (entry: InboxIndexEntry) => {
-      if (entry.readAt === null && token) {
-        const optimisticReadAt = new Date().toISOString();
+      // Optimistically clear the row's unread/new-notes state so the dot
+      // disappears the instant we navigate. The server mark-read is owned by
+      // TrailDetailScreen (so every entry point persists it, not just an inbox
+      // tap); this is purely the local mirror, and the inbox self-heals from
+      // the server on its next refresh if that write ever fails.
+      //
+      // The row prefers the server-derived `notification` block over `readAt`,
+      // so the visible dot tracks that — patch both. Fire whenever a dot is
+      // showing: an unopened trail OR an opened one with new notes.
+      const dotShowing = entry.notification?.dot ?? entry.readAt === null;
+      if (dotShowing) {
+        const optimisticReadAt = entry.readAt ?? new Date().toISOString();
+        const noteCount = entry.snapshot.noteCount ?? 0;
         setInboxEntries((prev) =>
           prev.map((e) =>
             e.trailId === entry.trailId
-              ? { ...e, readAt: optimisticReadAt }
+              ? {
+                  ...e,
+                  readAt: optimisticReadAt,
+                  notesSeenCount: noteCount,
+                  notification: e.notification
+                    ? { ...e.notification, dot: false, unread: false, newNoteCount: 0 }
+                    : e.notification,
+                }
               : e,
           ),
         );
-        markInboxRead(entry.trailId, token).catch(() => {
-          setInboxEntries((prev) =>
-            prev.map((e) =>
-              e.trailId === entry.trailId ? { ...e, readAt: null } : e,
-            ),
-          );
-        });
       }
       navigation.navigate('TrailDetail', { trailId: entry.trailId });
     },
-    [navigation, token],
+    [navigation],
   );
 
   // Optimistically drop the row, then fire the server delete; restore on
@@ -166,6 +227,8 @@ export default function TrailsTabScreen() {
     [skipDeleteConfirm, performDelete],
   );
 
+  const activeError = view === 0 ? inboxError : sentError;
+
   return (
     <GestureHandlerRootView
       style={[
@@ -177,9 +240,22 @@ export default function TrailsTabScreen() {
         title="Inbox"
         textColor={theme.colors.text}
         borderColor={theme.colors.border}
+        actionColor={theme.colors.accent}
+        refreshing={view === 0 ? inboxRefreshing : sentRefreshing}
+        onRefresh={() =>
+          view === 0 ? void loadInbox('refresh') : void loadSent('refresh')
+        }
       />
 
-      {inboxError ? (
+      <View style={styles.segmentWrap}>
+        <SegmentedControl
+          segments={['Received', 'Sent']}
+          selectedIndex={view}
+          onChange={(index) => setView(index as 0 | 1)}
+        />
+      </View>
+
+      {activeError ? (
         <View style={styles.errorBanner}>
           <Text
             style={[
@@ -187,45 +263,78 @@ export default function TrailsTabScreen() {
               { color: theme.colors.error ?? '#ef4444' },
             ]}
           >
-            {inboxError}
+            {activeError}
           </Text>
         </View>
       ) : null}
 
-      {authLoading || (inboxLoading && !inboxLoadedOnce) ? (
+      {view === 0 ? (
+        authLoading || (inboxLoading && !inboxLoadedOnce) ? (
+          <View style={styles.spinnerWrap}>
+            <ActivityIndicator color={theme.colors.accent} />
+          </View>
+        ) : inboxEntries.length === 0 ? (
+          <EmptyContent
+            iconColor={theme.colors.textSecondary}
+            textColor={theme.colors.text}
+            subtextColor={theme.colors.textSecondary}
+            title="All caught up"
+            subtitle="No trails waiting on you right now. When someone shares one, it'll land here."
+          />
+        ) : (
+          <FlatList
+            data={inboxEntries}
+            keyExtractor={(item) => item.trailId}
+            renderItem={({ item }) => (
+              <InboxRow
+                entry={item}
+                onPress={handleInboxRowPress}
+                onRequestDelete={handleRequestDelete}
+              />
+            )}
+            // Top hairline lives on the content (not the fixed list frame) so
+            // it travels with the rows on pull-to-refresh — otherwise the first
+            // row's borderless top is exposed once the content leaves the header.
+            contentContainerStyle={{
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: theme.colors.border,
+            }}
+            refreshControl={
+              <RefreshControl
+                refreshing={inboxRefreshing}
+                onRefresh={() => void loadInbox('refresh')}
+                tintColor={theme.colors.accent}
+              />
+            }
+          />
+        )
+      ) : authLoading || (sentLoading && !sentLoadedOnce) ? (
         <View style={styles.spinnerWrap}>
           <ActivityIndicator color={theme.colors.accent} />
         </View>
-      ) : inboxEntries.length === 0 ? (
+      ) : sentEntries.length === 0 ? (
         <EmptyContent
           iconColor={theme.colors.textSecondary}
           textColor={theme.colors.text}
           subtextColor={theme.colors.textSecondary}
-          title="All caught up"
-          subtitle="No trails waiting on you right now. When someone shares one, it'll land here."
+          title="Nothing sent yet"
+          subtitle="Trails you share with others will show up here, with everyone you've sent them to."
         />
       ) : (
         <FlatList
-          data={inboxEntries}
+          data={sentEntries}
           keyExtractor={(item) => item.trailId}
           renderItem={({ item }) => (
-            <InboxRow
-              entry={item}
-              onPress={handleInboxRowPress}
-              onRequestDelete={handleRequestDelete}
-            />
+            <SentRow entry={item} onPress={handleSentRowPress} />
           )}
-          // Top hairline lives on the content (not the fixed list frame) so
-          // it travels with the rows on pull-to-refresh — otherwise the first
-          // row's borderless top is exposed once the content leaves the header.
           contentContainerStyle={{
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: theme.colors.border,
           }}
           refreshControl={
             <RefreshControl
-              refreshing={inboxRefreshing}
-              onRefresh={() => void loadInbox('refresh')}
+              refreshing={sentRefreshing}
+              onRefresh={() => void loadSent('refresh')}
               tintColor={theme.colors.accent}
             />
           }
@@ -238,6 +347,10 @@ export default function TrailsTabScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  segmentWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   spinnerWrap: {
     flex: 1,

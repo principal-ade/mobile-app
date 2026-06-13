@@ -32,6 +32,7 @@ import {
   createNote,
   deleteNote,
   getTrailById,
+  markInboxRead,
   recordTrailVisit,
   TrailsApiError,
   updateNote,
@@ -78,6 +79,14 @@ export const TrailDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             // Non-critical — silently ignore so a flaky visits write
             // never blocks the brief from rendering.
           });
+          // Opening a trail marks its inbox entry read (and advances the
+          // notes watermark) for every entry point, not just an inbox tap —
+          // so reading a trail or its new notes from Recently Visited, a
+          // pasted link, etc. clears the dot too. 404s for trails that
+          // aren't in the user's inbox (authored / never-sent); swallow it
+          // along with any transient failure — the inbox self-heals on its
+          // next refresh.
+          void markInboxRead(trailId, token).catch(() => {});
         }
       })
       .catch((err: unknown) => {
