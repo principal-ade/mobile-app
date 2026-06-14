@@ -648,20 +648,34 @@ export function fileCityLabel(mark: FileCityMark): string {
     : `A top-down grid of file squares spelling ${mark}`;
 }
 
-/**
- * A compact, iconic "file city" mark — a top-down grid of file squares
- * where the primary-colored files spell out the brand mark (P / AI / PAI)
- * so the letters emerge from the muted city.
- */
-export function FileCityLogo(props: FileCityLogoProps) {
-  const { theme: appTheme } = useTheme();
-  const { width = 150, height = 150 } = props;
-  const uid = useId().replace(/:/g, '');
-  // Fall back to the app theme for any color not passed explicitly, the
-  // way the existing Logo does — while still allowing a raw `theme` prop.
-  const { cells, extras, bgColor, baseColor, rounded, opacity, mark } =
-    computeFileCityLayout({ theme: appTheme, ...props });
+export interface FileCityPanelProps {
+  width: number;
+  height: number;
+  bgColor: string;
+  baseColor: string;
+  rounded: boolean;
+  opacity: number;
+  label: string;
+  children?: React.ReactNode;
+}
 
+/**
+ * The rounded panel chrome shared by the static and animated marks: the
+ * `Svg` canvas, the clipped background, the grid contents, and the edge
+ * hairline. Both {@link FileCityLogo} and `FileCityLogoAnimated` render
+ * their cells as `children` of this panel so the framing stays identical.
+ */
+export function FileCityPanel({
+  width,
+  height,
+  bgColor,
+  baseColor,
+  rounded,
+  opacity,
+  label,
+  children,
+}: FileCityPanelProps) {
+  const uid = useId().replace(/:/g, '');
   const clipId = `fc-panel-${uid}`;
   const panelR = rounded ? PANEL_RADIUS : 0;
 
@@ -672,7 +686,7 @@ export function FileCityLogo(props: FileCityLogoProps) {
       viewBox={`0 0 ${VIEW} ${VIEW}`}
       opacity={opacity}
       accessibilityRole="image"
-      accessibilityLabel={fileCityLabel(mark)}
+      accessibilityLabel={label}
     >
       <Defs>
         <ClipPath id={clipId}>
@@ -681,20 +695,7 @@ export function FileCityLogo(props: FileCityLogoProps) {
       </Defs>
       <G clipPath={`url(#${clipId})`}>
         <Rect x={0} y={0} width={VIEW} height={VIEW} fill={bgColor} rx={panelR} />
-        {cells.map((cell) => (
-          <Rect
-            key={cell.key}
-            x={cell.x}
-            y={cell.y}
-            width={cell.sq}
-            height={cell.sq}
-            rx={cell.rx}
-            fill={cell.fill}
-            stroke={cell.stroke}
-            strokeWidth={cell.strokeWidth}
-          />
-        ))}
-        {extras}
+        {children}
       </G>
       {/* Hairline tracing the panel edge so the icon stays defined against
           both light and dark backgrounds. Inset by half its width so the
@@ -710,6 +711,47 @@ export function FileCityLogo(props: FileCityLogoProps) {
         strokeWidth={HAIRLINE}
       />
     </Svg>
+  );
+}
+
+/**
+ * A compact, iconic "file city" mark — a top-down grid of file squares
+ * where the primary-colored files spell out the brand mark (P / AI / PAI)
+ * so the letters emerge from the muted city.
+ */
+export function FileCityLogo(props: FileCityLogoProps) {
+  const { theme: appTheme } = useTheme();
+  const { width = 150, height = 150 } = props;
+  // Fall back to the app theme for any color not passed explicitly, the
+  // way the existing Logo does — while still allowing a raw `theme` prop.
+  const { cells, extras, bgColor, baseColor, rounded, opacity, mark } =
+    computeFileCityLayout({ theme: appTheme, ...props });
+
+  return (
+    <FileCityPanel
+      width={width}
+      height={height}
+      bgColor={bgColor}
+      baseColor={baseColor}
+      rounded={rounded}
+      opacity={opacity}
+      label={fileCityLabel(mark)}
+    >
+      {cells.map((cell) => (
+        <Rect
+          key={cell.key}
+          x={cell.x}
+          y={cell.y}
+          width={cell.sq}
+          height={cell.sq}
+          rx={cell.rx}
+          fill={cell.fill}
+          stroke={cell.stroke}
+          strokeWidth={cell.strokeWidth}
+        />
+      ))}
+      {extras}
+    </FileCityPanel>
   );
 }
 

@@ -73,7 +73,6 @@ export function WelcomeScreen() {
           width={120}
           height={120}
           mark="P"
-          aiCard
           primary={theme.colors.primary}
           accent={theme.colors.accent}
         />

@@ -58,6 +58,12 @@ export interface FileCityCanvasProps {
 
   // Isolation mode (dim or hide non-highlighted buildings)
   isolationMode?: IsolationMode; // Default: 'none'
+
+  // Ordered, numbered marker trail drawn over the city: a connector line
+  // threading the listed building paths in order, with a numbered badge at
+  // each stop. Unknown paths are skipped. Absent/empty → nothing drawn.
+  markerTrail?: string[];
+  markerTrailColor?: string; // Connector + badge color. Default: '#22d3ee'
 }
 
 export interface TransformState {

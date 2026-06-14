@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Text, TouchableOpacity } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -752,7 +752,22 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="LearnTrails"
               component={LearnTrailsScreen}
-              options={{ title: 'Learn about trails', headerBackTitle: 'Back' }}
+              options={({ navigation }) => ({
+                title: 'Trails Tutorial',
+                headerTitleStyle: { fontWeight: 'bold', color: theme.colors.primary },
+                headerLeft: () => null,
+                headerRight: () => (
+                  <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginRight: 24 }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
+                      Exit
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              })}
             />
             <RootStack.Screen
               name="SampleTrail"

@@ -16,6 +16,7 @@ import {
   Skia,
   Paint,
   ImageSVG,
+  Path,
 } from '@shopify/react-native-skia';
 import { getLucideIconSvg } from './lucideIcons';
 import {
@@ -107,6 +108,63 @@ function getFileTypeIcon(
   return null;
 }
 
+// Seven-segment digit shapes — which segments (a–g) are lit per digit.
+//   aaa
+//  f   b
+//   ggg
+//  e   c
+//   ddd
+const SEVEN_SEG: Record<string, string[]> = {
+  '0': ['a', 'b', 'c', 'd', 'e', 'f'],
+  '1': ['b', 'c'],
+  '2': ['a', 'b', 'g', 'e', 'd'],
+  '3': ['a', 'b', 'g', 'c', 'd'],
+  '4': ['f', 'g', 'b', 'c'],
+  '5': ['a', 'f', 'g', 'c', 'd'],
+  '6': ['a', 'f', 'g', 'e', 'c', 'd'],
+  '7': ['a', 'b', 'c'],
+  '8': ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+  '9': ['a', 'b', 'c', 'd', 'f', 'g'],
+};
+
+// Append one seven-segment digit to `path` in the box (lx,ty)–(lx+dw,ty+dh).
+function appendSevenSegDigit(
+  path: ReturnType<typeof Skia.Path.Make>,
+  digit: string,
+  lx: number,
+  ty: number,
+  dw: number,
+  dh: number,
+) {
+  const x0 = lx;
+  const x1 = lx + dw;
+  const y0 = ty;
+  const ym = ty + dh / 2;
+  const y1 = ty + dh;
+  const seg: Record<string, [number, number, number, number]> = {
+    a: [x0, y0, x1, y0],
+    b: [x1, y0, x1, ym],
+    c: [x1, ym, x1, y1],
+    d: [x0, y1, x1, y1],
+    e: [x0, ym, x0, y1],
+    f: [x0, y0, x0, ym],
+    g: [x0, ym, x1, ym],
+  };
+  // "1" lights only the right-edge segments, so it reads off-center; draw it
+  // as a single bar down the middle of the box instead.
+  if (digit === '1') {
+    const cx = lx + dw / 2;
+    path.moveTo(cx, y0);
+    path.lineTo(cx, y1);
+    return;
+  }
+  (SEVEN_SEG[digit] ?? []).forEach((s) => {
+    const [ax, ay, bx, by] = seg[s];
+    path.moveTo(ax, ay);
+    path.lineTo(bx, by);
+  });
+}
+
 export function FileCityCanvas({
   cityData,
   highlightLayers = [],
@@ -131,6 +189,8 @@ export function FileCityCanvas({
   onZoomComplete,
   zoomPadding = 0.8,
   isolationMode = 'none',
+  markerTrail,
+  markerTrailColor = '#22d3ee',
 }: FileCityCanvasProps) {
   const [canvasSize, setCanvasSize] = useState({ width: 300, height: 300 });
 
@@ -792,6 +852,66 @@ export function FileCityCanvas({
     return { fills, icons, highlightBorders };
   }, [visibleBuildings]);
 
+  // Ordered numbered marker trail: resolve each path to its building center
+  // (in base coords — the pan/zoom transform Group applies on top), then build
+  // a Skia connector line threading the stops. Unknown paths are skipped.
+  const markerTrailData = useMemo(() => {
+    if (!markerTrail || markerTrail.length === 0) return null;
+
+    const byPath = new Map(cityData.buildings.map((b) => [b.path, b]));
+    const points: Array<{ x: number; y: number; n: number }> = [];
+    markerTrail.forEach((path) => {
+      // Exact match, then a suffix fallback so a different root prefix still resolves.
+      const building =
+        byPath.get(path) ??
+        cityData.buildings.find((b) => b.path.endsWith('/' + path) || b.path.endsWith(path));
+      if (!building) return;
+      const center = worldToCanvasBase(building.position.x, building.position.z);
+      points.push({ x: center.x, y: center.y, n: points.length + 1 });
+    });
+
+    if (points.length === 0) return null;
+
+    let linePath: ReturnType<typeof Skia.Path.Make> | null = null;
+    if (points.length > 1) {
+      linePath = Skia.Path.Make();
+      linePath.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        linePath.lineTo(points[i].x, points[i].y);
+      }
+    }
+
+    // Badge as a rounded square per stop, built into a single Path. We draw
+    // badges with Path because, on this Skia build, Path is what reliably
+    // paints in this overlay pass (Circle/RoundedRect/Text do not); fill =
+    // the pin, stroke = the ring.
+    const badgeR = 9;
+    const badgePath = Skia.Path.Make();
+    points.forEach((p) => {
+      const rect = Skia.XYWHRect(p.x - badgeR, p.y - badgeR, badgeR * 2, badgeR * 2);
+      badgePath.addRRect(Skia.RRectXY(rect, badgeR * 0.45, badgeR * 0.45));
+    });
+
+    // Badge numbers, drawn as seven-segment vector digits (Text won't paint
+    // in this pass). One combined Path for all digits of all badges.
+    const digitsPath = Skia.Path.Make();
+    const dw = 5;
+    const dh = 10;
+    const gap = 2;
+    points.forEach((p) => {
+      const str = String(p.n);
+      const totalW = str.length * dw + (str.length - 1) * gap;
+      let lx = p.x - totalW / 2;
+      const ty = p.y - dh / 2;
+      for (const ch of str) {
+        appendSevenSegDigit(digitsPath, ch, lx, ty, dw, dh);
+        lx += dw + gap;
+      }
+    });
+
+    return { points, linePath, badgePath, badgeR, digitsPath };
+  }, [markerTrail, cityData.buildings, worldToCanvasBase]);
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <GestureDetector gesture={composedGesture}>
@@ -958,6 +1078,54 @@ export function FileCityCanvas({
                 <Paint color={Skia.Color(b.highlightColor!)} style="stroke" strokeWidth={b.scaledBorderWidth} />
               </RoundedRect>
             ))}
+
+            {/* Pass 4: Numbered marker trail (top-most) — connector line + badges */}
+            {markerTrailData?.linePath && (
+              <>
+                {/* Dark casing so the line reads over same-color trail buildings. */}
+                <Path
+                  path={markerTrailData.linePath}
+                  style="stroke"
+                  strokeWidth={5.5}
+                  strokeCap="round"
+                  strokeJoin="round"
+                  color={Skia.Color('#0b1020')}
+                  opacity={0.55}
+                />
+                <Path
+                  path={markerTrailData.linePath}
+                  style="stroke"
+                  strokeWidth={3}
+                  strokeCap="round"
+                  strokeJoin="round"
+                  color={Skia.Color(markerTrailColor)}
+                />
+              </>
+            )}
+            {/* Badge (white fill) + dark border — a border that contrasts the
+                trail buildings instead of sharing their color. */}
+            {markerTrailData?.badgePath && (
+              <>
+                <Path path={markerTrailData.badgePath} style="fill" color={Skia.Color('#ffffff')} />
+                <Path
+                  path={markerTrailData.badgePath}
+                  style="stroke"
+                  strokeWidth={2}
+                  color={Skia.Color('#0b1020')}
+                />
+              </>
+            )}
+            {/* Badge numbers on top — seven-segment vector digits. */}
+            {markerTrailData?.digitsPath && (
+              <Path
+                path={markerTrailData.digitsPath}
+                style="stroke"
+                strokeWidth={1.8}
+                strokeCap="round"
+                strokeJoin="round"
+                color={Skia.Color('#0b1020')}
+              />
+            )}
             </Group>
           </Canvas>
         </View>
