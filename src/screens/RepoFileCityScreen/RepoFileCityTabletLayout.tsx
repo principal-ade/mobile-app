@@ -447,6 +447,23 @@ export function RepoFileCityTabletLayout() {
                     <TouchableOpacity
                       style={[
                         styles.actionButton,
+                        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                      ]}
+                      onPress={() =>
+                        navigation.navigate('AskTrail', {
+                          owner,
+                          repo: name,
+                          fullName: route.params.fullName,
+                        })
+                      }
+                    >
+                      <LucideIcon name="Sparkles" size={16} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                  {isAuthenticated && (
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
                         { backgroundColor: isStarred ? theme.colors.surface : 'transparent', borderColor: theme.colors.border },
                       ]}
                       onPress={handleToggleStar}

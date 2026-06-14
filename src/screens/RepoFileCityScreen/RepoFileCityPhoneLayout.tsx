@@ -895,6 +895,21 @@ export function RepoFileCityPhoneLayout() {
                     style={[
                       styles.headerIconButton,
                       { backgroundColor: theme.colors.surface },
+                    ]}
+                    onPress={() =>
+                      navigation.navigate('AskTrail', {
+                        owner,
+                        repo: name,
+                        fullName,
+                      })
+                    }
+                  >
+                    <LucideIcon name="Sparkles" size={16} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.headerIconButton,
+                      { backgroundColor: theme.colors.surface },
                       isStarred && { backgroundColor: 'rgba(255, 184, 0, 0.2)' },
                     ]}
                     onPress={handleToggleStar}

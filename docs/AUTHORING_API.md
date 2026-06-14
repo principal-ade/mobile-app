@@ -123,9 +123,11 @@ Response — **202 Accepted** (the run is queued, not finished):
   "createdAt": "2026-06-12T17:00:00.000Z"
 }
 ```
-Errors: `401 NOT_AUTHENTICATED`, `403 NO_REPO_ACCESS`, `400` (missing
-`question`/`owner`/`repo` — propose code `INVALID_REQUEST`), `429` (per-user
-concurrency / rate cap — propose `RUN_LIMIT`).
+Errors **[as-built]**: `401 NOT_AUTHENTICATED`; `403 NO_REPO_ACCESS`; `400
+INVALID_REQUEST` (missing/blank `question`, or invalid JSON body); `400
+INVALID_OWNER_REPO` (malformed `owner`/`repo`). `429 RUN_LIMIT` (per-user
+concurrency / rate cap) is **not implemented yet** — there is currently no cap;
+don't rely on it. Error bodies are `{ error, code }`.
 
 ### `GET /api/authoring/runs/{runId}` — poll one run
 
@@ -149,9 +151,11 @@ runs the caller didn't create. Response — **200**:
 Terminal states:
 - `succeeded` → `trailId` + `trailUrl` populated; the trail is also in the
   user's inbox. Navigate to `TrailDetailScreen` via `trailId`.
-- `failed` → `error.code` is one of (proposed): `REPO_RESOLVE_FAILED`,
+- `failed` → `error.code` is one of: `REPO_RESOLVE_FAILED`,
   `AGENT_NO_EMIT` (agent never produced a payload), `VALIDATION_FAILED` (markers
-  didn't resolve), `PUBLISH_FAILED`, `TIMEOUT`.
+  didn't resolve), `PUBLISH_FAILED`, `TIMEOUT`, `UNAVAILABLE` (the execution
+  substrate was unreachable/errored — an infra failure; retry later rather than
+  rephrasing).
 
 ### `GET /api/authoring/runs?status=&limit=&cursor=` — list caller's runs (optional, defer)
 
@@ -172,7 +176,8 @@ export type AuthoringErrorCode =
   | 'AGENT_NO_EMIT'
   | 'VALIDATION_FAILED'
   | 'PUBLISH_FAILED'
-  | 'TIMEOUT';
+  | 'TIMEOUT'
+  | 'UNAVAILABLE';   // infra (Freestyle) unreachable — retry later
 
 export interface AuthoringRunRequest {
   owner: string;
@@ -243,7 +248,9 @@ Pick by surface; they're complementary, not exclusive:
    small hook:
    ```ts
    // useAuthoringRun(runId): poll every 3s, stop on terminal state, give up
-   // after ~3 min with a "still working — we'll put it in your inbox" message.
+   // after ~5 min with a "still working — we'll put it in your inbox" message.
+   // (~5 min matches observed run times of ~2–4 min: VM boot + clone-with-retry
+   // + agent exploration.)
    ```
    Recommended cadence: 3s steady (authoring is tens of seconds, not sub-second);
    no need for tighter. Stop immediately on `succeeded`/`failed`.
@@ -290,10 +297,13 @@ idle ──submit──▶ creating ──202──▶ running ──poll: succe
 
 ---
 
-## 8. Build-now strategy (before the route exists)
+## 8. Mock service (optional — the route is now live)
 
-The server route is Stage 4; don't block on it. Develop the whole client against
-a **mock service** that honors this contract:
+**[as-built]** The real route shipped (Stage 4, `e55e6de`), so you can code
+straight against the live `/api/authoring/*` endpoints on a running web-ade
+(`http://localhost:3000` in dev). Keep this mock only for **offline UI work**
+(designing the progress/error states without a server). It honors the same
+contract: a run that walks `queued → running → succeeded` on a timer.
 
 ```ts
 // AuthoringApiService.mock.ts — swap in via a config flag
@@ -318,13 +328,18 @@ navigation — can be finished and reviewed while the server side is built.
 
 ---
 
-## 9. Open questions to settle with web-ade
+## 9. Open questions — **[as-built] status**
 
-- **Run ID delivery vs. trail-in-inbox:** is the run-status endpoint required for
-  v1, or is inbox-only delivery enough (submit → "we'll notify you")? Leaning:
-  ship inbox-only first, add polling/progress as a fast-follow.
-- **Run retention / TTL** — how long is `GET /runs/{id}` valid after completion?
-- **Concurrency / rate cap** per user (`429 RUN_LIMIT` shape).
-- **Repo picker** — does mobile send `owner`/`repo` from an existing repo screen,
-  or is there a search step first? (Reuse `GitHubSearchService` if so.)
-- **Default `ref`** — server resolves the default branch when omitted; confirm.
+- **Run ID delivery vs. trail-in-inbox:** ✅ **both shipped.** `GET /runs/{id}`
+  polling AND inbox self-delivery on success both work — use polling for the
+  in-session progress UI, inbox for the durable come-back-later path.
+- **Default `ref`:** ✅ **confirmed** — the server resolves the repo's default
+  branch (HEAD) when `ref` is omitted.
+- **Run retention / TTL** — ⚠️ **still open.** Run records persist in S3 with no
+  TTL/reaper yet; a run can also orphan in `running` if the server restarts
+  mid-authoring. Treat a run stuck in `running` past ~3 min as "check the inbox."
+- **Concurrency / rate cap** — ⚠️ **not implemented.** No `429 RUN_LIMIT` yet;
+  nothing stops a user from starting many runs. Don't depend on a cap; the UI
+  should avoid spamming `POST /runs`.
+- **Repo picker** — open (mobile UX): send `owner`/`repo` from an existing repo
+  screen, or add a search step first (reuse `GitHubSearchService`).

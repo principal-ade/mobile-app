@@ -1,5 +1,70 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
+// Params for the hosted trail-authoring "ask a question" screen. Shared by
+// every stack that can reach a RepoFileCity screen (the entry point lives
+// there). `owner`/`repo` are prefilled from the repo in context.
+export type AskTrailParams = {
+  owner: string;
+  repo: string;
+  /** Optional branch; defaults to the repo's default branch server-side. */
+  ref?: string;
+  /** `owner/repo` for display. */
+  fullName: string;
+};
+
+// Stack params for the Ask tab — the central "ask a question → get a trail"
+// surface. `AskHome` opens with no params (repo picker first); the same screen
+// is also reachable as `AskTrail` from a repo screen with the repo prefilled.
+export type AskStackParamList = {
+  AskHome: AskTrailParams | undefined;
+  TrailDetail: {
+    trailId: string;
+  };
+  RepoFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
+  RepoReadme: {
+    owner: string;
+    name: string;
+    fullName: string;
+  };
+  TourFileCity: {
+    owner: string;
+    name: string;
+    fullName: string;
+    forkOwner: string;
+    forkRepo: string;
+    tourPath: string;
+  };
+  UserProfile: {
+    username: string;
+    isOrganization?: boolean;
+    isBot?: boolean;
+  };
+  Organization: {
+    orgLogin: string;
+  };
+  CommitDetail: {
+    commit: {
+      repoOwner: string;
+      repoName: string;
+      sha: string;
+      message: string;
+      author: string;
+      authorLogin: string | null;
+      authorEmail: string;
+      authorAvatarUrl: string | null;
+      date: string;
+      additions?: number;
+      deletions?: number;
+      filesChanged?: number;
+    };
+    fullName: string;
+  };
+};
+
 // Stack params for Trails tab
 export type TrailsStackParamList = {
   TrailsHome: undefined;
@@ -7,6 +72,7 @@ export type TrailsStackParamList = {
     /** UUID resolved from the inbox / recently-visited list. */
     trailId: string;
   };
+  AskTrail: AskTrailParams;
   RepoFileCity: {
     owner: string;
     name: string;
@@ -60,6 +126,7 @@ export type RecentStackParamList = {
     /** UUID resolved from the recently-visited list. */
     trailId: string;
   };
+  AskTrail: AskTrailParams;
   RepoFileCity: {
     owner: string;
     name: string;
@@ -108,6 +175,7 @@ export type RecentStackParamList = {
 // Stack params for Feed tab
 export type FeedStackParamList = {
   FeedHome: undefined;
+  AskTrail: AskTrailParams;
   SwipeFeed: undefined;
   CardDetail: {
     summary: {
@@ -187,6 +255,7 @@ export type FeedStackParamList = {
 // Stack params for Watch tab
 export type WatchStackParamList = {
   WatchHome: undefined;
+  AskTrail: AskTrailParams;
   UserActivity: {
     username: string;
     avatarUrl?: string;
@@ -247,6 +316,7 @@ export type PasteStackParamList = {
     /** UUID extracted from a /trail/<id> clipboard URL. */
     trailId: string;
   };
+  AskTrail: AskTrailParams;
   TopicDetail: {
     /** UUID extracted from a /topic/<id> clipboard URL. */
     topicId: string;
@@ -303,6 +373,7 @@ export type BookmarksStackParamList = {
     /** UUID from the bookmarked-trails list. */
     trailId: string;
   };
+  AskTrail: AskTrailParams;
   TopicDetail: {
     /** UUID from the bookmarked-topics list. */
     topicId: string;
@@ -377,6 +448,7 @@ export type MainTabParamList = {
   Trails: NavigatorScreenParams<TrailsStackParamList>;
   Recent: NavigatorScreenParams<RecentStackParamList>;
   Watch: NavigatorScreenParams<WatchStackParamList>;
+  Ask: NavigatorScreenParams<AskStackParamList>;
   Paste: NavigatorScreenParams<PasteStackParamList>;
   Bookmarks: NavigatorScreenParams<BookmarksStackParamList>;
   About: NavigatorScreenParams<AboutStackParamList>;

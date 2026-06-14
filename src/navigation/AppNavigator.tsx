@@ -11,6 +11,7 @@ import {
   TrailsStackParamList,
   RecentStackParamList,
   WatchStackParamList,
+  AskStackParamList,
   PasteStackParamList,
   BookmarksStackParamList,
   AboutStackParamList,
@@ -31,6 +32,7 @@ import CommitDetailScreen from '../screens/CommitDetailScreen';
 import { PasteTabScreen } from '../screens/PasteTabScreen';
 import { SavedCardsScreen } from '../screens/SavedCardsScreen';
 import { RepoFileCityScreen } from '../screens/RepoFileCityScreen';
+import { AskTrailScreen } from '../screens/AskTrailScreen';
 import { TrailDetailScreen } from '../screens/TrailDetailScreen';
 import { TopicDetailScreen } from '../screens/TopicDetailScreen';
 import RepoReadmeScreen from '../screens/RepoReadmeScreen';
@@ -132,6 +134,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const TrailsStack = createStackNavigator<TrailsStackParamList>();
 const RecentStack = createStackNavigator<RecentStackParamList>();
 const WatchStack = createStackNavigator<WatchStackParamList>();
+const AskStack = createStackNavigator<AskStackParamList>();
 const PasteStack = createStackNavigator<PasteStackParamList>();
 const BookmarksStack = createStackNavigator<BookmarksStackParamList>();
 const AboutStack = createStackNavigator<AboutStackParamList>();
@@ -176,6 +179,11 @@ function TrailsStackNavigator() {
       <TrailsStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <TrailsStack.Screen
+        name="AskTrail"
+        component={AskTrailScreen}
         options={{ headerShown: false }}
       />
       <TrailsStack.Screen
@@ -237,6 +245,11 @@ function RecentStackNavigator() {
       <RecentStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <RecentStack.Screen
+        name="AskTrail"
+        component={AskTrailScreen}
         options={{ headerShown: false }}
       />
       <RecentStack.Screen
@@ -302,6 +315,11 @@ function WatchStackNavigator() {
         options={{ headerShown: false }}
       />
       <WatchStack.Screen
+        name="AskTrail"
+        component={AskTrailScreen}
+        options={{ headerShown: false }}
+      />
+      <WatchStack.Screen
         name="RepoReadme"
         component={RepoReadmeScreen}
         options={{ headerShown: false }}
@@ -327,6 +345,67 @@ function WatchStackNavigator() {
         options={{ headerShown: false }}
       />
     </WatchStack.Navigator>
+  );
+}
+
+// Ask Stack Navigator — the central "ask a question → get a trail" tab.
+function AskStackNavigator() {
+  const { theme } = useTheme();
+
+  return (
+    <AskStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.background,
+        },
+        headerTintColor: theme.colors.text,
+        headerBackTitle: 'Back',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <AskStack.Screen
+        name="AskHome"
+        component={AskTrailScreen}
+        options={{ headerShown: false }}
+      />
+      <AskStack.Screen
+        name="TrailDetail"
+        component={TrailDetailScreen}
+        options={{ title: 'Trail' }}
+      />
+      <AskStack.Screen
+        name="RepoFileCity"
+        component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <AskStack.Screen
+        name="RepoReadme"
+        component={RepoReadmeScreen}
+        options={{ headerShown: false }}
+      />
+      <AskStack.Screen
+        name="TourFileCity"
+        component={TourFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <AskStack.Screen
+        name="UserProfile"
+        component={UserProfileScreenContainer}
+        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
+      />
+      <AskStack.Screen
+        name="Organization"
+        component={OrganizationScreenContainer}
+        options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
+      />
+      <AskStack.Screen
+        name="CommitDetail"
+        component={CommitDetailScreen}
+        options={{ headerShown: false }}
+      />
+    </AskStack.Navigator>
   );
 }
 
@@ -365,6 +444,11 @@ function PasteStackNavigator() {
       <PasteStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <PasteStack.Screen
+        name="AskTrail"
+        component={AskTrailScreen}
         options={{ headerShown: false }}
       />
       <PasteStack.Screen
@@ -431,6 +515,11 @@ function BookmarksStackNavigator() {
       <BookmarksStack.Screen
         name="RepoFileCity"
         component={RepoFileCityScreen}
+        options={{ headerShown: false }}
+      />
+      <BookmarksStack.Screen
+        name="AskTrail"
+        component={AskTrailScreen}
         options={{ headerShown: false }}
       />
       <BookmarksStack.Screen
@@ -574,6 +663,11 @@ function MainTabs() {
         name="Paste"
         component={PasteStackNavigator}
         options={{
+          // Hidden from the tab bar — Ask now owns the middle slot. Paste stays
+          // registered so deep links / clipboard navigation still reach it; a
+          // visible entry point is a planned follow-up.
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
           tabBarLabel: 'Paste',
           tabBarIcon: ({ color }) => <LucideIcon name="ClipboardPaste" size={24} color={color} />,
         }}
@@ -633,6 +727,14 @@ function MainTabs() {
             }
           },
         })}
+      />
+      <Tab.Screen
+        name="Ask"
+        component={AskStackNavigator}
+        options={{
+          tabBarLabel: 'Ask',
+          tabBarIcon: ({ color }) => <LucideIcon name="Sparkles" size={24} color={color} />,
+        }}
       />
       <Tab.Screen
         name="Recent"
