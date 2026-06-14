@@ -17,7 +17,11 @@
  */
 
 import { apiConfig } from '../utils/config';
-import type { AuthoringRun, AuthoringRunRequest } from '../types/Authoring';
+import type {
+  AuthoringReposResponse,
+  AuthoringRun,
+  AuthoringRunRequest,
+} from '../types/Authoring';
 
 const API_BASE = `${apiConfig.baseUrl}/authoring`;
 
@@ -92,6 +96,23 @@ export async function startAuthoringRun(
     await throwFromResponse(response, `Failed to start run: ${response.status}`);
   }
   return (await response.json()) as AuthoringRun;
+}
+
+/**
+ * Repos the picker should surface: the curated (verified-good) set, the repos
+ * known to fail import (to flag in search + warn before a repeat attempt), and
+ * a server-controlled notice. Auth-gated like the run routes.
+ */
+export async function getAuthoringRepos(
+  githubToken: string,
+): Promise<AuthoringReposResponse> {
+  const response = await fetch(`${API_BASE}/repos`, {
+    headers: authHeaders(githubToken),
+  });
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to fetch repos: ${response.status}`);
+  }
+  return (await response.json()) as AuthoringReposResponse;
 }
 
 /**

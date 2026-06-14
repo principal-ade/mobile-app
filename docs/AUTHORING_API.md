@@ -164,6 +164,47 @@ For an "in progress / recent asks" surface. Mirrors the inbox listing
 already shows *completed* trails; this only adds visibility into in-flight/failed
 runs. Build it when the UX needs a history list.
 
+### `GET /api/authoring/repos` — curated + unsupported repo lists
+
+Background: Freestyle's server-side import currently **fails for some repos**
+(e.g. `anomalyco/opencode`) — not our code, not size alone, not the token. Until
+that's fixed, the picker offers a verified set and flags repos known to fail.
+
+Auth-gated like the run routes (`401 NOT_AUTHENTICATED` otherwise). Response:
+
+```jsonc
+{
+  "curated": [
+    { "owner": "expressjs", "repo": "express", "defaultBranch": "master",
+      "description": "Minimal, fast Node.js web framework.", "sizeKb": 9789,
+      "verifiedAt": "2026-06-14" }
+  ],
+  "unsupported": [
+    { "owner": "anomalyco", "repo": "opencode",
+      "firstFailedAt": "…", "lastFailedAt": "…", "failCount": 2,
+      "lastError": { "code": "UNAVAILABLE", "message": "…" } }
+  ],
+  "notice": "Some repositories currently can't be imported…"
+}
+```
+
+- `curated` — static, server-maintained; surface as the picker's suggested picks.
+- `unsupported` — global, most-recently-failed first. Server records a repo
+  here only on a *deliberate* substrate `UNAVAILABLE` (bad import/clone/VM) —
+  not on transient transport blips (`fetch failed`), private repos, or curated
+  repos, to avoid false positives.
+- `notice` — server copy to show when a user picks an unsupported repo.
+
+**Picker behavior (implemented in `AskTrailScreen` → `RepoPickerStep`):**
+1. Fetch on mount; render `curated` under a "Verified for authoring" heading.
+   Refetched each time the picker mounts, so a repo that just failed shows its
+   flag on the next visit ("only fail once").
+2. Free GitHub search stays open; search/suggestion rows whose `owner/repo` is
+   in `unsupported` show an inline "Import currently failing — investigating"
+   flag.
+3. **Warn but allow:** picking a flagged repo shows `notice` in an alert with
+   "Pick another" / "Try anyway" — the run can still start.
+
 ---
 
 ## 4. Mobile types (`src/types/Authoring.ts`)

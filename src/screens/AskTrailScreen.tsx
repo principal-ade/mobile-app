@@ -15,7 +15,7 @@
  * lands in the inbox. See `mobile-app/docs/AUTHORING_API.md`.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -47,7 +48,17 @@ import {
   type GitHubRepo,
   type SuggestedRepo,
 } from '../services/GitHubSearchService';
+import { getAuthoringRepos } from '../services/AuthoringApiService';
+import type { CuratedRepo, AuthoringReposResponse } from '../types/Authoring';
 import type { AskStackParamList } from '../navigation/types';
+
+/** Warm accent for "may not import" flags — softer than a hard error. */
+const WARN_COLOR = '#FF9500';
+
+/** Fallback when the authoring repos fetch fails — keep the warn-but-allow copy. */
+const FALLBACK_NOTICE =
+  "Some repositories currently can't be imported for authoring, and we're " +
+  'investigating. You can still try, but it may fail.';
 
 // The screen is reused under two route names (`AskHome` in the Ask tab,
 // `AskTrail` when pushed from a repo screen). Both carry the same optional
@@ -119,6 +130,10 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
   const [isSearching, setIsSearching] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Curated + unsupported lists from web-ade. Refetched whenever this picker
+  // mounts (e.g. after a failed run sends the user back here), so a newly-failed
+  // repo shows its flag the next time around.
+  const [authoring, setAuthoring] = useState<AuthoringReposResponse | null>(null);
 
   // Load suggested repos (starred + org) on mount.
   useEffect(() => {
@@ -131,6 +146,23 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
         // Non-fatal — the search field still works.
       } finally {
         if (active) setLoadingSuggestions(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  // Load the authoring repo lists (curated + unsupported + notice).
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    (async () => {
+      try {
+        const data = await getAuthoringRepos(token);
+        if (active) setAuthoring(data);
+      } catch {
+        // Non-fatal — picker still works; we just won't flag unsupported repos.
       }
     })();
     return () => {
@@ -160,39 +192,148 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
     return () => clearTimeout(id);
   }, [query]);
 
-  const pick = useCallback(
-    (r: GitHubRepo) => {
-      onSelect({ owner: r.owner, repo: r.name, fullName: r.full_name });
+  const unsupportedSet = useMemo(
+    () =>
+      new Set(
+        (authoring?.unsupported ?? []).map((r) =>
+          `${r.owner}/${r.repo}`.toLowerCase(),
+        ),
+      ),
+    [authoring],
+  );
+  const isUnsupported = useCallback(
+    (owner: string, repo: string) =>
+      unsupportedSet.has(`${owner}/${repo}`.toLowerCase()),
+    [unsupportedSet],
+  );
+
+  const notice = authoring?.notice ?? FALLBACK_NOTICE;
+
+  // Warn-but-allow: picking a known-unsupported repo confirms first, then lets
+  // the user proceed anyway. Verified/curated picks go straight through.
+  const handlePick = useCallback(
+    (sel: SelectedRepo) => {
+      if (isUnsupported(sel.owner, sel.repo)) {
+        Alert.alert(`${sel.fullName} may not import`, notice, [
+          { text: 'Pick another', style: 'cancel' },
+          { text: 'Try anyway', onPress: () => onSelect(sel) },
+        ]);
+        return;
+      }
+      onSelect(sel);
     },
-    [onSelect],
+    [isUnsupported, notice, onSelect],
+  );
+
+  const pickGitHub = useCallback(
+    (r: GitHubRepo) =>
+      handlePick({ owner: r.owner, repo: r.name, fullName: r.full_name }),
+    [handlePick],
+  );
+  const pickCurated = useCallback(
+    (c: CuratedRepo) =>
+      handlePick({
+        owner: c.owner,
+        repo: c.repo,
+        fullName: `${c.owner}/${c.repo}`,
+        ref: c.ref,
+      }),
+    [handlePick],
   );
 
   const showingResults = query.trim().length > 0;
   const data = showingResults ? results : suggestions;
+  const curated = authoring?.curated ?? [];
 
-  const renderRepo = ({ item }: { item: GitHubRepo }) => (
-    <TouchableOpacity
-      style={[styles.repoRow, { borderBottomColor: theme.colors.border }]}
-      onPress={() => pick(item)}
-      activeOpacity={0.7}
-    >
-      <Image source={{ uri: item.owner_avatar_url }} style={styles.repoAvatar} />
-      <View style={styles.repoInfo}>
-        <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
-          {item.full_name}
-        </Text>
-        {item.description ? (
-          <Text
-            style={[styles.repoDesc, { color: theme.colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.description}
+  const renderRepo = ({ item }: { item: GitHubRepo }) => {
+    const flagged = isUnsupported(item.owner, item.name);
+    return (
+      <TouchableOpacity
+        style={[styles.repoRow, { borderBottomColor: theme.colors.border }]}
+        onPress={() => pickGitHub(item)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: item.owner_avatar_url }} style={styles.repoAvatar} />
+        <View style={styles.repoInfo}>
+          <Text style={[styles.repoName, { color: theme.colors.text }]} numberOfLines={1}>
+            {item.full_name}
+          </Text>
+          {flagged ? (
+            <Text style={[styles.warnText, { color: WARN_COLOR }]} numberOfLines={1}>
+              Import currently failing — we're investigating
+            </Text>
+          ) : item.description ? (
+            <Text
+              style={[styles.repoDesc, { color: theme.colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.description}
+            </Text>
+          ) : null}
+        </View>
+        <LucideIcon
+          name={flagged ? 'Info' : 'Sparkles'}
+          size={16}
+          color={flagged ? WARN_COLOR : theme.colors.primary}
+        />
+      </TouchableOpacity>
+    );
+  };
+
+  // Curated section + the "Your repositories" heading ride above the suggestion
+  // list (not shown while searching). Curated repos are verified to import, so
+  // they never carry the unsupported flag.
+  const listHeader =
+    !showingResults && (curated.length > 0 || suggestions.length > 0) ? (
+      <View>
+        {curated.length > 0 ? (
+          <>
+            <Text style={[styles.listHeading, { color: theme.colors.textSecondary }]}>
+              Verified for authoring
+            </Text>
+            {curated.map((c) => (
+              <TouchableOpacity
+                key={`${c.owner}/${c.repo}`}
+                style={[styles.repoRow, { borderBottomColor: theme.colors.border }]}
+                onPress={() => pickCurated(c)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.curatedBadge,
+                    { backgroundColor: 'rgba(52,199,89,0.15)' },
+                  ]}
+                >
+                  <LucideIcon name="Check" size={18} color="#34C759" />
+                </View>
+                <View style={styles.repoInfo}>
+                  <Text
+                    style={[styles.repoName, { color: theme.colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {c.owner}/{c.repo}
+                  </Text>
+                  {c.description ? (
+                    <Text
+                      style={[styles.repoDesc, { color: theme.colors.textSecondary }]}
+                      numberOfLines={1}
+                    >
+                      {c.description}
+                    </Text>
+                  ) : null}
+                </View>
+                <LucideIcon name="Sparkles" size={16} color={theme.colors.primary} />
+              </TouchableOpacity>
+            ))}
+          </>
+        ) : null}
+        {suggestions.length > 0 ? (
+          <Text style={[styles.listHeading, { color: theme.colors.textSecondary }]}>
+            Your repositories
           </Text>
         ) : null}
       </View>
-      <LucideIcon name="Sparkles" size={16} color={theme.colors.primary} />
-    </TouchableOpacity>
-  );
+    ) : null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -227,12 +368,6 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
         />
       </View>
 
-      {!showingResults && suggestions.length > 0 ? (
-        <Text style={[styles.listHeading, { color: theme.colors.textSecondary }]}>
-          Your repositories
-        </Text>
-      ) : null}
-
       {isSearching || (loadingSuggestions && !showingResults) ? (
         <View style={styles.centerFill}>
           <LoadingSpinner size="large" color={theme.colors.primary} />
@@ -241,19 +376,25 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
         <View style={styles.centerFill}>
           <Text style={[styles.muted, { color: theme.colors.error }]}>{error}</Text>
         </View>
-      ) : data.length === 0 ? (
-        <View style={styles.centerFill}>
-          <Text style={[styles.muted, { color: theme.colors.textSecondary }]}>
-            {showingResults
-              ? `No repositories found for "${query}"`
-              : 'Search for a repository to ask about'}
-          </Text>
-        </View>
       ) : (
         <FlatList
           data={data}
           keyExtractor={(item) => item.full_name ?? `${item.owner}/${item.name}`}
           renderItem={renderRepo}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            // When not searching, the curated list lives in the header, so only
+            // show an empty hint when there's genuinely nothing to offer.
+            showingResults || (curated.length === 0 && suggestions.length === 0) ? (
+              <View style={styles.emptyHint}>
+                <Text style={[styles.muted, { color: theme.colors.textSecondary }]}>
+                  {showingResults
+                    ? `No repositories found for "${query}"`
+                    : 'Search for a repository to ask about'}
+                </Text>
+              </View>
+            ) : null
+          }
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         />
@@ -555,6 +696,24 @@ const styles = StyleSheet.create({
   repoDesc: {
     fontSize: 13,
     marginTop: 2,
+  },
+  warnText: {
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  curatedBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyHint: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 48,
   },
   // Ask step
   body: {

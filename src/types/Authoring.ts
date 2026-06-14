@@ -63,3 +63,43 @@ export interface AuthoringRun {
 export function isTerminalStatus(status: AuthoringRunStatus): boolean {
   return status === 'succeeded' || status === 'failed';
 }
+
+// ============================================================================
+// Repo lists — `GET /api/authoring/repos`
+// ============================================================================
+
+/**
+ * A repo verified to import cleanly for authoring (the picker's suggested
+ * picks). Mirrors `web-ade` `CuratedRepo`. See `AUTHORING_API.md`.
+ */
+export interface CuratedRepo {
+  owner: string;
+  repo: string;
+  /** Optional ref; default branch when omitted. */
+  ref?: string;
+  defaultBranch?: string;
+  description?: string;
+  sizeKb?: number;
+  verifiedAt?: string;
+}
+
+/**
+ * A public repo that has failed to import for authoring. The picker flags these
+ * in search results and warns before a repeat attempt.
+ */
+export interface UnsupportedRepo {
+  owner: string;
+  repo: string;
+  firstFailedAt: string;
+  lastFailedAt: string;
+  failCount: number;
+  lastError: { code: AuthoringErrorCode; message: string };
+}
+
+/** Response shape of `GET /api/authoring/repos`. */
+export interface AuthoringReposResponse {
+  curated: CuratedRepo[];
+  unsupported: UnsupportedRepo[];
+  /** Server-controlled copy to show when a user picks an unsupported repo. */
+  notice: string;
+}
