@@ -11,10 +11,9 @@
  * fixture (see `data/learnTrailsCity.ts`); no token, no network.
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LayoutChangeEvent,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -37,15 +36,15 @@ import type {
 import { FileTree } from '../../components/FileTree';
 import { LearnTrailsFilePreview } from './LearnTrailsFilePreview';
 import type { PreviewOrigin } from './LearnTrailsFilePreview';
+import { LearnTrailsStopCard } from './LearnTrailsStopCard';
+import { LearnTrailsLeaderLine } from './LearnTrailsLeaderLine';
 import type { TrailMarkerSnippet } from '../../types/Trail';
 import type { TrailFileReader } from '../../services/TrailFileContentService';
 import {
   LEARN_CITY,
-  SINGLE_TRAIL_LAYER,
   COVERAGE_LAYERS,
   TRAIL_MARKERS,
   TRAIL_COLOR,
-  TRAIL_FRAME,
   learnFileContents,
 } from '../../data/learnTrailsCity';
 import type { RootStackParamList } from '../../navigation/types';
@@ -65,7 +64,14 @@ const STEPS = [
   },
 ] as const;
 
-const MONO = Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' });
+// Per-stop reveal choreography for step 2: light the file, then the number,
+// then draw a line to the card, then the card. Timings are ms after the stop
+// becomes active; the user advances to the next stop with the "Next step" button.
+const STOP_PHASES = ['highlight', 'number', 'line', 'card'] as const;
+type StopPhase = (typeof STOP_PHASES)[number];
+const PHASE_AT = { number: 700, line: 1300, card: 1850 };
+// Approximate caption-card height, used to aim the leader line at the card.
+const CARD_H = 104;
 
 export function LearnTrailsScreen() {
   const { theme } = useTheme();
@@ -98,8 +104,18 @@ export function LearnTrailsScreen() {
     }
     return dimmed;
   }, [step, visibleFiles]);
-  // Which stop is focused in step 1 (drives the zoom); null = frame the trail.
+  // Step 1: the stop being revealed (null before the walkthrough starts), and
+  // whether the walkthrough has been started at all.
   const [activeStop, setActiveStop] = useState<number | null>(null);
+  const [started, setStarted] = useState(false);
+  // Sub-phase within the current stop's reveal, and the leader line to draw.
+  const [stopPhase, setStopPhase] = useState<StopPhase>('highlight');
+  const [leaderLine, setLeaderLine] = useState<{
+    stopX: number;
+    stopY: number;
+    cardX: number;
+    cardEdgeY: number;
+  } | null>(null);
   // Step 3: which coverage trails the user has toggled on (by layer id).
   const [enabledTrails, setEnabledTrails] = useState<Set<string>>(new Set());
 
@@ -107,9 +123,68 @@ export function LearnTrailsScreen() {
     setOpenedFile(null);
     setOpenOrigin(null);
     setActiveStop(null);
+    setStarted(false);
+    setStopPhase('highlight');
+    setLeaderLine(null);
     setEnabledTrails(new Set());
     setStep(next);
   };
+
+  // Begin the walkthrough at the first stop.
+  const startTour = useCallback(() => {
+    setStopPhase('highlight');
+    setLeaderLine(null);
+    setActiveStop(0);
+    setStarted(true);
+  }, []);
+
+  // Advance to the next stop (user-driven). Reset the reveal in the same update
+  // so the next stop's card/line don't flash for a frame at the old phase.
+  const nextStop = useCallback(() => {
+    if (activeStop == null || activeStop >= TRAIL_MARKERS.length - 1) return;
+    setStopPhase('highlight');
+    setLeaderLine(null);
+    setActiveStop(activeStop + 1);
+  }, [activeStop]);
+
+  // Per-stop reveal sequence: highlight → number → draw line → card. No
+  // auto-advance — the user moves on with the "Next step" button.
+  useEffect(() => {
+    if (step !== 1 || !started || activeStop == null) return;
+
+    setStopPhase('highlight');
+    setLeaderLine(null);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    timers.push(setTimeout(() => setStopPhase('number'), PHASE_AT.number));
+    timers.push(
+      setTimeout(() => {
+        // Elbow connector from the stop's building to the card's near edge.
+        const rect = canvasRef.current?.getBuildingRect(TRAIL_MARKERS[activeStop].path);
+        if (rect && canvasSize.width && canvasSize.height) {
+          const atBottom = activeStop === 0; // first card sits at the bottom
+          setLeaderLine({
+            stopX: rect.x + rect.width / 2,
+            stopY: rect.y + rect.height / 2,
+            cardX: canvasSize.width / 2,
+            cardEdgeY: atBottom ? canvasSize.height - 16 - CARD_H : 16 + CARD_H,
+          });
+        }
+        setStopPhase('line');
+      }, PHASE_AT.line),
+    );
+    timers.push(setTimeout(() => setStopPhase('card'), PHASE_AT.card));
+
+    return () => timers.forEach(clearTimeout);
+  }, [step, started, activeStop, canvasSize.width, canvasSize.height]);
+
+  const phaseIdx = STOP_PHASES.indexOf(stopPhase);
+
+  // Highlights light up as soon as a stop is active; the numbered markers lag
+  // one sub-phase behind (they appear after the highlight).
+  const highlightRevealed = step === 1 && activeStop != null ? activeStop + 1 : 0;
+  const markerRevealed =
+    step === 1 && activeStop != null ? activeStop + (phaseIdx >= 1 ? 1 : 0) : 0;
 
   const onCanvasLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -175,11 +250,31 @@ export function LearnTrailsScreen() {
 
   // Per-step canvas configuration.
   const highlightLayers = useMemo<HighlightLayer[]>(() => {
-    if (step === 1) return [SINGLE_TRAIL_LAYER];
+    if (step === 1) {
+      // Only the stops revealed so far light up — the trail fills in as we walk.
+      const paths = TRAIL_MARKERS.slice(0, highlightRevealed).map((m) => m.path);
+      if (paths.length === 0) return [];
+      return [
+        {
+          id: 'auth-trail',
+          name: 'Sign-in flow',
+          enabled: true,
+          color: TRAIL_COLOR,
+          opacity: 1,
+          borderWidth: 2,
+          priority: 100,
+          items: paths.map((path) => ({
+            path,
+            type: 'file' as const,
+            renderStrategy: 'border' as const,
+          })),
+        },
+      ];
+    }
     if (step === 2) return COVERAGE_LAYERS.filter((l) => enabledTrails.has(l.id));
 
     // Step 0: outline the borders of folders that are open in the tree, plus
-    // fill the tapped file as the current selection.
+    // outline the tapped file as the current selection.
     const layers: HighlightLayer[] = [];
     if (openFolders.size > 0) {
       layers.push({
@@ -206,20 +301,18 @@ export function LearnTrailsScreen() {
         opacity: 1,
         borderWidth: 2,
         priority: 100,
-        items: [{ path: openedFile.path, type: 'file', renderStrategy: 'fill' }],
+        items: [{ path: openedFile.path, type: 'file', renderStrategy: 'border' }],
       });
     }
     return layers;
-  }, [step, openedFile, enabledTrails, openFolders]);
+  }, [step, highlightRevealed, openedFile, enabledTrails, openFolders]);
 
-  const markerTrail = step === 1 ? TRAIL_MARKERS.map((m) => m.path) : undefined;
+  const markerTrail =
+    step === 1 ? TRAIL_MARKERS.slice(0, markerRevealed).map((m) => m.path) : undefined;
   const isolationMode = step === 1 ? 'transparent' : 'none';
-  const zoomToPath =
-    step === 1
-      ? activeStop != null
-        ? TRAIL_MARKERS[activeStop].path // zoom to the tapped stop
-        : TRAIL_FRAME // frame the whole trail (markers' common dir)
-      : null;
+  // The map holds completely still through the walkthrough — the markers,
+  // trail, and cards reveal over a static city, with no camera movement.
+  const zoomToPath = null;
 
   const stepInfo = STEPS[step];
 
@@ -258,6 +351,43 @@ export function LearnTrailsScreen() {
             closeSignal={closeSignal}
           />
         )}
+
+        {/* Step 1 reveal: line drawn from the stop to the card (phase ≥ line). */}
+        {step === 1 && started && leaderLine && phaseIdx >= STOP_PHASES.indexOf('line') && (
+          <LearnTrailsLeaderLine
+            key={`line-${activeStop}`}
+            stopX={leaderLine.stopX}
+            stopY={leaderLine.stopY}
+            cardX={leaderLine.cardX}
+            cardEdgeY={leaderLine.cardEdgeY}
+            color={theme.colors.textSecondary}
+            width={canvasSize.width}
+            height={canvasSize.height}
+          />
+        )}
+
+        {/* Step 1 reveal: caption card (phase = card). The first stop's marker
+            sits up top, so its card drops to the bottom to avoid covering it;
+            later cards sit at the top. */}
+        {step === 1 && started && activeStop != null && stopPhase === 'card' && (
+          <View
+            style={[
+              styles.stopCardWrap,
+              activeStop === 0 ? styles.stopCardBottom : styles.stopCardTop,
+            ]}
+            pointerEvents="none"
+          >
+            <LearnTrailsStopCard
+              key={activeStop}
+              index={activeStop}
+              total={TRAIL_MARKERS.length}
+              label={TRAIL_MARKERS[activeStop].label}
+              note={TRAIL_MARKERS[activeStop].note}
+              color={TRAIL_COLOR}
+              theme={theme}
+            />
+          </View>
+        )}
       </View>
 
       {/* ── Teaching panel ── */}
@@ -283,7 +413,6 @@ export function LearnTrailsScreen() {
             <FileTree
               city={LEARN_CITY}
               selectedPath={openedFile?.path ?? null}
-              collapsedByDefault
               onFilePress={toggleFile}
               onVisibleFilesChange={handleVisibleFiles}
               onOpenFoldersChange={handleOpenFolders}
@@ -291,41 +420,37 @@ export function LearnTrailsScreen() {
           )}
 
           {step === 1 && (
-            <View style={styles.stopList}>
-              {TRAIL_MARKERS.map((m, i) => {
-                const active = activeStop === i;
-                return (
-                  <TouchableOpacity
-                    key={m.path}
-                    activeOpacity={0.8}
-                    onPress={() => setActiveStop(active ? null : i)}
-                    style={[
-                      styles.stopRow,
-                      {
-                        backgroundColor: active ? theme.colors.background : 'transparent',
-                        borderColor: active ? TRAIL_COLOR : theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <View style={[styles.stopBadge, { backgroundColor: TRAIL_COLOR }]}>
-                      <Text style={styles.stopBadgeText}>{i + 1}</Text>
-                    </View>
-                    <View style={styles.stopText}>
-                      <Text style={[styles.stopLabel, { color: theme.colors.text }]}>
-                        {m.label}
+            <View style={styles.startWrap}>
+              {!started ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={startTour}
+                  style={[styles.startButton, { borderColor: TRAIL_COLOR }]}
+                >
+                  <Text style={[styles.startButtonText, { color: TRAIL_COLOR }]}>Start</Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <Text style={[styles.playingText, { color: theme.colors.textSecondary }]}>
+                    {`Stop ${(activeStop ?? 0) + 1} of ${TRAIL_MARKERS.length}`}
+                  </Text>
+                  {activeStop != null && activeStop < TRAIL_MARKERS.length - 1 ? (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={nextStop}
+                      style={[styles.startButton, { borderColor: TRAIL_COLOR }]}
+                    >
+                      <Text style={[styles.startButtonText, { color: TRAIL_COLOR }]}>
+                        Next step
                       </Text>
-                      <Text style={[styles.stopPath, { color: theme.colors.textSecondary, fontFamily: MONO }]}>
-                        {m.path}
-                      </Text>
-                      {active && (
-                        <Text style={[styles.stopNote, { color: theme.colors.textSecondary }]}>
-                          {m.note}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={[styles.playingText, { color: theme.colors.textSecondary }]}>
+                      That's the whole trail — continue below.
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
           )}
 
@@ -485,44 +610,40 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 4,
   },
-  // Stop list
-  stopList: {
-    gap: 10,
+  // Step 1: scheduled-playback card position (over the map) + Start control.
+  stopCardWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
   },
-  stopRow: {
-    flexDirection: 'row',
+  stopCardTop: {
+    top: 16,
+  },
+  stopCardBottom: {
+    bottom: 16,
+  },
+  startWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
     gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
   },
-  stopBadge: {
-    width: 24,
-    height: 24,
+  startButton: {
+    height: 46,
+    minWidth: 160,
     borderRadius: 12,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stopBadgeText: {
-    color: '#0b1020',
-    fontSize: 13,
-    fontWeight: '800',
+  startButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  stopText: {
-    flex: 1,
-    gap: 2,
-  },
-  stopLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  stopPath: {
-    fontSize: 12,
-  },
-  stopNote: {
-    fontSize: 13.5,
-    lineHeight: 19,
-    marginTop: 4,
+  playingText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   // Legend (toggleable trails)
   legend: {

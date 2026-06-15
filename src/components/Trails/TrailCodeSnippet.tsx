@@ -23,7 +23,7 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, Pressable, TextStyle } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextStyle, StyleProp, ViewStyle } from 'react-native';
 import { useTheme, type Theme } from '@principal-ade/industry-theme';
 
 import type { TrailMarkerSnippet } from '../../types/Trail';
@@ -44,6 +44,11 @@ export interface TrailCodeSnippetProps {
   readFile?: TrailFileReader;
   /** Trail eyebrow color — tints the focus line + chrome. */
   eyebrowColor: string;
+  /** Optional overrides merged onto the snippet's outer container (e.g. to
+   *  drop the default top margin or a border edge when embedded in a card). */
+  containerStyle?: StyleProp<ViewStyle>;
+  /** When set, renders a close (✕) button in the snippet header. */
+  onClose?: () => void;
 }
 
 interface SnippetLine {
@@ -98,6 +103,8 @@ export const TrailCodeSnippet: React.FC<TrailCodeSnippetProps> = ({
   snippet,
   readFile,
   eyebrowColor,
+  containerStyle,
+  onClose,
 }) => {
   const { theme } = useTheme();
   const [attempt, setAttempt] = React.useState(0);
@@ -216,14 +223,17 @@ export const TrailCodeSnippet: React.FC<TrailCodeSnippetProps> = ({
 
   return (
     <View
-      style={{
-        marginTop: 8,
-        borderWidth: 1,
-        borderColor: withAlpha(eyebrowColor, 0.3),
-        borderRadius: theme.radii[1],
-        backgroundColor: theme.colors.background,
-        overflow: 'hidden',
-      }}
+      style={[
+        {
+          marginTop: 8,
+          borderWidth: 1,
+          borderColor: withAlpha(eyebrowColor, 0.3),
+          borderRadius: theme.radii[1],
+          backgroundColor: theme.colors.background,
+          overflow: 'hidden',
+        },
+        containerStyle,
+      ]}
     >
       <SnippetHeader
         theme={theme}
@@ -231,6 +241,7 @@ export const TrailCodeSnippet: React.FC<TrailCodeSnippetProps> = ({
         filePath={filePath}
         rangeLabel={rangeLabel}
         isDiff={snippet.kind === 'diff'}
+        onClose={onClose}
       />
       {state.status === 'loading' ? (
         <SnippetMessage theme={theme} text="Loading source…" />
@@ -276,7 +287,8 @@ const SnippetHeader: React.FC<{
   filePath?: string;
   rangeLabel: string | null;
   isDiff: boolean;
-}> = ({ theme, eyebrowColor, filePath, rangeLabel, isDiff }) => (
+  onClose?: () => void;
+}> = ({ theme, eyebrowColor, filePath, rangeLabel, isDiff, onClose }) => (
   <View
     style={{
       flexDirection: 'row',
@@ -317,6 +329,24 @@ const SnippetHeader: React.FC<{
       >
         DIFF
       </Text>
+    ) : null}
+    {onClose ? (
+      <Pressable
+        onPress={onClose}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityRole="button"
+        accessibilityLabel="Close snippet"
+      >
+        <Text
+          style={{
+            fontSize: theme.fontSizes[1],
+            fontWeight: '600',
+            color: theme.colors.textSecondary,
+          }}
+        >
+          ✕
+        </Text>
+      </Pressable>
     ) : null}
   </View>
 );

@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -163,19 +163,14 @@ export function LearnTrailsFilePreview({
           contentStyle,
         ]}
       >
-        <View style={[styles.accentBar, { backgroundColor: color }]} />
-        {/* No filename here — TrailCodeSnippet renders its own path header. */}
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={close} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={[styles.close, { color: theme.colors.textSecondary }]}>✕</Text>
-          </TouchableOpacity>
-        </View>
         <View style={styles.snippetWrap}>
           <TrailCodeSnippet
             filePath={building.path}
             snippet={snippet}
             readFile={readFile}
             eyebrowColor={accentColor}
+            containerStyle={styles.snippetContainer}
+            onClose={close}
           />
         </View>
       </Animated.View>
@@ -192,24 +187,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   panel: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: 'hidden',
-  },
-  accentBar: {
-    height: 4,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  close: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   snippetWrap: {
     flex: 1,
+  },
+  // Embedded in the card: no top margin and no border of its own — the card's
+  // colored panel border is the single outline for the whole file.
+  snippetContainer: {
+    marginTop: 0,
+    borderWidth: 0,
   },
 });

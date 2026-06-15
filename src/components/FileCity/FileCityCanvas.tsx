@@ -210,6 +210,11 @@ export interface FileCityCanvasHandle {
    * Returns false if the path isn't a building or no handler is set.
    */
   pressBuildingByPath: (path: string) => boolean;
+  /**
+   * The building's current on-screen rect (canvas-local px), or null if the
+   * path isn't a building. For anchoring overlays (e.g. a leader line) to it.
+   */
+  getBuildingRect: (path: string) => BuildingScreenRect | null;
 }
 
 export const FileCityCanvas = forwardRef<FileCityCanvasHandle, FileCityCanvasProps>(function FileCityCanvas({
@@ -516,7 +521,26 @@ export const FileCityCanvas = forwardRef<FileCityCanvasHandle, FileCityCanvasPro
     [cityData, onBuildingPress, scaleAndOffset, scale, translateX, translateY]
   );
 
-  useImperativeHandle(ref, () => ({ pressBuildingByPath }), [pressBuildingByPath]);
+  const getBuildingRect = useCallback(
+    (path: string): BuildingScreenRect | null => {
+      const building = cityData.buildings.find((b) => b.path === path);
+      if (!building) return null;
+      return computeBuildingScreenRect(
+        building,
+        cityData,
+        scaleAndOffset,
+        scale.value,
+        translateX.value,
+        translateY.value,
+      );
+    },
+    [cityData, scaleAndOffset, scale, translateX, translateY]
+  );
+
+  useImperativeHandle(ref, () => ({ pressBuildingByPath, getBuildingRect }), [
+    pressBuildingByPath,
+    getBuildingRect,
+  ]);
 
   // Animation helper - animate to target zoom/pan position
   // Called from JS thread (useEffect), so no 'worklet' directive
