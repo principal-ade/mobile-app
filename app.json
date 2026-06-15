@@ -2,7 +2,7 @@
   "expo": {
     "name": "PrincipalAI",
     "slug": "principal-ade-mobile",
-    "version": "1.19.0",
+    "version": "1.20.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.noetic-labs.principal-ai-mobile",
-      "buildNumber": "25",
+      "buildNumber": "26",
       "infoPlist": {
         "CFBundleDisplayName": "Principal AI",
         "ITSAppUsesNonExemptEncryption": false
