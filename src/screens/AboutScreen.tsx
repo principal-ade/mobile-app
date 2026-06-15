@@ -124,6 +124,7 @@ export function AboutScreen() {
   const { accounts } = useMultiAccount();
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showDiscordQr, setShowDiscordQr] = useState(false);
 
   const handleAddAccount = async () => {
     // Force fresh login to ensure user can sign into a different account
@@ -140,7 +141,9 @@ export function AboutScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 80 }]}>
         <TouchableOpacity
           style={[styles.discordButton, { top: insets.top + 16 }]}
-          onPress={() => Linking.openURL(LINKS.discord)}
+          onPress={() => setShowDiscordQr(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Show Discord invite QR code"
         >
           <DiscordIcon size={28} color="#5865F2" />
         </TouchableOpacity>
@@ -375,6 +378,57 @@ export function AboutScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Discord invite QR */}
+      <Modal
+        visible={showDiscordQr}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDiscordQr(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={styles.qrOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDiscordQr(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close QR code"
+        >
+          <View
+            style={[
+              styles.qrCard,
+              {
+                backgroundColor: theme.colors.background,
+                borderColor: '#5865F2',
+              },
+            ]}
+          >
+            <QRCode
+              value={LINKS.discord}
+              size={Math.min(screenWidth, screenHeight) * 0.66}
+              color={qrModuleColor('#5865F2', theme.colors.background)}
+              backgroundColor={theme.colors.background}
+              ecl="M"
+            />
+          </View>
+          <Text style={styles.qrTitle}>Scan to join our Discord</Text>
+          <Text style={styles.qrSubtitle}>Share the invite, or open it here</Text>
+          <TouchableOpacity
+            style={styles.discordOpenButton}
+            activeOpacity={0.85}
+            onPress={() => {
+              setShowDiscordQr(false);
+              Linking.openURL(LINKS.discord);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Open Discord invite"
+          >
+            <DiscordIcon size={20} color="#ffffff" />
+            <Text style={styles.discordOpenButtonText}>Open in Discord</Text>
+          </TouchableOpacity>
+          <Text style={styles.qrDismiss}>Tap anywhere to close</Text>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Account Switcher Modal */}
       <AccountSwitcherSheet
         visible={showAccountSwitcher}
@@ -437,6 +491,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.45)',
     fontSize: 13,
     marginTop: 24,
+  },
+  discordOpenButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#5865F2',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    marginTop: 24,
+  },
+  discordOpenButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   logoHint: {
     fontSize: 12,

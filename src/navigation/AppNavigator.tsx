@@ -764,7 +764,12 @@ export default function AppNavigator() {
               component={LearnTrailsScreen}
               options={({ navigation }) => ({
                 title: 'Trails Tutorial',
-                headerTitleStyle: { fontWeight: 'bold', color: theme.colors.primary },
+                headerTitle: () => (
+                  <Text style={{ fontWeight: 'bold', fontSize: 17 }}>
+                    <Text style={{ color: theme.colors.primary }}>Trails</Text>
+                    <Text style={{ color: theme.colors.accent }}> Tutorial</Text>
+                  </Text>
+                ),
                 headerLeft: () => null,
                 headerRight: () => (
                   <TouchableOpacity
@@ -808,7 +813,12 @@ export default function AppNavigator() {
               component={LearnTrailsScreen}
               options={({ navigation }) => ({
                 title: 'Trails Tutorial',
-                headerTitleStyle: { fontWeight: 'bold', color: theme.colors.primary },
+                headerTitle: () => (
+                  <Text style={{ fontWeight: 'bold', fontSize: 17 }}>
+                    <Text style={{ color: theme.colors.primary }}>Trails</Text>
+                    <Text style={{ color: theme.colors.accent }}> Tutorial</Text>
+                  </Text>
+                ),
                 headerLeft: () => null,
                 headerRight: () => (
                   <TouchableOpacity

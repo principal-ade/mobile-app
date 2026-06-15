@@ -134,10 +134,13 @@ export const COVERAGE_LAYERS: HighlightLayer[] = [
     'src/services/auth.ts',
     'src/services/api.ts',
     'src/types/user.ts',
+    'src/services/analytics.ts',
   ]),
   buildLayer('cov-form', 'Form submit', '#f472b6', 40, [
     'src/components/forms/Form.tsx',
     'src/components/forms/Input.tsx',
+    'src/components/forms/Select.tsx',
+    'src/components/forms/Checkbox.tsx',
     'src/utils/validators.ts',
     'src/hooks/useApi.ts',
     'src/services/api.ts',
@@ -148,17 +151,21 @@ export const COVERAGE_LAYERS: HighlightLayer[] = [
     'src/services/api.ts',
     'src/types/api.ts',
     'src/components/Card.tsx',
+    'src/components/Modal.tsx',
+    'src/utils/formatters.ts',
   ]),
   buildLayer('cov-persist', 'Save & restore', '#34d399', 20, [
     'src/hooks/useLocalStorage.ts',
     'src/services/storage.ts',
     'src/utils/helpers.ts',
+    'src/utils/constants.ts',
   ]),
   buildLayer('cov-startup', 'App startup', '#fbbf24', 10, [
     'src/index.ts',
     'src/App.tsx',
     'src/components/Header.tsx',
     'src/components/Footer.tsx',
+    'src/components/Button.tsx',
   ]),
 ];
 
