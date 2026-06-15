@@ -16,25 +16,15 @@ import React, {
 } from 'react';
 import type { AccountInfo, AccountRegistry } from '../types/account';
 import type { AuthTokens } from '../utils/authStorage';
-import type { WatchedUser, WatchedRepo } from '../utils/feedStorage';
 import type { GitHubUser } from '../types/github';
 import {
   getAccountRegistry,
   saveAccountRegistry,
   getAccountTokens,
   saveAccountTokens,
-  getAccountFeedUsers,
-  saveAccountFeedUsers,
-  getAccountFeedRepos,
-  saveAccountFeedRepos,
   deleteAccountData,
 } from '../utils/accountStorage';
 import { migrateLegacyAccount } from '../utils/accountMigration';
-
-export interface AccountFeedPreferences {
-  followedUsers: WatchedUser[];
-  followedRepos: WatchedRepo[];
-}
 
 interface MultiAccountContextValue {
   // Account management
@@ -53,7 +43,6 @@ interface MultiAccountContextValue {
 
   // Current account data (for child contexts)
   currentTokens: AuthTokens | null;
-  currentFeedPreferences: AccountFeedPreferences | null;
 }
 
 const MultiAccountContext = createContext<MultiAccountContextValue | undefined>(undefined);
@@ -65,21 +54,11 @@ export function MultiAccountProvider({ children }: PropsWithChildren): React.JSX
 
   // Current account data (loaded from storage)
   const [currentTokens, setCurrentTokens] = useState<AuthTokens | null>(null);
-  const [currentFeedPreferences, setCurrentFeedPreferences] = useState<AccountFeedPreferences | null>(null);
 
   // Load account-specific data from storage
   const loadAccountData = useCallback(async (userId: number) => {
-    const [tokens, users, repos] = await Promise.all([
-      getAccountTokens(userId),
-      getAccountFeedUsers(userId),
-      getAccountFeedRepos(userId),
-    ]);
-
+    const tokens = await getAccountTokens(userId);
     setCurrentTokens(tokens);
-    setCurrentFeedPreferences({
-      followedUsers: users,
-      followedRepos: repos,
-    });
   }, []);
 
   // Bootstrap: migrate legacy, load registry, load active account data
@@ -191,10 +170,6 @@ export function MultiAccountProvider({ children }: PropsWithChildren): React.JSX
       // Save tokens
       await saveAccountTokens(user.id, tokens);
 
-      // Initialize feed preferences with empty arrays
-      await saveAccountFeedUsers(user.id, []);
-      await saveAccountFeedRepos(user.id, []);
-
       // Update registry
       const updatedRegistry: AccountRegistry = {
         accounts: [...(registry?.accounts || []), newAccount],
@@ -241,7 +216,6 @@ export function MultiAccountProvider({ children }: PropsWithChildren): React.JSX
       } else if (!newActiveId) {
         // No accounts left
         setCurrentTokens(null);
-        setCurrentFeedPreferences(null);
       }
     },
     [registry, loadAccountData]
@@ -258,7 +232,6 @@ export function MultiAccountProvider({ children }: PropsWithChildren): React.JSX
       addAccount,
       removeAccount,
       currentTokens,
-      currentFeedPreferences,
     }),
     [
       registry,
@@ -268,7 +241,6 @@ export function MultiAccountProvider({ children }: PropsWithChildren): React.JSX
       addAccount,
       removeAccount,
       currentTokens,
-      currentFeedPreferences,
     ]
   );
 

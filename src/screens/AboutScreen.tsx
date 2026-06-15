@@ -240,23 +240,6 @@ export function AboutScreen() {
               <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
               <TouchableOpacity
                 style={styles.linkRow}
-                onPress={() => navigation.navigate('FeedCustomization', {})}
-              >
-                <View style={styles.linkContent}>
-                  <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
-                    Customize Feed
-                  </Text>
-                  <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
-                    Manage followed users and repos
-                  </Text>
-                </View>
-                <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
-                  ›
-                </Text>
-              </TouchableOpacity>
-              <View style={[styles.separator, { backgroundColor: theme.colors.border }]} />
-              <TouchableOpacity
-                style={styles.linkRow}
                 onPress={() => navigation.navigate('SavedCards')}
               >
                 <View style={styles.linkContent}>

@@ -9,8 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import {
   getSavedCards,
@@ -19,9 +17,6 @@ import {
 } from '../services/FeedApiService';
 import { useAuthContext } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { FeedStackParamList } from '../navigation/types';
-
-type NavigationProp = StackNavigationProp<FeedStackParamList, 'SavedCards'>;
 
 function BookmarkIcon({ color, size = 64 }: { color: string; size?: number }) {
   const width = size * 0.6;
@@ -78,7 +73,6 @@ function formatRelativeTime(date: Date): string {
 export function SavedCardsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NavigationProp>();
   const { token } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -138,41 +132,13 @@ export function SavedCardsScreen() {
     [token]
   );
 
-  const handleCardPress = useCallback(
-    (card: SavedCard) => {
-      navigation.navigate('CardDetail', {
-        summary: {
-          owner: card.repo.owner,
-          repo: card.repo.name,
-          fullName: `${card.repo.owner}/${card.repo.name}`,
-          commits: card.commits.map((c) => ({
-            repoOwner: card.repo.owner,
-            repoName: card.repo.name,
-            sha: c.sha,
-            message: c.message,
-            author: c.author.login,
-            authorLogin: c.author.login,
-            authorEmail: '',
-            authorAvatarUrl: c.author.avatarUrl || null,
-            date: c.committedAt,
-          })),
-          latestCommitAt: card.latestCommitAt,
-          commitCount: card.commitCount,
-        },
-      });
-    },
-    [navigation]
-  );
-
   const renderCard = useCallback(
     ({ item: card }: { item: SavedCard }) => {
       const authors = [...new Set(card.commits.map((c) => c.author.login))];
 
       return (
-        <TouchableOpacity
+        <View
           style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          onPress={() => handleCardPress(card)}
-          activeOpacity={0.7}
         >
           <View style={styles.cardHeader}>
             <Image
@@ -209,10 +175,10 @@ export function SavedCardsScreen() {
               Saved {formatRelativeTime(new Date(card.savedAt))}
             </Text>
           </View>
-        </TouchableOpacity>
+        </View>
       );
     },
-    [theme, handleCardPress, handleUnsave]
+    [theme, handleUnsave]
   );
 
   // Loading state

@@ -172,98 +172,12 @@ export type RecentStackParamList = {
   };
 };
 
-// Stack params for Feed tab
+// Shared downstream routes reachable from repo/profile screens. Retains the
+// legacy `FeedStackParamList` name; the watch/feed surfaces it once described
+// have been removed, leaving only the common navigation targets.
 export type FeedStackParamList = {
-  FeedHome: undefined;
   AskTrail: AskTrailParams;
-  SwipeFeed: undefined;
-  CardDetail: {
-    summary: {
-      owner: string;
-      repo: string;
-      fullName: string;
-      commits: Array<{
-        repoOwner: string;
-        repoName: string;
-        sha: string;
-        message: string;
-        author: string;
-        authorLogin: string | null;
-        authorEmail: string;
-        authorAvatarUrl: string | null;
-        date: string;
-        additions?: number;
-        deletions?: number;
-        filesChanged?: number;
-      }>;
-      latestCommitAt: string;
-      commitCount: number;
-    };
-  };
   SavedCards: undefined;
-  RepoFileCity: {
-    owner: string;
-    name: string;
-    fullName: string;
-  };
-  RepoReadme: {
-    owner: string;
-    name: string;
-    fullName: string;
-  };
-  TourFileCity: {
-    owner: string;
-    name: string;
-    fullName: string;
-    forkOwner: string;
-    forkRepo: string;
-    tourPath: string;
-  };
-  UserProfile: {
-    username: string;
-    isOrganization?: boolean;
-    isBot?: boolean;
-  };
-  Organization: {
-    orgLogin: string;
-  };
-  FeedCustomization: {
-    addedUser?: { login: string; avatarUrl: string };
-    addedRepo?: { owner: string; name: string };
-  } | undefined;
-  AddUser: undefined;
-  AddRepo: undefined;
-  CommitDetail: {
-    commit: {
-      repoOwner: string;
-      repoName: string;
-      sha: string;
-      message: string;
-      author: string;
-      authorLogin: string | null;
-      authorEmail: string;
-      authorAvatarUrl: string | null;
-      date: string;
-      additions?: number;
-      deletions?: number;
-      filesChanged?: number;
-    };
-    fullName: string;
-  };
-};
-
-// Stack params for Watch tab
-export type WatchStackParamList = {
-  WatchHome: undefined;
-  AskTrail: AskTrailParams;
-  UserActivity: {
-    username: string;
-    avatarUrl?: string;
-    repoFilter?: {
-      owner: string;
-      name: string;
-    };
-  };
   RepoFileCity: {
     owner: string;
     name: string;
@@ -430,12 +344,6 @@ export type AboutStackParamList = {
     path: string;
     fileName: string;
   };
-  FeedCustomization: {
-    addedUser?: { login: string; avatarUrl: string };
-    addedRepo?: { owner: string; name: string };
-  } | undefined;
-  AddUser: undefined;
-  AddRepo: undefined;
   SavedCards: undefined;
   UserProfile: {
     username: string;
@@ -447,7 +355,6 @@ export type AboutStackParamList = {
 export type MainTabParamList = {
   Trails: NavigatorScreenParams<TrailsStackParamList>;
   Recent: NavigatorScreenParams<RecentStackParamList>;
-  Watch: NavigatorScreenParams<WatchStackParamList>;
   Ask: NavigatorScreenParams<AskStackParamList>;
   Paste: NavigatorScreenParams<PasteStackParamList>;
   Bookmarks: NavigatorScreenParams<BookmarksStackParamList>;

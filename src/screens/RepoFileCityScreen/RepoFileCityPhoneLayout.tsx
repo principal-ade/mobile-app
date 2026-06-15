@@ -89,7 +89,6 @@ import { useAuthContext } from '../../context/AuthContext';
 import type { FeedStackParamList } from '../../navigation/types';
 import { DailyActivityHeatmap, type CommitTimestamp } from '../../components/DailyActivityHeatmap';
 import { getRepoActivity, checkTourAvailability } from '../../services/FeedApiService';
-import { useFeedPreferences } from '../../context/FeedPreferencesContext';
 import { ContributionCalendar, type DailyContribution } from '../../components/ContributionCalendar';
 import { getRepoContributions } from '../../services/GitHubSearchService';
 import { isBotLogin, cleanBotLogin } from '../../utils/githubHelpers';
@@ -331,7 +330,6 @@ export function RepoFileCityPhoneLayout() {
   const { isAuthenticated, token } = useAuthContext();
 
   const { owner, name, fullName } = route.params;
-  const { watchedRepos, addRepo, removeRepo } = useFeedPreferences();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarred, setIsStarred] = useState(false);
@@ -366,14 +364,6 @@ export function RepoFileCityPhoneLayout() {
   const [readmeLoading, setReadmeLoading] = useState(false);
   const [readmeFetched, setReadmeFetched] = useState(false);
   const [readmeError, setReadmeError] = useState<string | null>(null);
-
-  // Check if repo is being watched
-  const isRepoWatching = React.useMemo(() => {
-    return watchedRepos.some((r) =>
-      r.owner.toLowerCase() === owner.toLowerCase() &&
-      r.repo.toLowerCase() === name.toLowerCase()
-    );
-  }, [watchedRepos, owner, name]);
 
   // Fetch contribution data for header background
   useEffect(() => {
@@ -642,19 +632,6 @@ export function RepoFileCityPhoneLayout() {
     }
   };
 
-  // Toggle watch state
-  const handleToggleRepoWatch = () => {
-    if (isRepoWatching) {
-      removeRepo(owner, name);
-    } else {
-      addRepo({
-        owner,
-        repo: name,
-        watchedAt: new Date().toISOString(),
-      });
-    }
-  };
-
   const handleTourPress = () => {
     // TODO: Navigate to tour view or show tour
     console.log('Tour button pressed');
@@ -920,21 +897,6 @@ export function RepoFileCityPhoneLayout() {
                       { color: isStarred ? theme.colors.warning : theme.colors.textSecondary },
                     ]}>
                       {isStarred ? '★' : '☆'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.headerIconButton,
-                      { backgroundColor: theme.colors.surface },
-                      isRepoWatching && { backgroundColor: 'rgba(0, 122, 255, 0.2)' },
-                    ]}
-                    onPress={handleToggleRepoWatch}
-                  >
-                    <Text style={[
-                      styles.headerIconButtonIcon,
-                      { color: isRepoWatching ? theme.colors.primary : theme.colors.textSecondary },
-                    ]}>
-                      {isRepoWatching ? '◉' : '○'}
                     </Text>
                   </TouchableOpacity>
                 </>

@@ -30,7 +30,6 @@ import { useAuthContext } from '../../context/AuthContext';
 import type { FeedStackParamList } from '../../navigation/types';
 import { ContributionGrid, type DailyContribution } from '../../components/ContributionGrid';
 import { getRepoContributions } from '../../services/GitHubSearchService';
-import { useFeedPreferences } from '../../context/FeedPreferencesContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { LucideIcon } from '../../components/LucideIcon';
 import { fetchRepoReadme, fetchRepositoryContributors, type Contributor } from '../../services/GithubService';
@@ -114,7 +113,6 @@ export function RepoFileCityTabletLayout() {
   const { isAuthenticated, token } = useAuthContext();
 
   const { owner, name } = route.params;
-  const { watchedRepos, addRepo, removeRepo } = useFeedPreferences();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarred, setIsStarred] = useState(false);
@@ -137,14 +135,6 @@ export function RepoFileCityTabletLayout() {
 
   // Detect landscape orientation
   const isLandscape = layout.width > layout.height;
-
-  // Check if repo is being watched
-  const isRepoWatching = React.useMemo(() => {
-    return watchedRepos.some((r) =>
-      r.owner.toLowerCase() === owner.toLowerCase() &&
-      r.repo.toLowerCase() === name.toLowerCase()
-    );
-  }, [watchedRepos, owner, name]);
 
   // Fetch contribution data for header background
   useEffect(() => {
@@ -313,18 +303,6 @@ export function RepoFileCityTabletLayout() {
     }
   };
 
-  const handleToggleRepoWatch = () => {
-    if (isRepoWatching) {
-      removeRepo(owner, name);
-    } else {
-      addRepo({
-        owner,
-        repo: name,
-        watchedAt: new Date().toISOString(),
-      });
-    }
-  };
-
   const handleOpenReadme = useCallback(() => {
     bottomSheetRef.current?.expand();
   }, []);
@@ -476,19 +454,6 @@ export function RepoFileCityTabletLayout() {
                       />
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: isRepoWatching ? theme.colors.primary : theme.colors.surface, borderColor: theme.colors.border },
-                    ]}
-                    onPress={handleToggleRepoWatch}
-                  >
-                    <LucideIcon
-                      name={isRepoWatching ? "Eye" : "EyeOff"}
-                      size={16}
-                      color={isRepoWatching ? theme.colors.background : theme.colors.textSecondary}
-                    />
-                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[
                       styles.actionButton,

@@ -3,13 +3,10 @@
  */
 
 import { getTokens, deleteTokens } from './authStorage';
-import { getWatchedUsers, getWatchedRepos } from './feedStorage';
 import {
   getAccountRegistry,
   saveAccountRegistry,
   saveAccountTokens,
-  saveAccountFeedUsers,
-  saveAccountFeedRepos,
 } from './accountStorage';
 import type { AccountInfo, AccountRegistry } from '../types/account';
 import type { GitHubUser } from '../types/github';
@@ -93,15 +90,6 @@ export async function migrateLegacyAccount(): Promise<boolean> {
 
     // Migrate tokens
     await saveAccountTokens(user.id, legacyTokens);
-
-    // Migrate feed preferences
-    const [users, repos] = await Promise.all([
-      getWatchedUsers(),
-      getWatchedRepos(),
-    ]);
-
-    await saveAccountFeedUsers(user.id, users || []);
-    await saveAccountFeedRepos(user.id, repos || []);
 
     // Create registry with this account as active
     const registry: AccountRegistry = {

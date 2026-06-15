@@ -6,7 +6,6 @@
 import * as SecureStore from 'expo-secure-store';
 import type { AccountRegistry } from '../types/account';
 import type { AuthTokens } from './authStorage';
-import type { WatchedUser, WatchedRepo } from './feedStorage';
 
 // Storage keys
 const ACCOUNTS_REGISTRY_KEY = 'accounts_registry';
@@ -103,50 +102,13 @@ export async function deleteAccountTokens(userId: number): Promise<void> {
 }
 
 /**
- * Account Feed Users Management
- */
-
-export async function getAccountFeedUsers(userId: number): Promise<WatchedUser[]> {
-  const data = await getItem(getAccountKey(userId, 'feed_users'));
-  if (!data) return [];
-  try {
-    return JSON.parse(data) as WatchedUser[];
-  } catch {
-    console.error(`Failed to parse feed users for account ${userId}`);
-    return [];
-  }
-}
-
-export async function saveAccountFeedUsers(userId: number, users: WatchedUser[]): Promise<void> {
-  await setItem(getAccountKey(userId, 'feed_users'), JSON.stringify(users));
-}
-
-/**
- * Account Feed Repos Management
- */
-
-export async function getAccountFeedRepos(userId: number): Promise<WatchedRepo[]> {
-  const data = await getItem(getAccountKey(userId, 'feed_repos'));
-  if (!data) return [];
-  try {
-    return JSON.parse(data) as WatchedRepo[];
-  } catch {
-    console.error(`Failed to parse feed repos for account ${userId}`);
-    return [];
-  }
-}
-
-export async function saveAccountFeedRepos(userId: number, repos: WatchedRepo[]): Promise<void> {
-  await setItem(getAccountKey(userId, 'feed_repos'), JSON.stringify(repos));
-}
-
-/**
  * Delete all data for an account
  */
 
 export async function deleteAccountData(userId: number): Promise<void> {
   await Promise.all([
     deleteAccountTokens(userId),
+    // Purge any legacy per-account feed keys left over from the removed watch feature.
     deleteItem(getAccountKey(userId, 'feed_users')),
     deleteItem(getAccountKey(userId, 'feed_repos')),
   ]);

@@ -5,7 +5,7 @@
  * and renders the UserProfileScreen component.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation, RouteProp, type NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -20,7 +20,6 @@ import {
   type UserActivityResponse,
   type ActivityEvent,
 } from '../services/GitHubSearchService';
-import { useFeedPreferences } from '../context/FeedPreferencesContext';
 import { fetchUserRepositories, fetchOrganizationsForUser } from '../services/GithubService';
 import { GitHubRepository, GitHubOrganization, GitHubAccountType } from '../types/github';
 import { useAuthContext } from '../context/AuthContext';
@@ -98,27 +97,6 @@ export function UserProfileScreenContainer() {
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
   const [pinnedRepoNames, setPinnedRepoNames] = useState<string[]>([]);
   const [organizations, setOrganizations] = useState<GitHubOrganization[]>([]);
-
-  // Feed preferences for watching users
-  const { watchedUsers, addUser, removeUser } = useFeedPreferences();
-
-  // Check if user is being watched
-  const isWatching = useMemo(() => {
-    return watchedUsers.some((u) => u.login.toLowerCase() === username.toLowerCase());
-  }, [watchedUsers, username]);
-
-  // Toggle watch state
-  const handleToggleWatch = () => {
-    if (isWatching) {
-      removeUser(username);
-    } else {
-      addUser({
-        login: username,
-        watchedAt: new Date().toISOString(),
-        avatarUrl: userData?.avatar_url,
-      });
-    }
-  };
 
   // Navigate to repo screen
   const handleRepoPress = (owner: string, name: string, fullName: string) => {
@@ -384,11 +362,9 @@ export function UserProfileScreenContainer() {
       pinnedRepoNames={pinnedRepoNames}
       organizations={organizations}
       onClose={() => navigation.goBack()}
-      onWatchPress={handleToggleWatch}
       onRepoPress={handleRepoPress}
       onOrgPress={handleOrgPress}
       onOwnerPress={handleOwnerPress}
-      isWatching={isWatching}
     />
   );
 }

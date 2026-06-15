@@ -6,7 +6,6 @@ import { ThemeProvider, iceTangerineDarkTheme } from '@principal-ade/industry-th
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RepoFileCityScreen } from './RepoFileCityScreen';
 import { AuthProvider } from '../context/AuthContext';
-import { FeedPreferencesProvider } from '../context/FeedPreferencesContext';
 import CommitDetailScreen from './CommitDetailScreen';
 import type { FeedStackParamList } from '../navigation/types';
 
@@ -40,29 +39,27 @@ const RepoFileCityScreenWrapper = ({
     <SafeAreaProvider>
       <ThemeProvider theme={iceTangerineDarkTheme}>
         <AuthProvider initialTokens={mockTokens} initialUser={mockUser}>
-          <FeedPreferencesProvider>
-            <NavigationContainer>
-              <Stack.Navigator
-                screenOptions={{
-                  headerShown: false,
+          <NavigationContainer>
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen
+                name="RepoFileCity"
+                component={RepoFileCityScreen}
+                initialParams={{
+                  owner,
+                  name,
+                  fullName: `${owner}/${name}`,
                 }}
-              >
-                <Stack.Screen
-                  name="RepoFileCity"
-                  component={RepoFileCityScreen}
-                  initialParams={{
-                    owner,
-                    name,
-                    fullName: `${owner}/${name}`,
-                  }}
-                />
-                <Stack.Screen
-                  name="CommitDetail"
-                  component={CommitDetailScreen}
-                />
-              </Stack.Navigator>
-            </NavigationContainer>
-          </FeedPreferencesProvider>
+              />
+              <Stack.Screen
+                name="CommitDetail"
+                component={CommitDetailScreen}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

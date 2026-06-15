@@ -10,7 +10,6 @@ import {
   MainTabParamList,
   TrailsStackParamList,
   RecentStackParamList,
-  WatchStackParamList,
   AskStackParamList,
   PasteStackParamList,
   BookmarksStackParamList,
@@ -20,13 +19,8 @@ import AboutScreen from '../screens/AboutScreen';
 import RepositoryListScreen from '../screens/RepositoryListScreen';
 import DocumentScreen from '../screens/DocumentScreen';
 import EmailVerificationScreen from '../screens/EmailVerificationScreen';
-import FeedCustomizationScreen from '../screens/FeedCustomizationScreen';
-import AddUserScreen from '../screens/AddUserScreen';
-import AddRepoScreen from '../screens/AddRepoScreen';
 import TrailsTabScreen from '../screens/TrailsTabScreen';
 import RecentTabScreen from '../screens/RecentTabScreen';
-import WatchTabScreen from '../screens/WatchTabScreen';
-import UserActivityScreen from '../screens/UserActivityScreen';
 import { BookmarkedTopicsTrailsScreen } from '../screens/BookmarkedTopicsTrailsScreen';
 import CommitDetailScreen from '../screens/CommitDetailScreen';
 import { PasteTabScreen } from '../screens/PasteTabScreen';
@@ -118,9 +112,6 @@ const linking: LinkingOptions<RootStackParamList> = {
               AboutHome: '',
               RepositoryList: 'repositories',
               Document: 'document/:owner/:repo',
-              FeedCustomization: 'customize',
-              AddUser: 'add-user',
-              AddRepo: 'add-repo',
             },
           },
         },
@@ -133,7 +124,6 @@ const RootStack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const TrailsStack = createStackNavigator<TrailsStackParamList>();
 const RecentStack = createStackNavigator<RecentStackParamList>();
-const WatchStack = createStackNavigator<WatchStackParamList>();
 const AskStack = createStackNavigator<AskStackParamList>();
 const PasteStack = createStackNavigator<PasteStackParamList>();
 const BookmarksStack = createStackNavigator<BookmarksStackParamList>();
@@ -278,73 +268,6 @@ function RecentStackNavigator() {
         options={{ headerShown: false }}
       />
     </RecentStack.Navigator>
-  );
-}
-
-// Watch Stack Navigator — currently unused; kept in case we resurrect the Watch tab.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function WatchStackNavigator() {
-  const { theme } = useTheme();
-
-  return (
-    <WatchStack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: theme.colors.background,
-        },
-        headerTintColor: theme.colors.text,
-        headerBackTitle: 'Back',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <WatchStack.Screen
-        name="WatchHome"
-        component={WatchTabScreen}
-        options={{ headerShown: false }}
-      />
-      <WatchStack.Screen
-        name="UserActivity"
-        component={UserActivityScreen}
-        options={{ headerShown: false }}
-      />
-      <WatchStack.Screen
-        name="RepoFileCity"
-        component={RepoFileCityScreen}
-        options={{ headerShown: false }}
-      />
-      <WatchStack.Screen
-        name="AskTrail"
-        component={AskTrailScreen}
-        options={{ headerShown: false }}
-      />
-      <WatchStack.Screen
-        name="RepoReadme"
-        component={RepoReadmeScreen}
-        options={{ headerShown: false }}
-      />
-      <WatchStack.Screen
-        name="TourFileCity"
-        component={TourFileCityScreen}
-        options={{ headerShown: false }}
-      />
-      <WatchStack.Screen
-        name="UserProfile"
-        component={UserProfileScreenContainer}
-        options={({ route }) => ({ title: `@${route.params.username}`, headerShown: false })}
-      />
-      <WatchStack.Screen
-        name="Organization"
-        component={OrganizationScreenContainer}
-        options={({ route }) => ({ title: route.params.orgLogin, headerShown: false })}
-      />
-      <WatchStack.Screen
-        name="CommitDetail"
-        component={CommitDetailScreen}
-        options={{ headerShown: false }}
-      />
-    </WatchStack.Navigator>
   );
 }
 
@@ -580,21 +503,6 @@ function AboutStackNavigator() {
             name="Document"
             component={DocumentScreen}
             options={({ route }) => ({ title: route.params.fileName })}
-          />
-          <AboutStack.Screen
-            name="FeedCustomization"
-            component={FeedCustomizationScreen}
-            options={{ headerShown: false }}
-          />
-          <AboutStack.Screen
-            name="AddUser"
-            component={AddUserScreen}
-            options={{ headerShown: false, presentation: 'modal' }}
-          />
-          <AboutStack.Screen
-            name="AddRepo"
-            component={AddRepoScreen}
-            options={{ headerShown: false, presentation: 'modal' }}
           />
           <AboutStack.Screen
             name="SavedCards"
