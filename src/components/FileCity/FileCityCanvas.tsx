@@ -5,7 +5,7 @@
  * Uses react-native-reanimated for gesture handling.
  */
 
-import React, { useMemo, useCallback, useState, useRef, useEffect, useReducer } from 'react';
+import React, { useMemo, useCallback, useState, useRef, useEffect, useReducer, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
 import {
   Canvas,
@@ -36,6 +36,7 @@ import {
 import type { LayerRenderStrategy, HighlightLayer, LayerItem } from '@principal-ai/file-city-builder';
 import { getFileColor } from '@principal-ai/file-city-builder';
 import { FileCityCanvasProps, TransformState, FileTypeIconConfig } from './types';
+import type { BuildingScreenRect, CityBuilding, CityData } from './types';
 import {
   calculateScaleAndOffset,
   LayerIndex,
@@ -50,6 +51,11 @@ import {
 
 const DEFAULT_BACKGROUND_COLOR = '#1a1a2e';
 const DEFAULT_DISTRICT_COLOR = '#4B5155';
+
+// Buildings named in `dimmedPaths` are drawn in this muted grey at reduced
+// opacity — e.g. files hidden under a collapsed file-tree folder.
+const DIMMED_BUILDING_COLOR = '#3b414e';
+const DIMMED_BUILDING_OPACITY = 0.5;
 
 
 // Parse hex color to Skia color
@@ -165,7 +171,48 @@ function appendSevenSegDigit(
   });
 }
 
-export function FileCityCanvas({
+/**
+ * The building's on-screen rect, mirroring the draw math in `buildingData`.
+ * Pure so both tap handling and the imperative `pressBuildingByPath` agree.
+ */
+function computeBuildingScreenRect(
+  building: CityBuilding,
+  cityData: CityData,
+  scaleAndOffset: { scale: number; offsetX: number; offsetZ: number },
+  currentScale: number,
+  currentTranslateX: number,
+  currentTranslateY: number,
+): BuildingScreenRect {
+  const baseScale = scaleAndOffset.scale;
+  const dims = building.dimensions;
+  let w: number, h: number;
+  if (dims[0] > 50 || dims[2] > 50) {
+    w = dims[0] * baseScale * 0.95;
+    h = dims[2] * baseScale * 0.95;
+  } else {
+    const s = Math.max(2, Math.max(dims[0], dims[2]) * baseScale * 0.9);
+    w = s;
+    h = s;
+  }
+  const baseCx = (building.position.x - cityData.bounds.minX) * baseScale + scaleAndOffset.offsetX;
+  const baseCy = (building.position.z - cityData.bounds.minZ) * baseScale + scaleAndOffset.offsetZ;
+  const screenCx = baseCx * currentScale + currentTranslateX;
+  const screenCy = baseCy * currentScale + currentTranslateY;
+  const screenW = w * currentScale;
+  const screenH = h * currentScale;
+  return { x: screenCx - screenW / 2, y: screenCy - screenH / 2, width: screenW, height: screenH };
+}
+
+export interface FileCityCanvasHandle {
+  /**
+   * Fire `onBuildingPress` for the building at `path`, with its current
+   * on-screen rect — lets a tree/list selection grow from the real square.
+   * Returns false if the path isn't a building or no handler is set.
+   */
+  pressBuildingByPath: (path: string) => boolean;
+}
+
+export const FileCityCanvas = forwardRef<FileCityCanvasHandle, FileCityCanvasProps>(function FileCityCanvas({
   cityData,
   highlightLayers = [],
   backgroundColor = DEFAULT_BACKGROUND_COLOR,
@@ -189,9 +236,10 @@ export function FileCityCanvas({
   onZoomComplete,
   zoomPadding = 0.8,
   isolationMode = 'none',
+  dimmedPaths,
   markerTrail,
   markerTrailColor = '#22d3ee',
-}: FileCityCanvasProps) {
+}: FileCityCanvasProps, ref: React.Ref<FileCityCanvasHandle>) {
   const [canvasSize, setCanvasSize] = useState({ width: 300, height: 300 });
 
   // Load fonts for labels and icons
@@ -412,7 +460,17 @@ export function FileCityCanvas({
       );
 
       if (building && onBuildingPress) {
-        onBuildingPress(building);
+        onBuildingPress(
+          building,
+          computeBuildingScreenRect(
+            building,
+            cityData,
+            scaleAndOffset,
+            currentScale,
+            currentTranslateX,
+            currentTranslateY,
+          ),
+        );
       } else if (district && onDistrictPress) {
         onDistrictPress(district);
       }
@@ -434,6 +492,31 @@ export function FileCityCanvas({
     },
     [scale, translateX, translateY, handleTapJS]
   );
+
+  // Imperative: select a building by path (e.g. from a file-tree row), firing
+  // onBuildingPress with the building's current on-screen rect. Reads the live
+  // pan/zoom shared values so the rect tracks wherever the building sits now.
+  const pressBuildingByPath = useCallback(
+    (path: string): boolean => {
+      const building = cityData.buildings.find((b) => b.path === path);
+      if (!building || !onBuildingPress) return false;
+      onBuildingPress(
+        building,
+        computeBuildingScreenRect(
+          building,
+          cityData,
+          scaleAndOffset,
+          scale.value,
+          translateX.value,
+          translateY.value,
+        ),
+      );
+      return true;
+    },
+    [cityData, onBuildingPress, scaleAndOffset, scale, translateX, translateY]
+  );
+
+  useImperativeHandle(ref, () => ({ pressBuildingByPath }), [pressBuildingByPath]);
 
   // Animation helper - animate to target zoom/pan position
   // Called from JS thread (useEffect), so no 'worklet' directive
@@ -769,11 +852,18 @@ export function FileCityCanvas({
         const renderStrategy: LayerRenderStrategy = firstMatch?.item.renderStrategy || 'border';
         const layerOpacity = firstMatch?.layer.opacity;
 
-        const color = building.color || getFileColor(building.path);
+        // Hidden under a collapsed tree folder → grey + recessed, overriding
+        // the file-type color and isolation opacity.
+        const isDimmed = dimmedPaths?.has(building.path) ?? false;
+        const color = isDimmed
+          ? DIMMED_BUILDING_COLOR
+          : building.color || getFileColor(building.path);
 
         // Use animated opacity for isolation modes
         const targetOpacity = getTargetOpacity(hasHighlight, 'building');
-        const opacity = buildingOpacityRef.current.get(building.path) ?? targetOpacity;
+        const opacity = isDimmed
+          ? DIMMED_BUILDING_OPACITY
+          : buildingOpacityRef.current.get(building.path) ?? targetOpacity;
 
         const actualRadius = Math.min(buildingBorderRadius, Math.min(width, height) / 6);
 
@@ -804,7 +894,7 @@ export function FileCityCanvas({
         };
       })
       .filter(Boolean);
-  }, [cityData.buildings, worldToCanvasBase, scaleAndOffset, highlightMatchMap, buildingBorderRadius, showFileTypeIcons, iconMap, getTargetOpacity]);
+  }, [cityData.buildings, worldToCanvasBase, scaleAndOffset, highlightMatchMap, buildingBorderRadius, showFileTypeIcons, iconMap, getTargetOpacity, dimmedPaths]);
 
   // Filter buildings for 'hide' mode
   const visibleBuildings = useMemo(() => {
@@ -1132,7 +1222,7 @@ export function FileCityCanvas({
       </GestureDetector>
     </GestureHandlerRootView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

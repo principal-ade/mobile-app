@@ -1,4 +1,5 @@
 export { FileCityCanvas } from './FileCityCanvas';
+export type { FileCityCanvasHandle } from './FileCityCanvas';
 export type {
   CityData,
   CityBuilding,
@@ -8,6 +9,8 @@ export type {
   LayerItem,
   FileCityCanvasProps,
   FileTypeIconConfig,
+  BuildingScreenRect,
+  IsolationMode,
 } from './types';
 export { generateMockCityData, generateMockHighlightLayers } from './mockData';
 
@@ -17,6 +20,7 @@ export {
   buildFileSystemTreeFromFileInfoList,
   createFileHighlightLayers,
   extractFileIconMap,
+  getFileColor,
 } from '@principal-ai/file-city-builder';
 
 export type { FileHighlightLayersResult } from '@principal-ai/file-city-builder';

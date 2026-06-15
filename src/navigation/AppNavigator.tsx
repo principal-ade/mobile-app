@@ -893,6 +893,33 @@ export default function AppNavigator() {
                 presentation: 'modal',
               }}
             />
+            {/* Trails Tutorial — presented at the root (above MainTabs) so it
+                covers the tab bar, matching the logged-out walkthrough. */}
+            <RootStack.Screen
+              name="LearnTrails"
+              component={LearnTrailsScreen}
+              options={({ navigation }) => ({
+                title: 'Trails Tutorial',
+                headerTitleStyle: { fontWeight: 'bold', color: theme.colors.primary },
+                headerLeft: () => null,
+                headerRight: () => (
+                  <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginRight: 24 }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
+                      Exit
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              })}
+            />
+            <RootStack.Screen
+              name="SampleTrail"
+              component={SampleTrailScreen}
+              options={{ title: 'Sample trail' }}
+            />
           </>
         )}
       </RootStack.Navigator>

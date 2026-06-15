@@ -20,6 +20,17 @@ export type {
 /** Isolation mode for non-highlighted buildings */
 export type IsolationMode = 'none' | 'transparent' | 'hide';
 
+/**
+ * On-screen rectangle of a building at press time, in canvas-local pixels
+ * (origin = canvas top-left). Lets callers anchor an animation to the square.
+ */
+export interface BuildingScreenRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface FileCityCanvasProps {
   cityData: import('@principal-ai/file-city-builder').CityData;
   highlightLayers?: import('@principal-ai/file-city-builder').HighlightLayer[];
@@ -37,7 +48,10 @@ export interface FileCityCanvasProps {
   // Interaction
   enableZoom?: boolean;
   enablePan?: boolean;
-  onBuildingPress?: (building: import('@principal-ai/file-city-builder').CityBuilding) => void;
+  onBuildingPress?: (
+    building: import('@principal-ai/file-city-builder').CityBuilding,
+    screenRect?: BuildingScreenRect,
+  ) => void;
   onDistrictPress?: (district: import('@principal-ai/file-city-builder').CityDistrict) => void;
   onBuildingHover?: (building: import('@principal-ai/file-city-builder').CityBuilding | null) => void;
 
@@ -58,6 +72,10 @@ export interface FileCityCanvasProps {
 
   // Isolation mode (dim or hide non-highlighted buildings)
   isolationMode?: IsolationMode; // Default: 'none'
+
+  // Buildings to render greyed-out and recessed, regardless of highlights —
+  // e.g. files hidden under a collapsed file-tree folder. Keyed by path.
+  dimmedPaths?: Set<string>;
 
   // Ordered, numbered marker trail drawn over the city: a connector line
   // threading the listed building paths in order, with a numbered badge at

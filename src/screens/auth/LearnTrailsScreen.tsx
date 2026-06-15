@@ -11,8 +11,9 @@
  * fixture (see `data/learnTrailsCity.ts`); no token, no network.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  LayoutChangeEvent,
   Platform,
   ScrollView,
   StyleSheet,
@@ -26,9 +27,16 @@ import type { NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@principal-ade/industry-theme';
 import type { Theme } from '@principal-ade/industry-theme';
 
-import { FileCityCanvas } from '../../components/FileCity';
-import type { CityBuilding, HighlightLayer } from '../../components/FileCity';
-import { TrailCodeSnippet } from '../../components/Trails/TrailCodeSnippet';
+import { FileCityCanvas, getFileColor } from '../../components/FileCity';
+import type {
+  BuildingScreenRect,
+  CityBuilding,
+  FileCityCanvasHandle,
+  HighlightLayer,
+} from '../../components/FileCity';
+import { FileTree } from '../../components/FileTree';
+import { LearnTrailsFilePreview } from './LearnTrailsFilePreview';
+import type { PreviewOrigin } from './LearnTrailsFilePreview';
 import type { TrailMarkerSnippet } from '../../types/Trail';
 import type { TrailFileReader } from '../../services/TrailFileContentService';
 import {
@@ -66,6 +74,30 @@ export function LearnTrailsScreen() {
 
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [openedFile, setOpenedFile] = useState<CityBuilding | null>(null);
+  // Where the file preview grows from (the tapped square, in canvas-local px).
+  const [openOrigin, setOpenOrigin] = useState<PreviewOrigin | null>(null);
+  // Map area size, measured so the preview can size/center itself over it.
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  // Bumped to ask the open preview to animate itself closed (re-tap to hide).
+  const [closeSignal, setCloseSignal] = useState(0);
+  // Files currently visible in the tree; the rest get greyed on the map.
+  const [visibleFiles, setVisibleFiles] = useState<Set<string> | null>(null);
+  // Folders currently open in the tree; their borders get highlighted on the map.
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
+  const canvasRef = useRef<FileCityCanvasHandle | null>(null);
+
+  const handleVisibleFiles = useCallback((v: Set<string>) => setVisibleFiles(v), []);
+  const handleOpenFolders = useCallback((v: Set<string>) => setOpenFolders(v), []);
+
+  // Buildings whose tree row is hidden under a collapsed folder → grey on map.
+  const dimmedPaths = useMemo(() => {
+    if (step !== 0 || !visibleFiles) return undefined;
+    const dimmed = new Set<string>();
+    for (const b of LEARN_CITY.buildings) {
+      if (!visibleFiles.has(b.path)) dimmed.add(b.path);
+    }
+    return dimmed;
+  }, [step, visibleFiles]);
   // Which stop is focused in step 1 (drives the zoom); null = frame the trail.
   const [activeStop, setActiveStop] = useState<number | null>(null);
   // Step 3: which coverage trails the user has toggled on (by layer id).
@@ -73,10 +105,53 @@ export function LearnTrailsScreen() {
 
   const goToStep = (next: 0 | 1 | 2) => {
     setOpenedFile(null);
+    setOpenOrigin(null);
     setActiveStop(null);
     setEnabledTrails(new Set());
     setStep(next);
   };
+
+  const onCanvasLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setCanvasSize({ width, height });
+  }, []);
+
+  // Open a file's preview. A building tap supplies the square's on-screen rect;
+  // a tree-row tap has none (it may be off-screen), so grow from the map center.
+  const openFile = useCallback(
+    (building: CityBuilding, rect?: BuildingScreenRect) => {
+      setOpenOrigin(
+        rect ?? {
+          x: canvasSize.width / 2 - 14,
+          y: canvasSize.height / 2 - 14,
+          width: 28,
+          height: 28,
+        },
+      );
+      setOpenedFile(building);
+    },
+    [canvasSize.width, canvasSize.height],
+  );
+
+  const closeFile = useCallback(() => {
+    setOpenedFile(null);
+    setOpenOrigin(null);
+  }, []);
+
+  // Tree-row tap: animate closed if already open, else ask the canvas to fire
+  // its press for that building so the preview grows from the real square (the
+  // canvas knows the building's live on-screen position). Falls back to a
+  // center grow if the canvas hasn't mounted / the path isn't found.
+  const toggleFile = useCallback(
+    (building: CityBuilding) => {
+      if (openedFile?.path === building.path) {
+        setCloseSignal((n) => n + 1);
+        return;
+      }
+      if (!canvasRef.current?.pressBuildingByPath(building.path)) openFile(building);
+    },
+    [openedFile, openFile],
+  );
 
   const toggleTrail = (id: string) =>
     setEnabledTrails((prev) => {
@@ -102,23 +177,40 @@ export function LearnTrailsScreen() {
   const highlightLayers = useMemo<HighlightLayer[]>(() => {
     if (step === 1) return [SINGLE_TRAIL_LAYER];
     if (step === 2) return COVERAGE_LAYERS.filter((l) => enabledTrails.has(l.id));
-    // Step 0: mark the tapped building as selected.
-    if (openedFile) {
-      return [
-        {
-          id: 'opened',
-          name: 'Selected file',
-          enabled: true,
-          color: TRAIL_COLOR,
-          opacity: 1,
-          borderWidth: 2,
-          priority: 100,
-          items: [{ path: openedFile.path, type: 'file', renderStrategy: 'fill' }],
-        },
-      ];
+
+    // Step 0: outline the borders of folders that are open in the tree, plus
+    // fill the tapped file as the current selection.
+    const layers: HighlightLayer[] = [];
+    if (openFolders.size > 0) {
+      layers.push({
+        id: 'open-folders',
+        name: 'Open folders',
+        enabled: true,
+        color: TRAIL_COLOR,
+        opacity: 1,
+        borderWidth: 2,
+        priority: 60,
+        items: [...openFolders].map((path) => ({
+          path,
+          type: 'directory' as const,
+          renderStrategy: 'border' as const,
+        })),
+      });
     }
-    return [];
-  }, [step, openedFile, enabledTrails]);
+    if (openedFile) {
+      layers.push({
+        id: 'opened',
+        name: 'Selected file',
+        enabled: true,
+        color: TRAIL_COLOR,
+        opacity: 1,
+        borderWidth: 2,
+        priority: 100,
+        items: [{ path: openedFile.path, type: 'file', renderStrategy: 'fill' }],
+      });
+    }
+    return layers;
+  }, [step, openedFile, enabledTrails, openFolders]);
 
   const markerTrail = step === 1 ? TRAIL_MARKERS.map((m) => m.path) : undefined;
   const isolationMode = step === 1 ? 'transparent' : 'none';
@@ -134,8 +226,9 @@ export function LearnTrailsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* ── The city (persistent; only props change per step) ── */}
-      <View style={styles.canvasWrap}>
+      <View style={styles.canvasWrap} onLayout={onCanvasLayout}>
         <FileCityCanvas
+          ref={canvasRef}
           cityData={LEARN_CITY}
           backgroundColor={theme.colors.background}
           highlightLayers={highlightLayers}
@@ -145,8 +238,26 @@ export function LearnTrailsScreen() {
           zoomToPath={zoomToPath}
           enableZoom={step !== 1}
           enablePan={step !== 1}
-          onBuildingPress={step === 0 ? setOpenedFile : undefined}
+          dimmedPaths={dimmedPaths}
+          onBuildingPress={step === 0 ? openFile : undefined}
         />
+
+        {/* File preview grows out of the tapped square, over the map. */}
+        {step === 0 && openedFile && openOrigin && openedSnippet && (
+          <LearnTrailsFilePreview
+            key={openedFile.path}
+            building={openedFile}
+            snippet={openedSnippet}
+            color={openedFile.color || getFileColor(openedFile.path)}
+            origin={openOrigin}
+            canvasSize={canvasSize}
+            readFile={readFile}
+            accentColor={TRAIL_COLOR}
+            theme={theme}
+            onClose={closeFile}
+            closeSignal={closeSignal}
+          />
+        )}
       </View>
 
       {/* ── Teaching panel ── */}
@@ -168,33 +279,16 @@ export function LearnTrailsScreen() {
           contentContainerStyle={styles.stepAreaContent}
           showsVerticalScrollIndicator={false}
         >
-          {step === 0 &&
-            (openedFile && openedSnippet ? (
-              <View>
-                <View style={styles.fileBar}>
-                  <TouchableOpacity
-                    onPress={() => setOpenedFile(null)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text style={[styles.fileClose, { color: theme.colors.textSecondary }]}>
-                      Close ✕
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <TrailCodeSnippet
-                  filePath={openedFile.path}
-                  snippet={openedSnippet}
-                  readFile={readFile}
-                  eyebrowColor={TRAIL_COLOR}
-                />
-              </View>
-            ) : (
-              <View style={styles.hintPlaceholder}>
-                <Text style={[styles.hintText, { color: theme.colors.textSecondary }]}>
-                  Tap a building to open its file
-                </Text>
-              </View>
-            ))}
+          {step === 0 && (
+            <FileTree
+              city={LEARN_CITY}
+              selectedPath={openedFile?.path ?? null}
+              collapsedByDefault
+              onFilePress={toggleFile}
+              onVisibleFilesChange={handleVisibleFiles}
+              onOpenFoldersChange={handleOpenFolders}
+            />
+          )}
 
           {step === 1 && (
             <View style={styles.stopList}>
@@ -390,27 +484,6 @@ const styles = StyleSheet.create({
   stepAreaContent: {
     flexGrow: 1,
     paddingBottom: 4,
-  },
-  hintPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-  },
-  hintText: {
-    fontSize: 15,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  // File preview
-  fileBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: 6,
-  },
-  fileClose: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   // Stop list
   stopList: {

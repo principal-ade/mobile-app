@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '@principal-ade/industry-theme';
 import Constants from 'expo-constants';
 import QRCode from 'react-native-qrcode-svg';
@@ -21,7 +22,14 @@ import { DiscordIcon } from '../components/DiscordIcon';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
 import { AccountSwitcherSheet } from '../components/AccountSwitcherSheet';
-import type { AboutStackParamList } from '../navigation/types';
+import type { AboutStackParamList, RootStackParamList } from '../navigation/types';
+
+// About lives in a tab stack; the Trails Tutorial is presented at the root
+// (above the tab bar), so navigation must reach both param lists.
+type AboutScreenNavigationProp = CompositeNavigationProp<
+  StackNavigationProp<AboutStackParamList, 'AboutHome'>,
+  StackNavigationProp<RootStackParamList>
+>;
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -111,7 +119,7 @@ export function AboutScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const navigation = useNavigation<NavigationProp<AboutStackParamList>>();
+  const navigation = useNavigation<AboutScreenNavigationProp>();
   const { user, signIn, signOut } = useAuth();
   const { accounts } = useMultiAccount();
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
@@ -271,6 +279,31 @@ export function AboutScreen() {
               </TouchableOpacity>
             </>
           )}
+        </View>
+
+        {/* Learn Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+            LEARN
+          </Text>
+        </View>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('LearnTrails')}
+          >
+            <View style={styles.linkContent}>
+              <Text style={[styles.linkTitle, { color: theme.colors.text }]}>
+                Trails Tutorial
+              </Text>
+              <Text style={[styles.linkSubtitle, { color: theme.colors.textSecondary }]}>
+                A quick visual tour of file cities and trails
+              </Text>
+            </View>
+            <Text style={[styles.linkArrow, { color: theme.colors.textSecondary }]}>
+              ›
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Links Section */}
