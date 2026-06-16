@@ -188,7 +188,7 @@ export async function getSuggestedUsers(
 }
 
 /**
- * Get suggested repos (starred + org repos)
+ * Get suggested repos (org repos only; starred repos are filtered out)
  * Requires authentication - pass GitHub token
  */
 export async function getSuggestedRepos(
@@ -214,7 +214,7 @@ export async function getSuggestedRepos(
   }
 
   const data: TRPCResponse<SuggestedReposResponse> = await response.json();
-  return { repos: data.result.data.repos };
+  return { repos: data.result.data.repos.filter((r) => r.source !== 'starred') };
 }
 
 /**
