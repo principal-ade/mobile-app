@@ -18,7 +18,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 
 import { TopicDetailScreen } from './TopicDetailScreen';
 import { AuthProvider } from '../context/AuthContext';
-import type { GetTopicResponse, TopicPayload } from '../types/Topic';
+import type { GetTopicResponse, PublishedTopic } from '../types/Topic';
 import type { TrailFetchResponse } from '../services/TrailsApiService';
 
 // ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ const TRAIL_IDS = [
   'cccccccc-1111-2222-3333-444444444444',
 ] as const;
 
-const TOPIC: TopicPayload = {
+const TOPIC: PublishedTopic = {
   id: TOPIC_ID,
   title: 'Cache invalidation strategies in HTTP edge proxies',
   description:
@@ -47,6 +47,7 @@ const TOPIC: TopicPayload = {
   createdBy: { githubId: 583231, githubLogin: 'sarah-cdn' },
   createdAt: '2026-01-12T14:00:00Z',
   updatedAt: '2026-04-30T09:15:00Z',
+  visibility: 'public',
 };
 
 const TRAIL_FIXTURES: Record<
