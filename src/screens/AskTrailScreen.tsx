@@ -242,7 +242,29 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
   );
 
   const showingResults = query.trim().length > 0;
-  const data = showingResults ? results : suggestions;
+
+  // While searching, float the user's own repos (starred + org) that match the
+  // query to the top, then append the global GitHub results — deduped by
+  // full_name. searchRepos is unauthenticated and can't see private/org repos,
+  // so matching `suggestions` locally is the only way those surface once the
+  // user starts typing. Local matches render instantly (no network), so typing
+  // narrows your repos rather than replacing them wholesale.
+  const data = useMemo<GitHubRepo[]>(() => {
+    if (!showingResults) return suggestions;
+    const q = query.trim().toLowerCase();
+    const matchingSuggestions = suggestions.filter(
+      (r) =>
+        r.full_name.toLowerCase().includes(q) ||
+        r.name.toLowerCase().includes(q) ||
+        r.owner.toLowerCase().includes(q),
+    );
+    const seen = new Set(
+      matchingSuggestions.map((r) => r.full_name.toLowerCase()),
+    );
+    const rest = results.filter((r) => !seen.has(r.full_name.toLowerCase()));
+    return [...matchingSuggestions, ...rest];
+  }, [showingResults, query, suggestions, results]);
+
   const curated = authoring?.curated ?? [];
 
   const renderRepo = ({ item }: { item: GitHubRepo }) => {
@@ -368,7 +390,8 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
         />
       </View>
 
-      {isSearching || (loadingSuggestions && !showingResults) ? (
+      {(loadingSuggestions && !showingResults) ||
+      (isSearching && data.length === 0) ? (
         <View style={styles.centerFill}>
           <LoadingSpinner size="large" color={theme.colors.primary} />
         </View>
