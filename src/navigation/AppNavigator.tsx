@@ -767,7 +767,7 @@ export default function AppNavigator() {
                 headerTitle: () => (
                   <Text style={{ fontWeight: 'bold', fontSize: 17 }}>
                     <Text style={{ color: theme.colors.primary }}>Trails</Text>
-                    <Text style={{ color: theme.colors.accent }}> Tutorial</Text>
+                    <Text style={{ color: theme.colors.text }}> Tutorial</Text>
                   </Text>
                 ),
                 headerLeft: () => null,
@@ -816,7 +816,7 @@ export default function AppNavigator() {
                 headerTitle: () => (
                   <Text style={{ fontWeight: 'bold', fontSize: 17 }}>
                     <Text style={{ color: theme.colors.primary }}>Trails</Text>
-                    <Text style={{ color: theme.colors.accent }}> Tutorial</Text>
+                    <Text style={{ color: theme.colors.text }}> Tutorial</Text>
                   </Text>
                 ),
                 headerLeft: () => null,

@@ -69,6 +69,9 @@ function buildLayer(
 /** Accent shared by the single-trail layer + the numbered connector. */
 export const TRAIL_COLOR = '#22d3ee';
 
+/** Display name of the walkthrough trail (the one TRAIL_MARKERS describes). */
+export const TRAIL_NAME = 'Sign-in flow';
+
 /**
  * Step 2's ordered stops — a tiny "how sign-in flows" trail. `path` is the
  * resolved real building path, so it can be passed straight to the canvas as

@@ -44,6 +44,7 @@ import {
   LEARN_CITY,
   COVERAGE_LAYERS,
   TRAIL_MARKERS,
+  TRAIL_NAME,
   learnFileContents,
 } from '../../data/learnTrailsCity';
 import type { RootStackParamList } from '../../navigation/types';
@@ -55,10 +56,10 @@ const STEPS = [
   },
   {
     title: 'A trail provides understanding',
-    body: 'Walking you through a feature with references. Just like a trail through nature.',
+    body: 'Codebases can feel like black boxes. A trail is the fastest way to understand what is going on.',
   },
   {
-    title: 'Many trails map the codebase',
+    title: 'Comprehension Coverage Visualized',
     body: "As your team lays more trails, the map fills in — a living picture of what's understood and reviewed.",
   },
 ] as const;
@@ -76,9 +77,9 @@ const REVEAL_STEP_MS = 850;
 const CARD_H = 104;
 // Top inset for top-positioned caption cards.
 const CARD_TOP = 16;
-// Step 2 renders the city in flat grey so coverage reads purely as colored
-// (covered) vs grey (uncovered) — the file colors are intentionally hidden.
-const COVERAGE_GREY = '#4b5563';
+// Steps 1 & 2 render the city as near-black "black boxes" so highlights read as
+// colored (known) vs black (opaque) — the file colors are intentionally hidden.
+const CITY_BLACK = '#0a0a0a';
 
 type PathNode = { path: string; name: string; type: 'dir' | 'file' };
 
@@ -119,14 +120,21 @@ function morphFrames(prev: PathNode[], target: PathNode[]): PathNode[][] {
   return frames;
 }
 
-// Comprehension: share of the city's files covered by at least one trail — the
-// union of every coverage trail's files over the total building count.
-const COMPREHENSION_PCT = (() => {
-  const covered = new Set<string>();
-  for (const layer of COVERAGE_LAYERS) for (const item of layer.items) covered.add(item.path);
+// Comprehension after each coverage trail is laid (cumulative union of files
+// over the total building count). Index 0 = nothing laid yet; the last entry is
+// the final comprehension once every trail is on the map.
+const COVERAGE_CUMULATIVE_PCT: number[] = (() => {
   const total = LEARN_CITY.buildings.length;
-  return total ? Math.round((covered.size / total) * 100) : 0;
+  const covered = new Set<string>();
+  const out = [0];
+  for (const layer of COVERAGE_LAYERS) {
+    for (const item of layer.items) covered.add(item.path);
+    out.push(total ? Math.round((covered.size / total) * 100) : 0);
+  }
+  return out;
 })();
+// Step 3 entrance: each trail layer pops in this many ms after the previous.
+const LAYER_REVEAL_MS = 650;
 
 type TrailStep = { path: string; label: string; note: string };
 
@@ -146,6 +154,27 @@ function trailSteps(trail: HighlightLayer): TrailStep[] {
   }));
 }
 
+/** Human label for a file's kind — drives the step 0 color legend. */
+function fileKind(path: string): string {
+  if (/\.(test|spec)\.[jt]sx?$/i.test(path)) return 'Tests';
+  switch (path.split('.').pop()?.toLowerCase()) {
+    case 'ts':
+    case 'tsx':
+      return 'TypeScript';
+    case 'js':
+    case 'jsx':
+      return 'JavaScript';
+    case 'json':
+      return 'JSON';
+    case 'md':
+      return 'Markdown';
+    case 'css':
+      return 'Styles';
+    default:
+      return 'Config';
+  }
+}
+
 export function LearnTrailsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -163,17 +192,31 @@ export function LearnTrailsScreen() {
       ),
     [trailColor],
   );
-  // Step 2 uses a flat-grey copy of the city so coverage shows as colored vs grey
-  // (the toggled trails fill covered buildings with their color; the rest stay grey).
-  const greyCity = useMemo(
+  // Steps 1 & 2 use a black-box copy of the city so highlights read as colored vs
+  // black — the trail / coverage fills color buildings in; the rest stay black.
+  const blackCity = useMemo(
     () => ({
       ...LEARN_CITY,
-      buildings: LEARN_CITY.buildings.map((b) => ({ ...b, color: COVERAGE_GREY })),
+      buildings: LEARN_CITY.buildings.map((b) => ({ ...b, color: CITY_BLACK })),
     }),
     [],
   );
+  // Step 0 color legend — distinct file-type colors present in the city, in the
+  // same getFileColor() the canvas paints buildings with, most-common first.
+  const fileLegend = useMemo(() => {
+    const byColor = new Map<string, { color: string; label: string; count: number }>();
+    for (const b of LEARN_CITY.buildings) {
+      const color = getFileColor(b.path);
+      const entry = byColor.get(color);
+      if (entry) entry.count++;
+      else byColor.set(color, { color, label: fileKind(b.path), count: 1 });
+    }
+    return [...byColor.values()].sort((a, b) => b.count - a.count);
+  }, []);
 
   const [step, setStep] = useState<0 | 1 | 2>(0);
+  // Step 0 panel toggle: the file tree or the color legend.
+  const [step0View, setStep0View] = useState<'tree' | 'legend'>('tree');
   const [openedFile, setOpenedFile] = useState<CityBuilding | null>(null);
   // Where the file preview grows from (the tapped square, in canvas-local px).
   const [openOrigin, setOpenOrigin] = useState<PreviewOrigin | null>(null);
@@ -206,11 +249,14 @@ export function LearnTrailsScreen() {
   // The breadcrumb's current node list (morphs between stops), and whether the
   // leader line / caption card have appeared for the active stop yet.
   const [pathNodes, setPathNodes] = useState<PathNode[]>([]);
+  // Mirror of pathNodes for the morph effect to read the *current* breadcrumb as
+  // its starting point without depending on it (which would re-fire the effect).
+  const pathNodesRef = useRef<PathNode[]>([]);
   const [lineShown, setLineShown] = useState(false);
   const [cardShown, setCardShown] = useState(false);
-  // Set once the last stop has been revealed — switches the panel into "review"
-  // mode (a tappable list of the trail's stops).
-  const [finished, setFinished] = useState(false);
+  // Highest stop completed so far (-1 = none yet). The step list reveals stops
+  // up to reachedStop + 1, so only the next step is ever shown ahead.
+  const [reachedStop, setReachedStop] = useState(-1);
   const [leaderLine, setLeaderLine] = useState<{
     stopX: number;
     stopY: number;
@@ -218,9 +264,13 @@ export function LearnTrailsScreen() {
     cardEdgeY: number;
   } | null>(null);
   // Step 3 (coverage): the trail drilled into (by layer id), and which of its
-  // steps is selected. All trails are always lit; drilling just reveals steps.
+  // steps is selected. All trails are lit; drilling just reveals steps.
   const [coverageTrailId, setCoverageTrailId] = useState<string | null>(null);
   const [coverageStep, setCoverageStep] = useState<number | null>(null);
+  // Step 3 entrance animation: how many trail layers have populated so far, and
+  // the comprehension percentage currently displayed (counts up to the target).
+  const [coverageRevealed, setCoverageRevealed] = useState(0);
+  const [displayPct, setDisplayPct] = useState(0);
 
   const goToStep = (next: 0 | 1 | 2) => {
     setOpenedFile(null);
@@ -230,12 +280,37 @@ export function LearnTrailsScreen() {
     setPathNodes([]);
     setLineShown(false);
     setCardShown(false);
-    setFinished(false);
+    setReachedStop(-1);
     setLeaderLine(null);
     setCoverageTrailId(null);
     setCoverageStep(null);
+    setCoverageRevealed(0);
+    setDisplayPct(0);
     setStep(next);
   };
+
+  // Step 3 entrance: lay the trail layers one at a time on the map.
+  useEffect(() => {
+    if (step !== 2) return;
+    setCoverageTrailId(null);
+    setCoverageStep(null);
+    setCoverageRevealed(0);
+    setDisplayPct(0);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let k = 1; k <= COVERAGE_LAYERS.length; k++) {
+      timers.push(setTimeout(() => setCoverageRevealed(k), k * LAYER_REVEAL_MS));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [step]);
+
+  // Tick the displayed percentage toward the coverage laid so far (counts up).
+  const targetPct = step === 2 ? COVERAGE_CUMULATIVE_PCT[coverageRevealed] ?? 0 : 0;
+  useEffect(() => {
+    if (displayPct === targetPct) return;
+    const dir = displayPct < targetPct ? 1 : -1;
+    const t = setTimeout(() => setDisplayPct((p) => p + dir), 22);
+    return () => clearTimeout(t);
+  }, [displayPct, targetPct]);
 
   // Elbow connector from a building to its caption card's near edge.
   const computeLeaderLine = useCallback(
@@ -252,58 +327,48 @@ export function LearnTrailsScreen() {
     [canvasSize.width, canvasSize.height],
   );
 
+  // Keep the ref in step with the rendered breadcrumb.
+  useEffect(() => {
+    pathNodesRef.current = pathNodes;
+  }, [pathNodes]);
+
   // Begin the walkthrough at the first stop (breadcrumb grows from empty).
   const startTour = useCallback(() => {
     setPathNodes([]);
     setLineShown(false);
     setCardShown(false);
-    setFinished(false);
+    setReachedStop(-1);
     setLeaderLine(null);
     setActiveStop(0);
     setStarted(true);
   }, []);
 
-  // Review mode: jump straight to a stop's card (no morph) when its row is
-  // tapped in the finished list.
-  const selectStop = useCallback(
-    (index: number) => {
-      setActiveStop(index);
-      setPathNodes(stopNodes(TRAIL_MARKERS[index].path));
-      const line = computeLeaderLine(TRAIL_MARKERS[index].path, index === 0);
-      setLeaderLine(line);
-      setLineShown(line != null);
-      setCardShown(true);
-    },
-    [computeLeaderLine],
-  );
-
-  // Advance to the next stop (user-driven). The breadcrumb is left as-is so the
-  // effect can morph it into the next stop's path rather than resetting it.
-  const nextStop = useCallback(() => {
-    if (activeStop == null || activeStop >= TRAIL_MARKERS.length - 1) return;
+  // Tap a step row to walk to it — the breadcrumb morphs from wherever it is now
+  // into that stop's path (forward to the next, or back to an earlier one). Hide
+  // the current card/line in the same update so the new stop's card doesn't flash
+  // before the morph restarts.
+  const walkToStop = useCallback((index: number) => {
     setLineShown(false);
     setCardShown(false);
     setLeaderLine(null);
-    setActiveStop(activeStop + 1);
-  }, [activeStop]);
+    setActiveStop(index);
+  }, []);
 
-  // Per-stop reveal: morph the breadcrumb from the previous stop's path into the
-  // active stop's (retract the diverging tail to the shared prefix, then extend),
-  // one node per tick, then draw the leader line, then the card. No auto-advance.
+  // Per-stop reveal: morph the breadcrumb from its *current* path into the active
+  // stop's (retract the diverging tail to the shared prefix, then extend), one
+  // node per tick, then the leader line, then the card. Completing a stop bumps
+  // reachedStop, which reveals the next row.
   useEffect(() => {
-    // In review mode (finished), stop selection is driven by selectStop, not by
-    // the morph animation.
-    if (step !== 1 || !started || activeStop == null || finished) return;
+    if (step !== 1 || !started || activeStop == null) return;
 
     const target = stopNodes(TRAIL_MARKERS[activeStop].path);
-    const prev = activeStop === 0 ? [] : stopNodes(TRAIL_MARKERS[activeStop - 1].path);
+    const prev = pathNodesRef.current;
     const frames = morphFrames(prev, target);
-    const isLast = activeStop === TRAIL_MARKERS.length - 1;
+    const stop = activeStop;
 
     setLineShown(false);
     setCardShown(false);
     setLeaderLine(null);
-    setPathNodes(prev); // start from the previous stop's full path (no-op if already there)
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     frames.forEach((frame, idx) => {
@@ -313,35 +378,38 @@ export function LearnTrailsScreen() {
     const afterFrames = (frames.length + 1) * REVEAL_STEP_MS;
     timers.push(
       setTimeout(() => {
-        setLeaderLine(computeLeaderLine(TRAIL_MARKERS[activeStop].path, activeStop === 0));
+        setLeaderLine(computeLeaderLine(TRAIL_MARKERS[stop].path, stop === 0));
         setLineShown(true);
       }, afterFrames),
     );
     timers.push(
       setTimeout(() => {
         setCardShown(true);
-        if (isLast) setFinished(true); // last stop revealed → enter review mode
+        setReachedStop((r) => Math.max(r, stop)); // stop done → reveal the next row
       }, afterFrames + REVEAL_STEP_MS),
     );
 
     return () => timers.forEach(clearTimeout);
-  }, [step, started, activeStop, finished, computeLeaderLine]);
+  }, [step, started, activeStop, computeLeaderLine]);
 
-  const activePath =
-    step === 1 && activeStop != null ? TRAIL_MARKERS[activeStop].path : null;
-  // The active stop's file is "reached" once the breadcrumb has fully extended
-  // to it — that's when its numbered badge joins the trail.
-  const fileReached =
-    activePath != null && pathNodes.some((n) => n.type === 'file' && n.path === activePath);
+  // Numbered trail badges: one per completed stop (reachedStop + 1 of them).
+  const highlightRevealed = step === 1 && started ? reachedStop + 1 : 0;
 
-  // Files lit so far: every completed stop, plus the active stop once its
-  // breadcrumb has reached the file. Drives the numbered trail badges. In review
-  // mode the whole trail is shown.
-  const highlightRevealed = finished
-    ? TRAIL_MARKERS.length
-    : step === 1 && activeStop != null
-      ? activeStop + (fileReached ? 1 : 0)
-      : 0;
+  // Step 1 city: black, except trail files the breadcrumb has reached — those
+  // take their real file-type (suffix) color as their *base* color, so the
+  // primary breadcrumb border draws on top of it. Completed stops stay colored.
+  const trailCity = useMemo(() => {
+    const colored = new Set(TRAIL_MARKERS.slice(0, reachedStop + 1).map((m) => m.path));
+    for (const n of pathNodes) if (n.type === 'file') colored.add(n.path);
+    if (colored.size === 0) return blackCity;
+    return {
+      ...LEARN_CITY,
+      buildings: LEARN_CITY.buildings.map((b) => ({
+        ...b,
+        color: colored.has(b.path) ? getFileColor(b.path) : CITY_BLACK,
+      })),
+    };
+  }, [reachedStop, pathNodes, blackCity]);
 
   const onCanvasLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -396,6 +464,8 @@ export function LearnTrailsScreen() {
   );
   const selectedCoverageStep =
     coverageStep != null && drilledSteps[coverageStep] ? drilledSteps[coverageStep] : null;
+  // True once every trail layer has finished populating in the entrance animation.
+  const coverageDone = coverageRevealed >= COVERAGE_LAYERS.length;
 
   const drillTrail = useCallback((id: string) => {
     setCoverageTrailId(id);
@@ -442,9 +512,10 @@ export function LearnTrailsScreen() {
   // Per-step canvas configuration.
   const highlightLayers = useMemo<HighlightLayer[]>(() => {
     if (step === 1) {
-      // The morphing breadcrumb path — ancestor folders + the current file —
-      // as a single highlight layer. It retracts/extends node-by-node between
-      // stops (the numbered trail badges below carry the persistent trail).
+      // The morphing breadcrumb path — folders + the current file — as primary
+      // borders, tracing the route to the stop being walked. The file's suffix
+      // color comes from the city's base color (trailCity), so it shows *under*
+      // this border the moment the border reaches the file.
       if (pathNodes.length === 0) return [];
       return [
         {
@@ -464,9 +535,9 @@ export function LearnTrailsScreen() {
       ];
     }
     if (step === 2) {
-      // All coverage trails stay lit; a selected step gets a bright border so it
-      // reads as "the one you're looking at" over its trail-colored fill.
-      const layers: HighlightLayer[] = [...coverageLayers];
+      // Trails light up one at a time on entry (coverageRevealed), then all stay
+      // lit; a selected step gets a bright border over its trail-colored fill.
+      const layers: HighlightLayer[] = coverageLayers.slice(0, coverageRevealed);
       if (selectedCoverageStep) {
         layers.push({
           id: 'cov-selected',
@@ -516,7 +587,7 @@ export function LearnTrailsScreen() {
       });
     }
     return layers;
-  }, [step, pathNodes, openedFile, openFolders, trailColor, coverageLayers, selectedCoverageStep, theme.colors.accent]);
+  }, [step, pathNodes, openedFile, openFolders, trailColor, coverageLayers, coverageRevealed, selectedCoverageStep, theme.colors.accent]);
 
   // Numbered badges: the revealed trail in step 1; the drilled trail's steps in
   // step 2 (so a coverage trail's stops are numbered once you open it).
@@ -527,21 +598,18 @@ export function LearnTrailsScreen() {
         ? drilledSteps.map((s) => s.path)
         : undefined;
   const markerTrailColor = step === 2 && drilledTrail ? drilledTrail.color : trailColor;
-  const isolationMode = step === 1 ? 'transparent' : 'none';
+  // No isolation dimming — the grey city stays visible; color marks the trail.
+  const isolationMode = 'none';
   // The map holds completely still through the walkthrough — the markers,
   // trail, and cards reveal over a static city, with no camera movement.
   const zoomToPath = null;
 
   const stepInfo = STEPS[step];
-  // While mid-walkthrough (not yet on the last stop), hide the Back/Next nav so
-  // the only control is "Next step". The nav returns on the final stop so the
-  // user can continue to step 2.
+  // While mid-walkthrough (last stop not yet reached), hide the Back/Next nav so
+  // the only controls are the step rows. The nav returns once the final stop is
+  // reached, so the user can continue to step 2.
   const walkingTrail =
-    step === 1 &&
-    started &&
-    !finished &&
-    activeStop != null &&
-    activeStop < TRAIL_MARKERS.length - 1;
+    step === 1 && started && reachedStop < TRAIL_MARKERS.length - 1;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -549,7 +617,7 @@ export function LearnTrailsScreen() {
       <View style={styles.canvasWrap} onLayout={onCanvasLayout}>
         <FileCityCanvas
           ref={canvasRef}
-          cityData={step === 2 ? greyCity : LEARN_CITY}
+          cityData={step === 0 ? LEARN_CITY : step === 1 ? trailCity : blackCity}
           backgroundColor={theme.colors.background}
           highlightLayers={highlightLayers}
           isolationMode={isolationMode}
@@ -661,39 +729,50 @@ export function LearnTrailsScreen() {
         ]}
       >
         {step === 1 && started ? (
-          /* Once the walkthrough starts, the title/body give way to the path
-             breadcrumb, morphing folder › folder › file (left-aligned). */
-          <View style={[styles.breadcrumbRow, styles.breadcrumbHeader]}>
-            {pathNodes.map((node, i) => (
-              <React.Fragment key={node.path}>
-                {i > 0 && (
-                  <Text style={[styles.crumbSep, { color: theme.colors.textTertiary }]}>›</Text>
-                )}
-                <Text
-                  style={[
-                    styles.crumb,
-                    node.type === 'file' && styles.crumbFile,
-                    { color: trailColor },
-                  ]}
-                >
-                  {node.name}
-                </Text>
-              </React.Fragment>
-            ))}
+          /* Once the walkthrough starts, the title/body give way to the trail
+             name + the morphing path breadcrumb (folder › folder › file). */
+          <View style={styles.breadcrumbHeader}>
+            <Text style={[styles.trailName, { color: theme.colors.text }]}>{TRAIL_NAME}</Text>
+            <View style={styles.breadcrumbRow}>
+              {pathNodes.map((node, i) => (
+                <React.Fragment key={node.path}>
+                  {i > 0 && (
+                    <Text style={[styles.crumbSep, { color: theme.colors.textTertiary }]}>›</Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.crumb,
+                      node.type === 'file' && styles.crumbFile,
+                      { color: trailColor },
+                    ]}
+                  >
+                    {node.name}
+                  </Text>
+                </React.Fragment>
+              ))}
+            </View>
           </View>
         ) : (
           <>
-            <Text style={[styles.title, { color: theme.colors.accent }]}>
-              {/* Accent title, but the word "trail(s)" picks up the primary trail color. */}
-              {stepInfo.title.split(/(trails?)/i).map((part, i) =>
-                /^trails?$/i.test(part) ? (
-                  <Text key={i} style={{ color: trailColor }}>
-                    {part}
-                  </Text>
-                ) : (
-                  part
-                ),
-              )}
+            <Text style={[styles.title, { color: theme.colors.text }]}>
+              {/* Normal text; "file city" is accent, the other key words primary. */}
+              {stepInfo.title.split(/(file city|trails?|understanding|codebases?)/i).map((part, i) => {
+                if (/^file city$/i.test(part)) {
+                  return (
+                    <Text key={i} style={{ color: theme.colors.accent }}>
+                      {part}
+                    </Text>
+                  );
+                }
+                if (/^(trails?|understanding|codebases?)$/i.test(part)) {
+                  return (
+                    <Text key={i} style={{ color: trailColor }}>
+                      {part}
+                    </Text>
+                  );
+                }
+                return part;
+              })}
             </Text>
             <Text style={[styles.body, { color: theme.colors.textSecondary }]}>
               {stepInfo.body}
@@ -706,7 +785,7 @@ export function LearnTrailsScreen() {
           <View style={styles.comprehension}>
             <View style={styles.comprehensionHead}>
               <Text style={[styles.comprehensionPct, { color: trailColor }]}>
-                {COMPREHENSION_PCT}%
+                {displayPct}%
               </Text>
               <Text style={[styles.comprehensionLabel, { color: theme.colors.textSecondary }]}>
                 comprehension — files these trails cover
@@ -716,10 +795,36 @@ export function LearnTrailsScreen() {
               <View
                 style={[
                   styles.comprehensionFill,
-                  { width: `${COMPREHENSION_PCT}%`, backgroundColor: trailColor },
+                  { width: `${displayPct}%`, backgroundColor: trailColor },
                 ]}
               />
             </View>
+          </View>
+        )}
+
+        {/* Step 0 Files/Legend toggle — fixed above the scrollable content. */}
+        {step === 0 && (
+          <View style={[styles.segmented, { borderColor: theme.colors.border }]}>
+            {(['legend', 'tree'] as const).map((view) => {
+              const active = step0View === view;
+              return (
+                <TouchableOpacity
+                  key={view}
+                  activeOpacity={0.8}
+                  onPress={() => setStep0View(view)}
+                  style={[styles.segItem, active && { backgroundColor: theme.colors.background }]}
+                >
+                  <Text
+                    style={[
+                      styles.segText,
+                      { color: active ? theme.colors.text : theme.colors.textSecondary },
+                    ]}
+                  >
+                    {view === 'tree' ? 'Files' : 'Legend'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -728,74 +833,97 @@ export function LearnTrailsScreen() {
           contentContainerStyle={styles.stepAreaContent}
           showsVerticalScrollIndicator={false}
         >
-          {step === 0 && (
-            <FileTree
-              city={LEARN_CITY}
-              selectedPath={openedFile?.path ?? null}
-              onFilePress={toggleFile}
-              onVisibleFilesChange={handleVisibleFiles}
-              onOpenFoldersChange={handleOpenFolders}
-            />
-          )}
+          {step === 0 &&
+            (step0View === 'tree' ? (
+              <FileTree
+                city={LEARN_CITY}
+                selectedPath={openedFile?.path ?? null}
+                onFilePress={toggleFile}
+                onVisibleFilesChange={handleVisibleFiles}
+                onOpenFoldersChange={handleOpenFolders}
+              />
+            ) : (
+              <View style={styles.fileLegend}>
+                {fileLegend.map((e) => (
+                  <View key={e.color} style={styles.fileLegendRow}>
+                    <View style={[styles.legendSwatch, { backgroundColor: e.color }]} />
+                    <Text style={[styles.fileLegendLabel, { color: theme.colors.text }]}>
+                      {e.label}
+                    </Text>
+                    <Text style={[styles.fileLegendCount, { color: theme.colors.textTertiary }]}>
+                      {e.count}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ))}
 
           {step === 1 &&
-            (finished ? (
-              /* Review mode: the trail's stops as a tappable list — tap a row to
-                 reopen that stop's card on the map. */
-              <View style={styles.stepList}>
-                {TRAIL_MARKERS.map((m, i) => {
-                  const selected = activeStop === i;
-                  return (
-                    <TouchableOpacity
-                      key={m.path}
-                      activeOpacity={0.8}
-                      onPress={() => selectStop(i)}
-                      style={[
-                        styles.stepRow,
-                        {
-                          borderColor: selected ? trailColor : theme.colors.border,
-                          backgroundColor: selected ? theme.colors.background : 'transparent',
-                        },
-                      ]}
-                    >
-                      <View style={styles.stepRowBadge}>
-                        <Text style={styles.stepRowBadgeText}>{i + 1}</Text>
-                      </View>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.stepRowLabel,
-                          { color: selected ? theme.colors.text : theme.colors.textSecondary },
-                        ]}
-                      >
-                        {m.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+            (!started ? (
+              <View style={styles.startWrap}>
+                {/* Name the trail up front so the walk has context. */}
+                <View style={styles.trailIntro}>
+                  <Text style={[styles.trailIntroCaption, { color: theme.colors.textTertiary }]}>
+                    THE TRAIL YOU'LL WALK
+                  </Text>
+                  <Text style={[styles.trailIntroName, { color: theme.colors.text }]}>
+                    {TRAIL_NAME}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={startTour}
+                  style={[styles.startButton, { borderColor: trailColor }]}
+                >
+                  <Text style={[styles.startButtonText, { color: trailColor }]}>Start</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.startWrap}>
-                {!started ? (
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={startTour}
-                    style={[styles.startButton, { borderColor: trailColor }]}
-                  >
-                    <Text style={[styles.startButtonText, { color: trailColor }]}>Start</Text>
-                  </TouchableOpacity>
-                ) : activeStop != null && activeStop < TRAIL_MARKERS.length - 1 ? (
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={nextStop}
-                    style={[styles.startButton, { borderColor: trailColor }]}
-                  >
-                    <Text style={[styles.startButtonText, { color: trailColor }]}>Next step</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Text style={[styles.playingText, { color: theme.colors.textSecondary }]}>
-                    That's the whole trail — continue below.
-                  </Text>
+              /* The trail's stops as tappable rows, revealed one ahead: stops
+                 completed so far plus the next. Tapping morphs to that stop. */
+              <View style={styles.stepList}>
+                {TRAIL_MARKERS.slice(0, Math.min(reachedStop + 2, TRAIL_MARKERS.length)).map(
+                  (m, i) => {
+                    const selected = activeStop === i;
+                    const isNext = i === reachedStop + 1; // not yet completed
+                    return (
+                      <TouchableOpacity
+                        key={m.path}
+                        activeOpacity={0.8}
+                        onPress={() => walkToStop(i)}
+                        style={[
+                          styles.stepRow,
+                          {
+                            borderColor:
+                              selected || isNext ? trailColor : theme.colors.border,
+                            backgroundColor: selected
+                              ? theme.colors.background
+                              : 'transparent',
+                          },
+                        ]}
+                      >
+                        <View style={styles.stepRowBadge}>
+                          <Text style={styles.stepRowBadgeText}>{i + 1}</Text>
+                        </View>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.stepRowLabel,
+                            {
+                              color: selected
+                                ? theme.colors.text
+                                : isNext
+                                  ? trailColor
+                                  : theme.colors.textSecondary,
+                            },
+                          ]}
+                        >
+                          {/* The upcoming stop stays a mystery until it's walked. */}
+                          {isNext && !selected ? 'Next' : m.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  },
                 )}
               </View>
             ))}
@@ -845,6 +973,11 @@ export function LearnTrailsScreen() {
                   );
                 })}
               </View>
+            ) : !coverageDone ? (
+              /* Entrance animation still laying trails over the city. */
+              <Text style={[styles.legendHint, { color: theme.colors.textSecondary }]}>
+                Laying trails over the city…
+              </Text>
             ) : (
               /* Trail list — every trail is lit on the map; tap one to explore it. */
               <View style={styles.legend}>
@@ -995,6 +1128,20 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 12,
   },
+  // Start screen: names the trail you're about to walk.
+  trailIntro: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  trailIntroCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  trailIntroName: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
   startButton: {
     height: 46,
     minWidth: 160,
@@ -1096,11 +1243,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     gap: 6,
   },
-  // Stands in for the title + body block, so the panel height stays steady when
-  // the walkthrough starts.
+  // Stands in for the title + body block (trail name + path), so the panel
+  // height stays steady when the walkthrough starts.
   breadcrumbHeader: {
     minHeight: 48,
     marginBottom: 6,
+    gap: 4,
+  },
+  trailName: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   crumb: {
     fontSize: 15,
@@ -1119,6 +1272,41 @@ const styles = StyleSheet.create({
   legendHint: {
     fontSize: 13.5,
     marginBottom: 2,
+  },
+  // Step 0: Files / Legend toggle.
+  segmented: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginTop: 14,
+  },
+  segItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  segText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Step 0: file-type color legend rows.
+  fileLegend: {
+    gap: 12,
+  },
+  fileLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  fileLegendLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  fileLegendCount: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   legendRow: {
     flexDirection: 'row',
