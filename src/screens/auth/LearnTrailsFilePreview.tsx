@@ -114,7 +114,7 @@ export function LearnTrailsFilePreview({
     const p = progress.value;
     return {
       opacity: interpolate(p, [0, 0.05, 0.92, 1], [0, 1, 1, 0]),
-      borderRadius: interpolate(p, [0, 1], [Math.min(origin.width, origin.height) / 3, 18]),
+      borderRadius: interpolate(p, [0, 1], [Math.min(origin.width, origin.height) / 3, 0]),
       transform: [
         { translateX: interpolate(p, [0, 1], [originCx - targetCx, 0]) },
         { translateY: interpolate(p, [0, 1], [originCy - targetCy, 0]) },
@@ -158,7 +158,6 @@ export function LearnTrailsFilePreview({
             width: targetW,
             height: targetH,
             backgroundColor: theme.colors.background,
-            borderColor: color,
           },
           contentStyle,
         ]}
@@ -184,10 +183,9 @@ const styles = StyleSheet.create({
   },
   layer: {
     position: 'absolute',
-    borderRadius: 18,
+    borderRadius: 0,
   },
   panel: {
-    borderWidth: 1.5,
     overflow: 'hidden',
   },
   snippetWrap: {

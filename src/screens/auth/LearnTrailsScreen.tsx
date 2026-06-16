@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { FadeInUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
@@ -45,22 +46,30 @@ import {
   COVERAGE_LAYERS,
   TRAIL_MARKERS,
   TRAIL_NAME,
+  TEAM_MEMBERS,
+  teamMemberLayer,
+  membersCoveringPath,
   learnFileContents,
 } from '../../data/learnTrailsCity';
+import { LearnTrailsAvatar } from './LearnTrailsAvatar';
 import type { RootStackParamList } from '../../navigation/types';
 
 const STEPS = [
   {
-    title: 'This is a file city view',
-    body: 'It is just like a folders on your computer. Open and close them to get a feel for the layout',
+    title: "This is your codebase's file city",
+    body: 'Its a view of the files on your computer colored by the type of file.',
   },
   {
-    title: 'A trail provides understanding',
-    body: 'Codebases can feel like black boxes. A trail is the fastest way to understand what is going on.',
+    title: 'Codebases can feel like black boxes',
+    body: 'It can be hard to know how things work across files. A trail is the fastest way to understand what is going on.',
   },
   {
-    title: 'Comprehension Coverage Visualized',
+    title: 'Watch your understanding grow',
     body: "As your team lays more trails, the map fills in — a living picture of what's understood and reviewed.",
+  },
+  {
+    title: 'Together you cover everything',
+    body: 'Each teammate understands part of the codebase. Tap an avatar to see their slice — together they cover the whole thing.',
   },
 ] as const;
 
@@ -134,7 +143,7 @@ const COVERAGE_CUMULATIVE_PCT: number[] = (() => {
   return out;
 })();
 // Step 3 entrance: each trail layer pops in this many ms after the previous.
-const LAYER_REVEAL_MS = 650;
+const LAYER_REVEAL_MS = 1200;
 
 type TrailStep = { path: string; label: string; note: string };
 
@@ -214,9 +223,9 @@ export function LearnTrailsScreen() {
     return [...byColor.values()].sort((a, b) => b.count - a.count);
   }, []);
 
-  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   // Step 0 panel toggle: the file tree or the color legend.
-  const [step0View, setStep0View] = useState<'tree' | 'legend'>('tree');
+  const [step0View, setStep0View] = useState<'tree' | 'legend'>('legend');
   const [openedFile, setOpenedFile] = useState<CityBuilding | null>(null);
   // Where the file preview grows from (the tapped square, in canvas-local px).
   const [openOrigin, setOpenOrigin] = useState<PreviewOrigin | null>(null);
@@ -271,8 +280,21 @@ export function LearnTrailsScreen() {
   // the comprehension percentage currently displayed (counts up to the target).
   const [coverageRevealed, setCoverageRevealed] = useState(0);
   const [displayPct, setDisplayPct] = useState(0);
+  // Step 4 (team coverage): the isolated teammate (null = everyone / full
+  // coverage), and the file tapped on the map (its coverers fill the panel).
+  const [teamSelected, setTeamSelected] = useState<string | null>(null);
+  const [coveredFile, setCoveredFile] = useState<string | null>(null);
+  // Step 4 — one filled layer per teammate (their color). Selecting a teammate
+  // shows only their layer; otherwise all four light up = full coverage.
+  const teamLayers = useMemo<HighlightLayer[]>(
+    () => TEAM_MEMBERS.map((m, i) => teamMemberLayer(m, 50 - i * 10)),
+    [],
+  );
+  const teamMember = teamSelected
+    ? TEAM_MEMBERS.find((m) => m.id === teamSelected) ?? null
+    : null;
 
-  const goToStep = (next: 0 | 1 | 2) => {
+  const goToStep = (next: 0 | 1 | 2 | 3) => {
     setOpenedFile(null);
     setOpenOrigin(null);
     setActiveStop(null);
@@ -286,6 +308,8 @@ export function LearnTrailsScreen() {
     setCoverageStep(null);
     setCoverageRevealed(0);
     setDisplayPct(0);
+    setTeamSelected(null);
+    setCoveredFile(null);
     setStep(next);
   };
 
@@ -304,7 +328,18 @@ export function LearnTrailsScreen() {
   }, [step]);
 
   // Tick the displayed percentage toward the coverage laid so far (counts up).
-  const targetPct = step === 2 ? COVERAGE_CUMULATIVE_PCT[coverageRevealed] ?? 0 : 0;
+  // Step 2 counts up as trails reveal; step 3 shows the team's coverage — 100%
+  // for everyone, or the isolated teammate's share of the city.
+  const teamTotal = LEARN_CITY.buildings.length;
+  const teamPct = teamMember
+    ? Math.round((teamMember.files.length / teamTotal) * 100)
+    : 100;
+  const targetPct =
+    step === 2
+      ? COVERAGE_CUMULATIVE_PCT[coverageRevealed] ?? 0
+      : step === 3
+        ? teamPct
+        : 0;
   useEffect(() => {
     if (displayPct === targetPct) return;
     const dir = displayPct < targetPct ? 1 : -1;
@@ -554,6 +589,27 @@ export function LearnTrailsScreen() {
       }
       return layers;
     }
+    if (step === 3) {
+      // Team coverage: all teammates lit = full coverage; isolating one shows
+      // only their files. A tapped file gets a bright border over its fill.
+      const base = teamMember
+        ? teamLayers.filter((l) => l.id === teamMember.id)
+        : teamLayers;
+      const layers: HighlightLayer[] = [...base];
+      if (coveredFile) {
+        layers.push({
+          id: 'team-selected-file',
+          name: 'Selected file',
+          enabled: true,
+          color: '#ffffff',
+          opacity: 1,
+          borderWidth: 2,
+          priority: 200,
+          items: [{ path: coveredFile, type: 'file', renderStrategy: 'border' }],
+        });
+      }
+      return layers;
+    }
 
     // Step 0: outline the borders of folders that are open in the tree, plus
     // outline the tapped file as the current selection.
@@ -587,7 +643,7 @@ export function LearnTrailsScreen() {
       });
     }
     return layers;
-  }, [step, pathNodes, openedFile, openFolders, trailColor, coverageLayers, coverageRevealed, selectedCoverageStep, theme.colors.accent]);
+  }, [step, pathNodes, openedFile, openFolders, trailColor, coverageLayers, coverageRevealed, selectedCoverageStep, teamLayers, teamMember, coveredFile, theme.colors.accent]);
 
   // Numbered badges: the revealed trail in step 1; the drilled trail's steps in
   // step 2 (so a coverage trail's stops are numbered once you open it).
@@ -627,7 +683,13 @@ export function LearnTrailsScreen() {
           enableZoom={step !== 1}
           enablePan={step !== 1}
           dimmedPaths={dimmedPaths}
-          onBuildingPress={step === 0 ? openFile : undefined}
+          onBuildingPress={
+            step === 0
+              ? openFile
+              : step === 3
+                ? (b) => setCoveredFile(b.path)
+                : undefined
+          }
         />
 
         {/* File preview grows out of the tapped square, over the map. */}
@@ -764,6 +826,12 @@ export function LearnTrailsScreen() {
                     </Text>
                   );
                 }
+                // "codebase" is only a highlighted keyword after step 0; in
+                // step 0 it sits next to the accented "file city" and we let
+                // that phrase be the only colored words.
+                if (step === 0 && /^codebases?$/i.test(part)) {
+                  return part;
+                }
                 if (/^(trails?|understanding|codebases?)$/i.test(part)) {
                   return (
                     <Text key={i} style={{ color: trailColor }}>
@@ -799,6 +867,80 @@ export function LearnTrailsScreen() {
                 ]}
               />
             </View>
+          </View>
+        )}
+
+        {/* Step 4 coverage payoff: 100% together, or the isolated teammate's share. */}
+        {step === 3 && (
+          <View style={styles.comprehension}>
+            <View style={styles.comprehensionHead}>
+              <Text
+                style={[
+                  styles.comprehensionPct,
+                  { color: teamMember ? teamMember.color : trailColor },
+                ]}
+              >
+                {displayPct}%
+              </Text>
+              <Text style={[styles.comprehensionLabel, { color: theme.colors.textSecondary }]}>
+                {teamMember
+                  ? `understood by ${teamMember.name}`
+                  : 'understood by the team — together'}
+              </Text>
+            </View>
+            <View style={[styles.comprehensionTrack, { backgroundColor: theme.colors.border }]}>
+              <View
+                style={[
+                  styles.comprehensionFill,
+                  {
+                    width: `${displayPct}%`,
+                    backgroundColor: teamMember ? teamMember.color : trailColor,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Step 4 teammate row — tap to isolate a teammate, "Everyone" for full. */}
+        {step === 3 && (
+          <View style={styles.teamRow}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setTeamSelected(null);
+                setCoveredFile(null);
+              }}
+              style={[
+                styles.everyonePill,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: teamSelected == null ? theme.colors.background : 'transparent',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.everyoneText,
+                  { color: teamSelected == null ? theme.colors.text : theme.colors.textSecondary },
+                ]}
+              >
+                Everyone
+              </Text>
+            </TouchableOpacity>
+            {TEAM_MEMBERS.map((m) => (
+              <LearnTrailsAvatar
+                key={m.id}
+                member={m}
+                size={40}
+                selected={teamSelected === m.id}
+                dimmed={teamSelected != null && teamSelected !== m.id}
+                onPress={() => {
+                  setTeamSelected((cur) => (cur === m.id ? null : m.id));
+                  setCoveredFile(null);
+                }}
+              />
+            ))}
           </View>
         )}
 
@@ -973,32 +1115,70 @@ export function LearnTrailsScreen() {
                   );
                 })}
               </View>
-            ) : !coverageDone ? (
-              /* Entrance animation still laying trails over the city. */
-              <Text style={[styles.legendHint, { color: theme.colors.textSecondary }]}>
-                Laying trails over the city…
-              </Text>
             ) : (
-              /* Trail list — every trail is lit on the map; tap one to explore it. */
+              /* Trail list — each card appears in sync with its map trail as the
+                 entrance animation lays them down; tap one to explore it. */
               <View style={styles.legend}>
                 <Text style={[styles.legendHint, { color: theme.colors.textSecondary }]}>
-                  Tap a trail to walk its steps.
+                  {coverageDone ? 'Tap a trail to walk its steps.' : 'Laying trails over the city…'}
                 </Text>
-                {coverageLayers.map((layer) => (
-                  <TouchableOpacity
+                {coverageLayers.slice(0, coverageRevealed).reverse().map((layer) => (
+                  <Animated.View
                     key={layer.id}
-                    activeOpacity={0.8}
-                    onPress={() => drillTrail(layer.id)}
-                    style={[styles.legendRow, { borderColor: layer.color }]}
+                    entering={FadeInUp.duration(450)}
+                    layout={LinearTransition.duration(450)}
                   >
-                    <View style={[styles.legendSwatch, { backgroundColor: layer.color }]} />
-                    <Text style={[styles.legendName, { color: theme.colors.text }]}>
-                      {layer.name}
-                    </Text>
-                    <Text style={[styles.legendToggle, { color: theme.colors.textTertiary }]}>›</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => drillTrail(layer.id)}
+                      style={[styles.legendRow, { borderColor: layer.color }]}
+                    >
+                      <View style={[styles.legendSwatch, { backgroundColor: layer.color }]} />
+                      <Text style={[styles.legendName, { color: theme.colors.text }]}>
+                        {layer.name}
+                      </Text>
+                      <Text style={[styles.legendToggle, { color: theme.colors.textTertiary }]}>›</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                 ))}
               </View>
+            ))}
+
+          {step === 3 &&
+            (coveredFile ? (
+              /* A file was tapped: name it + show the teammates who cover it. */
+              <View style={styles.coveredFile}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setCoveredFile(null)}
+                  style={styles.backRow}
+                >
+                  <Text style={[styles.backText, { color: theme.colors.textSecondary }]}>‹</Text>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.backTrailName, { color: theme.colors.text }]}
+                  >
+                    {coveredFile.split('/').pop()}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[styles.legendHint, { color: theme.colors.textSecondary }]}>
+                  Understood by
+                </Text>
+                <View style={styles.coveredAvatars}>
+                  {membersCoveringPath(coveredFile).map((m) => (
+                    <View key={m.id} style={styles.coveredAvatarRow}>
+                      <LearnTrailsAvatar member={m} size={32} />
+                      <Text style={[styles.coveredAvatarName, { color: theme.colors.text }]}>
+                        {m.name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <Text style={[styles.legendHint, { color: theme.colors.textSecondary }]}>
+                Tap a teammate to isolate their coverage, or tap a file to see who understands it.
+              </Text>
             ))}
         </ScrollView>
 
@@ -1009,7 +1189,7 @@ export function LearnTrailsScreen() {
               {step > 0 && (
                 <TouchableOpacity
                   style={styles.navLink}
-                  onPress={() => goToStep((step - 1) as 0 | 1)}
+                  onPress={() => goToStep((step - 1) as 0 | 1 | 2)}
                 >
                   <Text style={[styles.navLinkText, { color: theme.colors.textSecondary }]}>
                     Back
@@ -1019,10 +1199,10 @@ export function LearnTrailsScreen() {
             </View>
 
             <View style={styles.navSideRight}>
-              {step < 2 ? (
+              {step < 3 ? (
                 <TouchableOpacity
                   style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
-                  onPress={() => goToStep((step + 1) as 1 | 2)}
+                  onPress={() => goToStep((step + 1) as 1 | 2 | 3)}
                 >
                   <Text style={[styles.primaryButtonText, { color: theme.colors.background }]}>
                     Next
@@ -1329,6 +1509,40 @@ const styles = StyleSheet.create({
   legendToggle: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  // Step 4: teammate avatar row + file-coverage panel.
+  teamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  everyonePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  everyoneText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  coveredFile: {
+    gap: 10,
+  },
+  coveredAvatars: {
+    gap: 12,
+  },
+  coveredAvatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coveredAvatarName: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   // Nav
   navRow: {

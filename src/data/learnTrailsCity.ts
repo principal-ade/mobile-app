@@ -172,6 +172,96 @@ export const COVERAGE_LAYERS: HighlightLayer[] = [
   ]),
 ];
 
+// ── Step 4 — team coverage. Each teammate "understands" part of the city; the
+// union of all four covers every building (100%). Selecting one isolates their
+// slice; tapping a file lists who covers it. ──
+
+export type TeamMember = {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  /** Resolved building paths this teammate covers. */
+  files: string[];
+};
+
+/**
+ * Themed assignment by path suffix. A few files are deliberately shared (e.g.
+ * `src/App.tsx`, `src/services/api.ts`) so tapping them shows two coverers.
+ * After the themed pass, every still-unclaimed building is swept into Diego so
+ * the team's union is always the whole city — "together = full coverage".
+ */
+const TEAM_SPEC: Array<Omit<TeamMember, 'files'> & { suffixes: string[] }> = [
+  {
+    id: 'aisha',
+    name: 'Aisha',
+    initials: 'Ai',
+    color: '#22d3ee',
+    suffixes: ['src/App.tsx', 'src/components/'],
+  },
+  {
+    id: 'ben',
+    name: 'Ben',
+    initials: 'Be',
+    color: '#f472b6',
+    suffixes: ['src/services/', 'src/hooks/', 'src/App.tsx'],
+  },
+  {
+    id: 'carla',
+    name: 'Carla',
+    initials: 'Ca',
+    color: '#a78bfa',
+    suffixes: ['src/types/', 'src/utils/', 'src/index.ts', 'src/services/api.ts'],
+  },
+  {
+    id: 'diego',
+    name: 'Diego',
+    initials: 'Di',
+    color: '#fbbf24',
+    suffixes: [
+      'tests/',
+      'package.json',
+      'tsconfig.json',
+      '.gitignore',
+      'jest.config.js',
+      'README.md',
+      'src/components/Button.test.tsx',
+    ],
+  },
+];
+
+/** Buildings whose path contains any of the given suffix fragments. */
+function buildingsMatching(suffixes: string[]): string[] {
+  return LEARN_CITY.buildings
+    .filter((b) => suffixes.some((s) => b.path === s || b.path.includes(s)))
+    .map((b) => b.path);
+}
+
+export const TEAM_MEMBERS: TeamMember[] = (() => {
+  const members: TeamMember[] = TEAM_SPEC.map(({ suffixes, ...rest }) => ({
+    ...rest,
+    files: buildingsMatching(suffixes),
+  }));
+  // Sweep any building no member claimed into the last member (Diego) so the
+  // union is guaranteed to be the entire city.
+  const claimed = new Set(members.flatMap((m) => m.files));
+  const leftovers = LEARN_CITY.buildings
+    .map((b) => b.path)
+    .filter((p) => !claimed.has(p));
+  members[members.length - 1].files.push(...leftovers);
+  return members;
+})();
+
+/** One filled highlight layer for a teammate (reuses the coverage builder). */
+export function teamMemberLayer(member: TeamMember, priority = 50): HighlightLayer {
+  return buildLayer(member.id, member.name, member.color, priority, member.files);
+}
+
+/** The teammates who cover a given building path (for the file-tap panel). */
+export function membersCoveringPath(path: string): TeamMember[] {
+  return TEAM_MEMBERS.filter((m) => m.files.includes(path));
+}
+
 // ── Faux file contents for step 1's "tap a building → open the file" card ──
 
 /** Bespoke snippets for a few hero files, keyed by path suffix. */
