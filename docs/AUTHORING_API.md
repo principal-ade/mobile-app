@@ -207,6 +207,100 @@ Auth-gated like the run routes (`401 NOT_AUTHENTICATED` otherwise). Response:
 
 ---
 
+## 3b. Sessions — prepare-before-question (the current flow)
+
+The single-shot `POST /runs` above does everything (import → VM boot → clone →
+agent → publish) *after* the question. That hides the most common failure — the
+Freestyle Git **import** — behind a "working…" spinner, and only surfaces it
+after the user has already invested a question. The **session** flow splits the
+work in two so the client can prepare the substrate first, show what's
+happening, and only reveal the question field once the repo imports cleanly:
+
+```
+POST /api/authoring/sessions { owner, repo, ref? }
+        │ 202 { sessionId, status: "queued" }
+        ▼
+GET .../sessions/{id} (poll)
+   status: queued → importing → preparing → ready          ← phase 1 (no question)
+        │                                   │ failed  → import/boot failed; user never asks
+        │ ready
+        ▼
+POST .../sessions/{id}/ask { question }
+        │ 202 { status: "authoring" }
+        ▼
+GET .../sessions/{id} (poll)
+   status: authoring → succeeded { trailId } | failed       ← phase 2
+```
+
+**Status meaning:**
+- `queued` — accepted, prepare not started.
+- `importing` — **Initializing**: `freestyle.git.repos.create` (server-side
+  GitHub import). The step that fails most often; a failure here → `failed`
+  before any question, so the UI must gate the question field on getting past it.
+- `preparing` — **Preparing**: VM boot + in-network clone.
+- `ready` — VM is up with the repo checked out, waiting for a question. **This
+  is when the client reveals the question field.**
+- `authoring` — the question is being answered in the prepared VM.
+- `succeeded` — `trailId`/`trailUrl` set; also delivered to the inbox.
+- `failed` — `error.code` as in §3 (`REPO_RESOLVE_FAILED`, `UNAVAILABLE`, etc.).
+- `expired` — the server reaped a `ready` session no one asked (see TTL below).
+
+### `POST /api/authoring/sessions` — start preparing
+
+Request: `{ owner, repo, ref?, model? }` (no `question`). Auth + `403
+NO_REPO_ACCESS` + `400 INVALID_OWNER_REPO` exactly like `POST /runs`. Response —
+**202**: the `AuthoringSession` shape below with `status: "queued"`.
+
+### `GET /api/authoring/sessions/{sessionId}` — poll a session
+
+Owner-gated (`404` for unknown / not-yours). Returns the `AuthoringSession`
+shape. Poll at 3s through `importing`/`preparing` to `ready`, then again through
+`authoring` to a terminal state.
+
+### `POST /api/authoring/sessions/{sessionId}/ask` — submit the question
+
+Request: `{ question }`. Owner-gated. Only valid when the session is `ready` —
+otherwise **409** (`INVALID_REQUEST`, message names the current status). Response
+— **202** with the session now `authoring`.
+
+**Idle-VM / TTL trade-off (deliberate, for testing):** the VM is booted *before*
+the question and sits idle while the user reads "Ready" and types — reversing the
+topic's "cold-create per question, zero idle spend" default in favor of clear,
+step-by-step communication. The server arms a **~10-min TTL reaper** on a `ready`
+session: if no question arrives, it tears the VM/identity/repo down and marks the
+session `expired`. (Reaper is in-process — a server restart mid-`ready` can still
+orphan a VM; a sweep-based reaper is the durable follow-up.)
+
+### Session types (`src/types/Authoring.ts`)
+
+```ts
+export type AuthoringSessionStatus =
+  | 'queued' | 'importing' | 'preparing' | 'ready'
+  | 'authoring' | 'succeeded' | 'failed' | 'expired';
+
+export interface AuthoringSessionRequest { owner: string; repo: string; ref?: string; model?: string; }
+
+export interface AuthoringSession {
+  sessionId: string;
+  status: AuthoringSessionStatus;
+  owner: string; repo: string; ref?: string;
+  question: string | null;          // null until asked
+  trailId: string | null;
+  trailUrl: string | null;
+  error: { message: string; code: AuthoringErrorCode } | null;
+  createdAt: string; updatedAt: string;
+}
+```
+
+Service (`AuthoringApiService.ts`): `startAuthoringSession` / `getAuthoringSession`
+/ `askAuthoringSession`. Hook (`useAuthoringSession`): auto-`prepare` on mount,
+poll to `ready`, reveal the question field, `ask`, poll to terminal (give up the
+ask poll at ~5 min → inbox; the prepare poll at ~8 min → retry). The
+`AskTrailScreen` renders the **Initializing → Preparing → Ready** stepper during
+prepare and gates the question field on `ready`.
+
+---
+
 ## 4. Mobile types (`src/types/Authoring.ts`)
 
 ```ts

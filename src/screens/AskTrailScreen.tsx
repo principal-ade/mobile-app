@@ -7,12 +7,17 @@
  *  2. From a repo's File City screen (params with owner/repo): the repo is
  *     locked and we jump straight to the question step.
  *
- * The user types a natural-language question; we POST a run to web-ade
- * (`/api/authoring/runs`) and poll for completion via {@link useAuthoringRun}.
- * On success we navigate to the rendered trail (`TrailDetailScreen`) — the same
- * screen the inbox opens, since the run also self-delivers the trail to the
- * user's inbox. Leaving mid-run is safe: the run continues server-side and
- * lands in the inbox. See `mobile-app/docs/AUTHORING_API.md`.
+ * Once a repo is chosen we prepare a session up front — `POST
+ * /api/authoring/sessions` imports the repo into Freestyle Git and boots a
+ * sandbox — and show the Initializing → Preparing → Ready steps via
+ * {@link useAuthoringSession}. The question field only appears once the
+ * substrate is ready (so a failed import stops the user before they ask).
+ * Submitting POSTs the question to `/sessions/{id}/ask` and polls for
+ * completion. On success we navigate to the rendered trail
+ * (`TrailDetailScreen`) — the same screen the inbox opens, since the run also
+ * self-delivers the trail to the user's inbox. Leaving mid-run is safe: it
+ * continues server-side and lands in the inbox. See
+ * `mobile-app/docs/AUTHORING_API.md`.
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -41,7 +46,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import { LucideIcon } from '../components/LucideIcon';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAuthContext } from '../context/AuthContext';
-import { useAuthoringRun } from '../hooks/useAuthoringRun';
+import { useAuthoringSession } from '../hooks/useAuthoringSession';
 import {
   searchRepos,
   getSuggestedRepos,
@@ -49,7 +54,11 @@ import {
   type SuggestedRepo,
 } from '../services/GitHubSearchService';
 import { getAuthoringRepos } from '../services/AuthoringApiService';
-import type { CuratedRepo, AuthoringReposResponse } from '../types/Authoring';
+import type {
+  CuratedRepo,
+  AuthoringReposResponse,
+  AuthoringSessionStatus,
+} from '../types/Authoring';
 import type { AskStackParamList } from '../navigation/types';
 
 /** Warm accent for "may not import" flags — softer than a hard error. */
@@ -430,6 +439,104 @@ function RepoPickerStep({ onSelect }: { onSelect: (repo: SelectedRepo) => void }
 // Step 2 — ask the question
 // ============================================================================
 
+/**
+ * The three prepare steps the user watches before the question field appears.
+ * Maps the server session status to a clear, testing-friendly progress view.
+ */
+const PREPARE_STEPS: {
+  label: string;
+  detail: string;
+  /** Statuses for which this step is the active one. */
+  active: AuthoringSessionStatus[];
+}[] = [
+  {
+    label: 'Initializing',
+    detail: 'Creating a workspace for the repository',
+    active: ['queued', 'importing'],
+  },
+  {
+    label: 'Preparing',
+    detail: 'Booting a sandbox and checking out the code',
+    active: ['preparing'],
+  },
+  {
+    label: 'Ready',
+    detail: 'Ready for your question',
+    active: ['ready'],
+  },
+];
+
+function activeStepIndex(status: AuthoringSessionStatus | null): number {
+  if (!status) return 0;
+  const i = PREPARE_STEPS.findIndex((s) => s.active.includes(status));
+  return i === -1 ? 0 : i;
+}
+
+function PrepareSteps({
+  status,
+}: {
+  status: AuthoringSessionStatus | null;
+}) {
+  const { theme } = useTheme();
+  const current = activeStepIndex(status);
+  return (
+    <View style={styles.stepsWrap}>
+      {PREPARE_STEPS.map((step, i) => {
+        const done = i < current;
+        const isActive = i === current;
+        return (
+          <View key={step.label} style={styles.stepRow}>
+            <View style={styles.stepIconCol}>
+              {done ? (
+                <View style={[styles.stepDot, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
+                  <LucideIcon name="Check" size={16} color="#34C759" />
+                </View>
+              ) : isActive ? (
+                <View style={[styles.stepDot, { backgroundColor: theme.colors.surface }]}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.stepDot,
+                    { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1 },
+                  ]}
+                >
+                  <View style={[styles.stepPending, { backgroundColor: theme.colors.border }]} />
+                </View>
+              )}
+              {i < PREPARE_STEPS.length - 1 ? (
+                <View
+                  style={[
+                    styles.stepConnector,
+                    { backgroundColor: done ? '#34C759' : theme.colors.border },
+                  ]}
+                />
+              ) : null}
+            </View>
+            <View style={styles.stepTextCol}>
+              <Text
+                style={[
+                  styles.stepLabel,
+                  {
+                    color: isActive || done ? theme.colors.text : theme.colors.textSecondary,
+                    fontWeight: isActive ? '700' : '600',
+                  },
+                ]}
+              >
+                {step.label}
+              </Text>
+              <Text style={[styles.stepDetail, { color: theme.colors.textSecondary }]}>
+                {step.detail}
+              </Text>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function AskQuestionStep({
   repo,
   onChangeRepo,
@@ -446,28 +553,41 @@ function AskQuestionStep({
   const repoLabel = fullName || `${owner}/${repoName}`;
 
   const [question, setQuestion] = useState('');
-  const { phase, run, error, isBusy, start, reset } = useAuthoringRun(token);
+  const { phase, status, session, error, isReady, prepare, ask, reset } =
+    useAuthoringSession(token);
+
+  // Auto-prepare the substrate as soon as we land here (and again after a reset
+  // → idle). Preparing before the question is the whole point: the import can
+  // fail, and we don't want the user to ask if it does.
+  useEffect(() => {
+    if (phase === 'idle') {
+      prepare({ owner, repo: repoName, ref });
+    }
+  }, [phase, prepare, owner, repoName, ref]);
 
   const trimmed = question.trim();
-  const canSubmit = trimmed.length > 0 && !isBusy;
+  const canSubmit = trimmed.length > 0 && isReady;
 
   const handleSubmit = useCallback(() => {
-    if (!trimmed || isBusy) return;
-    start({ owner, repo: repoName, ref, question: trimmed });
-  }, [trimmed, isBusy, start, owner, repoName, ref]);
+    if (!trimmed || !isReady) return;
+    ask(trimmed);
+  }, [trimmed, isReady, ask]);
 
   const handleViewTrail = useCallback(() => {
-    if (run?.trailId) {
-      navigation.navigate('TrailDetail', { trailId: run.trailId });
+    if (session?.trailId) {
+      navigation.navigate('TrailDetail', { trailId: session.trailId });
     }
-  }, [navigation, run?.trailId]);
+  }, [navigation, session?.trailId]);
 
   const handleAskAnother = useCallback(() => {
     setQuestion('');
-    reset();
+    reset(); // → idle → the effect re-prepares a fresh session
   }, [reset]);
 
-  const showForm = phase === 'idle' || phase === 'failed';
+  // Did the failure happen before the user asked (prepare/import failed) vs.
+  // during authoring? A prepared session that fails before a question is the
+  // "can't even start" case — offer repo change + retry, not a question field.
+  const failedBeforeAsking = phase === 'failed' && !session?.question;
 
   // Left header action: change repo (tab entry) → go back to picker. No "close"
   // — the Ask screen is a root tab, so there's nothing to close.
@@ -505,8 +625,55 @@ function AskQuestionStep({
         contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {showForm ? (
+        {phase === 'preparing' ? (
+          // Preparing the substrate — show the Initializing → Preparing → Ready
+          // steps. No question field yet.
+          <View style={styles.statusBlock}>
+            <Text style={[styles.statusTitle, { color: theme.colors.text }]}>
+              Getting {repoLabel} ready
+            </Text>
+            <Text style={[styles.statusBody, { color: theme.colors.textSecondary }]}>
+              We're setting up a sandbox to explore the code. This takes a moment.
+            </Text>
+            <PrepareSteps status={status} />
+          </View>
+        ) : failedBeforeAsking ? (
+          // Prepare/import failed before the user could ask — the "can't start"
+          // path. Offer a retry and (if available) a different repo.
+          <View style={styles.statusBlock}>
+            <View style={[styles.statusIconWrap, { backgroundColor: 'rgba(255,59,48,0.12)' }]}>
+              <LucideIcon name="Info" size={32} color={theme.colors.error} />
+            </View>
+            <Text style={[styles.statusTitle, { color: theme.colors.text }]}>
+              Couldn't prepare this repository
+            </Text>
+            <Text style={[styles.statusBody, { color: theme.colors.textSecondary }]}>
+              {error ?? 'Something went wrong setting up the workspace.'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleAskAnother}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.submitText, { color: '#fff' }]}>Try again</Text>
+            </TouchableOpacity>
+            {onChangeRepo ? (
+              <TouchableOpacity onPress={onChangeRepo} style={styles.secondaryButton}>
+                <Text style={[styles.secondaryText, { color: theme.colors.primary }]}>
+                  Pick a different repository
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : isReady ? (
+          // Substrate ready — reveal the question field.
           <>
+            <View style={styles.readyBadge}>
+              <LucideIcon name="Check" size={14} color="#34C759" />
+              <Text style={[styles.readyText, { color: '#34C759' }]}>
+                Workspace ready
+              </Text>
+            </View>
             <Text style={[styles.prompt, { color: theme.colors.text }]}>
               What do you want to understand about{' '}
               <Text style={{ fontWeight: '700' }}>{repoLabel}</Text>?
@@ -551,13 +718,6 @@ function AskQuestionStep({
               ))}
             </View>
 
-            {phase === 'failed' && error ? (
-              <View style={[styles.errorBanner, { backgroundColor: 'rgba(255,59,48,0.12)' }]}>
-                <LucideIcon name="Info" size={16} color={theme.colors.error} />
-                <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
-              </View>
-            ) : null}
-
             <TouchableOpacity
               style={[
                 styles.submitButton,
@@ -582,12 +742,12 @@ function AskQuestionStep({
             </View>
             <Text style={[styles.statusTitle, { color: theme.colors.text }]}>Your trail is ready</Text>
             <Text style={[styles.statusBody, { color: theme.colors.textSecondary }]}>
-              We authored a trail for "{trimmed}". It's also waiting in your inbox.
+              We authored a trail for "{session?.question ?? trimmed}". It's also waiting in your inbox.
             </Text>
             <TouchableOpacity
               style={[styles.submitButton, { backgroundColor: theme.colors.primary }]}
               onPress={handleViewTrail}
-              disabled={!run?.trailId}
+              disabled={!session?.trailId}
               activeOpacity={0.8}
             >
               <Text style={[styles.submitText, { color: '#fff' }]}>View trail</Text>
@@ -614,17 +774,38 @@ function AskQuestionStep({
               </Text>
             </TouchableOpacity>
           </View>
+        ) : phase === 'failed' ? (
+          // Failed during authoring (the user asked). Tearing down the VM means a
+          // retry re-prepares — route through "ask another" to start fresh.
+          <View style={styles.statusBlock}>
+            <View style={[styles.statusIconWrap, { backgroundColor: 'rgba(255,59,48,0.12)' }]}>
+              <LucideIcon name="Info" size={32} color={theme.colors.error} />
+            </View>
+            <Text style={[styles.statusTitle, { color: theme.colors.text }]}>That didn't work</Text>
+            <Text style={[styles.statusBody, { color: theme.colors.textSecondary }]}>
+              {error ?? 'The run failed. Please try again.'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleAskAnother}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.submitText, { color: '#fff' }]}>Try again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          // creating / running
+          // authoring
           <View style={styles.statusBlock}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
             <Text style={[styles.statusTitle, { color: theme.colors.text, marginTop: 20 }]}>
-              {phase === 'creating' ? 'Starting…' : 'Authoring a trail…'}
+              Authoring a trail…
             </Text>
             <Text style={[styles.statusBody, { color: theme.colors.textSecondary }]}>
               Exploring {repoLabel} to answer:
             </Text>
-            <Text style={[styles.runningQuestion, { color: theme.colors.text }]}>"{trimmed}"</Text>
+            <Text style={[styles.runningQuestion, { color: theme.colors.text }]}>
+              "{session?.question ?? trimmed}"
+            </Text>
             <Text style={[styles.statusHint, { color: theme.colors.textSecondary }]}>
               This takes up to a couple of minutes. You can leave — it'll arrive in
               your inbox either way.
@@ -848,5 +1029,60 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     lineHeight: 19,
+  },
+  // Prepare steps (Initializing → Preparing → Ready)
+  stepsWrap: {
+    alignSelf: 'stretch',
+    marginTop: 32,
+    paddingHorizontal: 8,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stepIconCol: {
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  stepDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepPending: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  stepConnector: {
+    width: 2,
+    height: 24,
+    marginVertical: 2,
+  },
+  stepTextCol: {
+    flex: 1,
+    paddingTop: 5,
+    paddingBottom: 12,
+  },
+  stepLabel: {
+    fontSize: 16,
+  },
+  stepDetail: {
+    fontSize: 13,
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  readyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  readyText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

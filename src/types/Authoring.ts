@@ -65,6 +65,71 @@ export function isTerminalStatus(status: AuthoringRunStatus): boolean {
 }
 
 // ============================================================================
+// Sessions — the two-phase ask flow (`/api/authoring/sessions`)
+// ============================================================================
+
+/**
+ * A session prepares the substrate (Freestyle Git import → VM boot → clone)
+ * BEFORE the user asks, so the UI can show what's happening and only reveal the
+ * question field once the repo imports cleanly:
+ *
+ *   queued → importing → preparing → ready ── ask ──▶ authoring → succeeded|failed
+ *
+ * `importing` is the Freestyle Git create (the step that fails most often, so a
+ * failure here stops the user before they ask); `preparing` is VM boot + clone;
+ * `ready` means the VM is up and waiting for a question; `expired` means the
+ * server reaped a `ready` session no one asked. Mirrors the web-ade
+ * `AuthoringSessionStatus`. See `AUTHORING_API.md`.
+ */
+export type AuthoringSessionStatus =
+  | 'queued'
+  | 'importing'
+  | 'preparing'
+  | 'ready'
+  | 'authoring'
+  | 'succeeded'
+  | 'failed'
+  | 'expired';
+
+/** Request body for `POST /api/authoring/sessions` — no question yet. */
+export interface AuthoringSessionRequest {
+  owner: string;
+  repo: string;
+  /** Optional; defaults to the repo's default branch (HEAD) when omitted. */
+  ref?: string;
+  /** Optional provider/model override; free default when omitted. */
+  model?: string;
+}
+
+export interface AuthoringSession {
+  sessionId: string;
+  status: AuthoringSessionStatus;
+  owner: string;
+  repo: string;
+  ref?: string;
+  /** The question, once asked (status `authoring` onward); null while preparing. */
+  question: string | null;
+  /** Set when `status === 'succeeded'`. */
+  trailId: string | null;
+  /** `"/trail/{id}"` when `status === 'succeeded'`. */
+  trailUrl: string | null;
+  /** Populated when `status === 'failed'`. */
+  error: { message: string; code: AuthoringErrorCode } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** True once the substrate is prepared and the question field can be revealed. */
+export function isSessionReady(status: AuthoringSessionStatus): boolean {
+  return status === 'ready';
+}
+
+/** Session states past which no further work happens (poll can stop). */
+export function isTerminalSessionStatus(status: AuthoringSessionStatus): boolean {
+  return status === 'succeeded' || status === 'failed' || status === 'expired';
+}
+
+// ============================================================================
 // Repo lists — `GET /api/authoring/repos`
 // ============================================================================
 

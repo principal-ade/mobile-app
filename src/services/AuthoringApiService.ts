@@ -21,6 +21,8 @@ import type {
   AuthoringReposResponse,
   AuthoringRun,
   AuthoringRunRequest,
+  AuthoringSession,
+  AuthoringSessionRequest,
 } from '../types/Authoring';
 
 const API_BASE = `${apiConfig.baseUrl}/authoring`;
@@ -133,4 +135,74 @@ export async function getAuthoringRun(
     await throwFromResponse(response, `Failed to fetch run: ${response.status}`);
   }
   return (await response.json()) as AuthoringRun;
+}
+
+// ============================================================================
+// Sessions — the two-phase ask flow (prepare → ready → ask)
+// ============================================================================
+
+/**
+ * Start preparing a session (phase 1). Returns the `202`-accepted session
+ * (status `queued`); the substrate prepares server-side — poll
+ * {@link getAuthoringSession} through importing → preparing → ready. Fails fast
+ * with `403 NO_REPO_ACCESS` if the signed-in user can't read the target repo.
+ */
+export async function startAuthoringSession(
+  githubToken: string,
+  body: AuthoringSessionRequest,
+): Promise<AuthoringSession> {
+  const response = await fetch(`${API_BASE}/sessions`, {
+    method: 'POST',
+    headers: jsonHeaders(githubToken),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to start session: ${response.status}`);
+  }
+  return (await response.json()) as AuthoringSession;
+}
+
+/**
+ * Poll a single session. Owned by its creator; `404` for unknown sessions or
+ * sessions the caller didn't create.
+ */
+export async function getAuthoringSession(
+  githubToken: string,
+  sessionId: string,
+): Promise<AuthoringSession> {
+  const response = await fetch(
+    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}`,
+    {
+      headers: authHeaders(githubToken),
+    },
+  );
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to fetch session: ${response.status}`);
+  }
+  return (await response.json()) as AuthoringSession;
+}
+
+/**
+ * Submit the question (phase 2). Only valid once the session is `ready`; the
+ * server drives the agent in the already-prepared VM. Returns the session now
+ * `authoring` — poll {@link getAuthoringSession} to succeeded|failed. A
+ * non-ready session is a `409`.
+ */
+export async function askAuthoringSession(
+  githubToken: string,
+  sessionId: string,
+  question: string,
+): Promise<AuthoringSession> {
+  const response = await fetch(
+    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/ask`,
+    {
+      method: 'POST',
+      headers: jsonHeaders(githubToken),
+      body: JSON.stringify({ question }),
+    },
+  );
+  if (!response.ok) {
+    await throwFromResponse(response, `Failed to submit question: ${response.status}`);
+  }
+  return (await response.json()) as AuthoringSession;
 }
