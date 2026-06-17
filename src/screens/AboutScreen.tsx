@@ -22,6 +22,7 @@ import { DiscordIcon } from '../components/DiscordIcon';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
 import { AccountSwitcherSheet } from '../components/AccountSwitcherSheet';
+import { qrModuleColor } from '../utils/qrColor';
 import type { AboutStackParamList, RootStackParamList } from '../navigation/types';
 
 // About lives in a tab stack; the Trails Tutorial is presented at the root
@@ -40,49 +41,6 @@ const LINKS = {
   website: 'https://principal-ade.com',
   appStore: 'https://apps.apple.com/app/principal-ai/id6761268899',
 };
-
-/**
- * Mix a hex color toward black by `amount` (0 = unchanged, 1 = black).
- * Used to darken the theme primary into a high-contrast QR module color —
- * the bright brand primary on white scans poorly, the darkened tint reads
- * on-brand while keeping ~10:1 contrast. Falls back to near-black for any
- * non-hex input.
- */
-function darken(color: string, amount: number): string {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
-  if (!m) return '#0a0f14';
-  let hex = m[1];
-  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
-  const t = Math.max(0, Math.min(1, amount));
-  const ch = (i: number) =>
-    Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - t))
-      .toString(16)
-      .padStart(2, '0');
-  return `#${ch(0)}${ch(2)}${ch(4)}`;
-}
-
-/** Perceived luminance (0 = black, 1 = white) of a hex color; defaults to
- *  dark for non-hex input so callers treat unknowns as a dark surface. */
-function isLightColor(color: string): boolean {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
-  if (!m) return false;
-  let hex = m[1];
-  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  // Rec. 601 luma — cheap and good enough for a light/dark decision.
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55;
-}
-
-/**
- * QR module color for a given background: on a light surface use the
- * darkened brand primary (normal dark-on-light QR); on a dark surface use
- * the bright primary so the code stays on-brand as a high-contrast
- * inverted QR. Keeps the code on the app's own background color in either
- * theme while preserving the contrast a scanner needs.
- */
-function qrModuleColor(primary: string, background: string): string {
-  return isLightColor(background) ? darken(primary, 0.65) : primary;
-}
 
 interface LinkRowProps {
   title: string;

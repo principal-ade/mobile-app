@@ -1211,10 +1211,10 @@ export function LearnTrailsScreen() {
               ) : (
                 <TouchableOpacity
                   style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
-                  onPress={() => navigation.navigate('SampleTrail')}
+                  onPress={() => navigation.navigate('MakeTrail')}
                 >
                   <Text style={[styles.primaryButtonText, { color: theme.colors.background }]}>
-                    Try a real trail ›
+                    Make a trail ›
                   </Text>
                 </TouchableOpacity>
               )}

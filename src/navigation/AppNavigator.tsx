@@ -36,6 +36,7 @@ import { OrganizationScreenContainer } from '../screens/OrganizationScreenContai
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
 import { LearnTrailsScreen } from '../screens/auth/LearnTrailsScreen';
 import { SampleTrailScreen } from '../screens/auth/SampleTrailScreen';
+import { MakeTrailScreen } from '../screens/auth/MakeTrailScreen';
 import { useTheme } from '@principal-ade/industry-theme';
 import { useAuth } from '../hooks/useAuth';
 import { useMultiAccount } from '../context/MultiAccountContext';
@@ -789,6 +790,33 @@ export default function AppNavigator() {
               component={SampleTrailScreen}
               options={{ title: 'Sample trail' }}
             />
+            <RootStack.Screen
+              name="MakeTrail"
+              component={MakeTrailScreen}
+              options={({ navigation }) => ({
+                title: 'Make a trail',
+                headerRight: () => (
+                  <TouchableOpacity
+                    // Exit the whole tutorial, not just this step: pop both
+                    // MakeTrail and the LearnTrails screen beneath it so the
+                    // user lands back where the tutorial was launched from.
+                    onPress={() => navigation.pop(2)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginRight: 24 }}
+                  >
+                    <Text
+                      style={{
+                        color: theme.colors.primary,
+                        fontSize: 16,
+                        fontWeight: '600',
+                      }}
+                    >
+                      Exit
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              })}
+            />
           </>
         ) : (
           <>
@@ -837,6 +865,33 @@ export default function AppNavigator() {
               name="SampleTrail"
               component={SampleTrailScreen}
               options={{ title: 'Sample trail' }}
+            />
+            <RootStack.Screen
+              name="MakeTrail"
+              component={MakeTrailScreen}
+              options={({ navigation }) => ({
+                title: 'Make a trail',
+                headerRight: () => (
+                  <TouchableOpacity
+                    // Exit the whole tutorial, not just this step: pop both
+                    // MakeTrail and the LearnTrails screen beneath it so the
+                    // user lands back where the tutorial was launched from.
+                    onPress={() => navigation.pop(2)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginRight: 24 }}
+                  >
+                    <Text
+                      style={{
+                        color: theme.colors.primary,
+                        fontSize: 16,
+                        fontWeight: '600',
+                      }}
+                    >
+                      Exit
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              })}
             />
           </>
         )}

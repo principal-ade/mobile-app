@@ -373,4 +373,5 @@ export type RootStackParamList = {
   Welcome: undefined;
   LearnTrails: undefined;
   SampleTrail: undefined;
+  MakeTrail: undefined;
 };
