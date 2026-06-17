@@ -84,18 +84,23 @@ export const TRAIL_MARKERS: Array<{
 }> = [
   {
     path: findBuilding('src/hooks/useAuth.ts')?.path ?? 'src/hooks/useAuth.ts',
-    label: 'useAuth() hook',
-    note: 'The sign-in screen calls this hook — the trail starts where the user does.',
+    label: 'Start sign-in',
+    note: 'The sign-in screen calls this hook when someone submits the form.',
   },
   {
     path: findBuilding('src/services/auth.ts')?.path ?? 'src/services/auth.ts',
-    label: 'login() service',
+    label: 'Build the request',
     note: 'It hands credentials to the auth service, which builds the request.',
   },
   {
     path: findBuilding('src/services/api.ts')?.path ?? 'src/services/api.ts',
-    label: 'api.post()',
-    note: 'Which posts to the API and parses the response. Three stops, one flow.',
+    label: 'Call the server',
+    note: 'The service sends the request to the server and parses the response.',
+  },
+  {
+    path: findBuilding('src/App.tsx')?.path ?? 'src/App.tsx',
+    label: 'Show login success',
+    note: 'The signed-in user flows back up, and the app shows the home screen.',
   },
 ];
 
