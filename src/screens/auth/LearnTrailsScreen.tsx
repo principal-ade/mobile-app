@@ -144,6 +144,9 @@ const COVERAGE_CUMULATIVE_PCT: number[] = (() => {
 })();
 // Step 3 entrance: each trail layer pops in this many ms after the previous.
 const LAYER_REVEAL_MS = 1200;
+// Step 4 entrance: teammate avatars pop in one at a time, this far apart — paced
+// so each teammate's slice of the map has time to register before the next.
+const TEAM_REVEAL_MS = 950;
 
 type TrailStep = { path: string; label: string; note: string };
 
@@ -283,6 +286,7 @@ export function LearnTrailsScreen() {
   // Step 4 (team coverage): the isolated teammate (null = everyone / full
   // coverage), and the file tapped on the map (its coverers fill the panel).
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
+  const [teamRevealed, setTeamRevealed] = useState(0);
   const [coveredFile, setCoveredFile] = useState<string | null>(null);
   // Step 4 — one filled layer per teammate (their color). Selecting a teammate
   // shows only their layer; otherwise all four light up = full coverage.
@@ -327,13 +331,37 @@ export function LearnTrailsScreen() {
     return () => timers.forEach(clearTimeout);
   }, [step]);
 
+  // Step 4 entrance: reveal teammate avatars one at a time so the team builds up
+  // visibly rather than all appearing at once.
+  useEffect(() => {
+    if (step !== 3) return;
+    setTeamRevealed(0);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let k = 1; k <= TEAM_MEMBERS.length; k++) {
+      timers.push(setTimeout(() => setTeamRevealed(k), k * TEAM_REVEAL_MS));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [step]);
+
   // Tick the displayed percentage toward the coverage laid so far (counts up).
   // Step 2 counts up as trails reveal; step 3 shows the team's coverage — 100%
   // for everyone, or the isolated teammate's share of the city.
   const teamTotal = LEARN_CITY.buildings.length;
+  // For "Everyone", the bar climbs as teammates reveal: count the files covered
+  // by the members shown so far, scaled so the full team lands exactly on 100%.
+  const everyonePct = useMemo(() => {
+    const covered = new Set<string>();
+    TEAM_MEMBERS.slice(0, teamRevealed).forEach((m) =>
+      m.files.forEach((f) => covered.add(f)),
+    );
+    const fullTeam = new Set<string>();
+    TEAM_MEMBERS.forEach((m) => m.files.forEach((f) => fullTeam.add(f)));
+    if (fullTeam.size === 0) return 0;
+    return Math.round((covered.size / fullTeam.size) * 100);
+  }, [teamRevealed]);
   const teamPct = teamMember
     ? Math.round((teamMember.files.length / teamTotal) * 100)
-    : 100;
+    : everyonePct;
   const targetPct =
     step === 2
       ? COVERAGE_CUMULATIVE_PCT[coverageRevealed] ?? 0
@@ -594,7 +622,7 @@ export function LearnTrailsScreen() {
       // only their files. A tapped file gets a bright border over its fill.
       const base = teamMember
         ? teamLayers.filter((l) => l.id === teamMember.id)
-        : teamLayers;
+        : teamLayers.slice(0, teamRevealed);
       const layers: HighlightLayer[] = [...base];
       if (coveredFile) {
         layers.push({
@@ -643,7 +671,7 @@ export function LearnTrailsScreen() {
       });
     }
     return layers;
-  }, [step, pathNodes, openedFile, openFolders, trailColor, coverageLayers, coverageRevealed, selectedCoverageStep, teamLayers, teamMember, coveredFile, theme.colors.accent]);
+  }, [step, pathNodes, openedFile, openFolders, trailColor, coverageLayers, coverageRevealed, selectedCoverageStep, teamLayers, teamMember, teamRevealed, coveredFile, theme.colors.accent]);
 
   // Numbered badges: the revealed trail in step 1; the drilled trail's steps in
   // step 2 (so a coverage trail's stops are numbered once you open it).
@@ -928,18 +956,23 @@ export function LearnTrailsScreen() {
                 Everyone
               </Text>
             </TouchableOpacity>
-            {TEAM_MEMBERS.map((m) => (
-              <LearnTrailsAvatar
+            {TEAM_MEMBERS.slice(0, teamRevealed).map((m) => (
+              <Animated.View
                 key={m.id}
-                member={m}
-                size={40}
-                selected={teamSelected === m.id}
-                dimmed={teamSelected != null && teamSelected !== m.id}
-                onPress={() => {
-                  setTeamSelected((cur) => (cur === m.id ? null : m.id));
-                  setCoveredFile(null);
-                }}
-              />
+                entering={FadeInUp.duration(350)}
+                layout={LinearTransition.duration(350)}
+              >
+                <LearnTrailsAvatar
+                  member={m}
+                  size={40}
+                  selected={teamSelected === m.id}
+                  dimmed={teamSelected != null && teamSelected !== m.id}
+                  onPress={() => {
+                    setTeamSelected((cur) => (cur === m.id ? null : m.id));
+                    setCoveredFile(null);
+                  }}
+                />
+              </Animated.View>
             ))}
           </View>
         )}

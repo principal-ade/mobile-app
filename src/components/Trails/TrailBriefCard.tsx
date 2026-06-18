@@ -1288,8 +1288,6 @@ const RouteStopRow: React.FC<{
                 fontSize: theme.fontSizes[2],
                 lineHeight: theme.fontSizes[2] * 1.5,
               }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
             >
               {label}
             </Text>
