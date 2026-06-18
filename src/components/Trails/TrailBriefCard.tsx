@@ -1300,8 +1300,6 @@ const RouteStopRow: React.FC<{
                     color: theme.colors.primary,
                     lineHeight: theme.fontSizes[0] * 1.4,
                   }}
-                  numberOfLines={1}
-                  ellipsizeMode="middle"
                 >
                   {fileName}
                 </Text>
